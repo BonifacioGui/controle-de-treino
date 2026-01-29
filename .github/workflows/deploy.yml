@@ -26,6 +26,11 @@ jobs:
         run: |
           npm install
           npm run build
+        env:
+          # 🔥 ESSA É A PARTE QUE FALTA:
+          # O GitHub pega o valor do "Secret" e injeta no processo do Vite
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
