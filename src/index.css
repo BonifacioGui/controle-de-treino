@@ -1,1 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-cyber: 'Orbitron', sans-serif;
+  --color-neon-cyan: #00f3ff;
+  --color-neon-pink: #ff00ff;
+}
+
+body {
+  background-color: #020617;
+  font-family: var(--font-cyber);
+}
+
+/* Efeito de Brilho Neon */
+.neon-text-cyan {
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
+}
+
+.neon-border-pink {
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), inset 0 0 5px rgba(255, 0, 255, 0.2);
+}
+
+.cyber-grid {
+  background-image: linear-gradient(to right, #0f172a 1px, transparent 1px),
+    linear-gradient(to bottom, #0f172a 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Para Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Remove as setas (spinners) dos campos de peso/reps */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Esconde o ícone de calendário nativo que fica "vazando" */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background: transparent;
+  bottom: 0;
+  color: transparent;
+  cursor: pointer;
+  height: auto;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto;
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.animate-cyber-glitch:hover {
+  animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
+  text-shadow: 2px 0 #ff00ff, -2px 0 #00f3ff;
+}
+
+.neon-glow-pink {
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+/* Customização Cyberpunk para o Datepicker */
+.cyber-calendar {
+  background-color: #0f172a !important; /* slate-900 */
+  border: 2px solid #06b6d4 !important; /* cyan-500 */
+  color: #fff !important;
+  font-family: 'Cyber', sans-serif; /* Use a sua fonte cyber */
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+}
+
+.react-datepicker__header {
+  background-color: #020617 !important; /* slate-950 */
+  border-bottom: 1px solid #06b6d4 !important;
+}
+
+.react-datepicker__day--selected {
+  background-color: #06b6d4 !important;
+  box-shadow: 0 0 10px #06b6d4;
+}
+
+.react-datepicker__day:hover {
+  background-color: rgba(0, 243, 255, 0.2) !important;
+}

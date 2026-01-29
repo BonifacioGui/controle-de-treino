@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { History, Settings, Scale, Target, TrendingDown } from 'lucide-react';
 import { initialWorkoutData } from './workoutData';
+import { supabase } from './supabaseClient'; 
 
 // Componentes modulares
 import WorkoutView from './components/WorkoutView';
@@ -15,7 +16,9 @@ const WorkoutApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [weightInput, setWeightInput] = useState('');
   const [waistInput, setWaistInput] = useState('');
+  const [showMeme, setShowMeme] = useState(false);
 
+  // Estados com persistência híbrida (Cloud + Local Cache)
   const [workoutData, setWorkoutData] = useState(() => {
     const saved = localStorage.getItem('workout_plan');
     return saved ? JSON.parse(saved) : initialWorkoutData;
@@ -36,6 +39,53 @@ const WorkoutApp = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // --- PIPELINE DE SINCRONIZAÇÃO INICIAL (FETCH) ---
+  useEffect(() => {
+    const fetchCloudData = async () => {
+      try {
+        // 1. Busca Biometria
+        const { data: bodyData, error: bodyError } = await supabase
+          .from('body_stats')
+          .select('*')
+          .order('date', { ascending: false });
+        
+        // CORREÇÃO: Usando a variável para limpar o erro do linter
+        if (bodyError) console.error("Falha no fetch biometria:", bodyError.message);
+
+        if (bodyData) {
+          const formattedBody = bodyData.map(b => ({
+            ...b,
+            date: b.date.split('-').reverse().join('/')
+          }));
+          setBodyHistory(formattedBody);
+        }
+
+        // 2. Busca Histórico de Treinos
+        const { data: trainData, error: trainError } = await supabase
+          .from('workout_history')
+          .select('*')
+          .order('workout_date', { ascending: false });
+
+        // CORREÇÃO: Usando a variável para limpar o erro do linter
+        if (trainError) console.error("Falha no fetch treinos:", trainError.message);
+
+        if (trainData) {
+          setHistory(trainData.map(t => ({
+            ...t,
+            id: t.id,
+            date: t.workout_date.split('-').reverse().join('/'),
+            dayName: t.workout_name
+          })));
+        }
+      } catch (err) {
+        console.error("Mainframe Offline: Operando em modo cache local.", err);
+      }
+    };
+
+    fetchCloudData();
+  }, []);
+
+  // Cache local para redundância
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
@@ -43,86 +93,137 @@ const WorkoutApp = () => {
     localStorage.setItem('body_history', JSON.stringify(bodyHistory));
   }, [workoutData, progress, history, bodyHistory]);
 
-  const latestStats = bodyHistory[0] || { weight: '--', waist: '98' };
+  const handleDateChange = (newDate) => {
+    setSelectedDate(newDate);
+    const formattedDate = newDate.split('-').reverse().join('/');
+    const entryForDate = bodyHistory.find(h => h.date === formattedDate);
+    setWeightInput(entryForDate ? entryForDate.weight : '');
+    setWaistInput(entryForDate ? entryForDate.waist : '');
+  };
 
-  // --- LÓGICA DE ATUALIZAÇÃO DO PROGRESSO (CORRIGIDA) ---
+  // --- COMIT DE BIOMETRIA NO BANCO ---
+  const saveBiometrics = async () => {
+    if (!weightInput && !waistInput) return;
 
+    const dateDisplay = selectedDate.split('-').reverse().join('/');
+    const sqlDate = selectedDate; 
+
+    const newEntry = {
+      date: sqlDate,
+      weight: weightInput ? parseFloat(weightInput) : null,
+      waist: waistInput ? parseFloat(waistInput) : null
+    };
+
+    try {
+      const { error: upsertError } = await supabase
+        .from('body_stats')
+        .upsert(newEntry, { onConflict: 'date' });
+
+      if (upsertError) console.error("Erro no upload:", upsertError.message);
+
+      if (!upsertError) {
+        const updatedHistory = [...bodyHistory];
+        const idx = updatedHistory.findIndex(h => h.date === dateDisplay);
+        const displayEntry = { ...newEntry, date: dateDisplay, id: Date.now() };
+
+        if (idx >= 0) updatedHistory[idx] = displayEntry;
+        else updatedHistory.unshift(displayEntry);
+        
+        setBodyHistory(updatedHistory);
+      }
+    } catch (err) {
+      console.error("Erro no upload biométrico:", err);
+    }
+  };
+
+  // Fallback seguro para evitar o erro de NaN no placeholder
+  const latestStats = bodyHistory[0] || { weight: '--', waist: '--' };
+
+  // Handlers de Treino
   const updateSessionSets = (id, value) => {
-    setProgress(prev => ({
-      ...prev,
-      [id]: { ...prev[id], actualSets: value }
-    }));
+    setProgress(prev => ({ ...prev, [id]: { ...prev[id], actualSets: value } }));
   };
 
   const updateSetData = (id, index, field, value) => {
     setProgress(prev => {
       const currentEx = prev[id] || { sets: [] };
       const newSets = [...(currentEx.sets || [])];
-      
-      // Garante que o array tenha espaço para o índice que estamos editando
-      while (newSets.length <= index) {
-        newSets.push({ weight: '', reps: '' });
-      }
-      
+      while (newSets.length <= index) newSets.push({ weight: '', reps: '' });
       newSets[index] = { ...newSets[index], [field]: value };
       return { ...prev, [id]: { ...currentEx, sets: newSets } };
     });
   };
 
   const toggleCheck = (id) => {
-    setProgress(prev => ({
-      ...prev,
-      [id]: { ...prev[id], done: !prev[id]?.done }
-    }));
+    setProgress(prev => ({ ...prev, [id]: { ...prev[id], done: !prev[id]?.done } }));
   };
 
-  const finishWorkout = () => {
-    const dateDisplay = selectedDate.split('-').reverse().join('/');
-    
+  // --- UPLOAD DA SESSÃO PARA O BANCO ---
+  const finishWorkout = async () => {
+    await saveBiometrics();
+
+    const siuuuSound = new Audio('https://www.myinstants.com/media/sounds/cr7-siiii.mp3');
+    siuuuSound.volume = 0.5; // Ajuste o volume se precisar
+    siuuuSound.play().catch(e => console.warn("Áudio bloqueado pelo navegador:", e));
     const session = {
-      id: Date.now(),
-      date: dateDisplay,
-      dayName: activeDay,
+      workout_date: selectedDate,
+      workout_name: activeDay,
       note: sessionNote,
       exercises: workoutData[activeDay].exercises.map((ex, i) => {
-        const p = progress[`${activeDay}-${i}`];
-        return { 
-          name: ex.name, 
-          sets: p?.sets || [], // Salva o array de séries individualizadas
-          done: p?.done || false 
-        };
+        const p = progress[`${selectedDate}-${activeDay}-${i}`];
+        return { name: ex.name, sets: p?.sets || [], done: p?.done || false };
       })
     };
 
-    if (weightInput || waistInput) {
-      const bodyEntry = {
-        id: Date.now() + 1,
-        date: dateDisplay,
-        weight: weightInput || latestStats.weight,
-        waist: waistInput || latestStats.waist
-      };
-      setBodyHistory([bodyEntry, ...bodyHistory]);
-    }
+    try {
+      const { data, error: insertError } = await supabase
+        .from('workout_history')
+        .insert([session])
+        .select();
 
-    setHistory([session, ...history]);
-    setProgress({}); // Limpa o progresso do dia
-    setSessionNote('');
-    setWeightInput('');
-    setWaistInput('');
-    alert("Treino registrado com sucesso!");
-    setView('history');
+      if (insertError) console.error("Erro na inserção:", insertError.message);
+
+      if (!insertError && data) {
+        const savedSession = {
+          ...session,
+          id: data[0].id,
+          date: selectedDate.split('-').reverse().join('/')
+        };
+        setHistory([savedSession, ...history]);
+        setProgress({});
+        setSessionNote('');
+        setShowMeme(true);
+        setTimeout(() => {
+          setShowMeme(false);
+          setView('history');
+        }, 3500);
+      }
+    } catch (err) {
+      console.error("Erro ao finalizar sessão:", err);
+    }
   };
 
-  const deleteEntry = (id, type) => {
-    if (window.confirm("Deseja excluir este registro?")) {
-      if (type === 'body') setBodyHistory(prev => prev.filter(item => item.id !== id));
-      else setHistory(prev => prev.filter(item => item.id !== id));
+  const deleteEntry = async (id, type) => {
+    if (window.confirm("ELIMINAR REGISTRO DO MAINFRAME?")) {
+      try {
+        const table = type === 'body' ? 'body_stats' : 'workout_history';
+        const { error: deleteError } = await supabase.from(table).delete().eq('id', id);
+        
+        if (deleteError) console.error("Erro na deleção:", deleteError.message);
+
+        if (!deleteError) {
+          if (type === 'body') setBodyHistory(prev => prev.filter(item => item.id !== id));
+          else setHistory(prev => prev.filter(item => item.id !== id));
+        }
+      } catch (e) {
+        console.error("Erro na deleção:", e);
+      }
     }
   };
 
-  // Funções CRUD para ManageView
+  // Funções de Edição
   const addExercise = (day) => {
-    const newEx = { name: "Novo Exercício", sets: "3x12", target: "0kg", note: "" };
+    const newEx = { name: "Novo Exercício", sets: "3x12", note: "" };
     setWorkoutData({ ...workoutData, [day]: { ...workoutData[day], exercises: [...workoutData[day].exercises, newEx] } });
   };
 
@@ -138,53 +239,80 @@ const WorkoutApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-sans pb-24 selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-cyber pb-24 cyber-grid">
+      {showMeme && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
+          {/* Para rodar como GIF, o MP4 precisa de autoPlay, loop e muted */}
+          <video 
+            src="https://i.imgur.com/1kSZ05R.mp4" 
+            className="w-full max-w-sm rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+          />
+          <h2 className="text-4xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center">
+            SIIIIIIIIIIIU!
+          </h2>
+        </div>
+)}
       
-      <header className="flex justify-between items-start mb-6">
+
+      <header className="flex justify-between items-start mb-10 border-b border-cyan-500/30 pb-6 relative z-10">
         <div>
-          <h1 className="text-2xl font-black text-indigo-500 italic tracking-tighter">MEU TREINO</h1>
-          <div className="mt-2 space-y-1">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-              <Scale size={12} className="text-indigo-400" /> Peso: <span className="text-slate-100">{latestStats.weight}kg</span>
-            </p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-              <Target size={12} className="text-slate-500" /> Cintura: <span className="text-slate-100">{latestStats.waist}cm</span>
-            </p>
+          <h1 className="text-3xl font-black text-cyan-400 italic neon-text-cyan tracking-tighter">TREINO<span className="text-pink-500">.JS</span></h1>
+          <div className="mt-4 flex gap-4">
+            <div className="bg-slate-900/60 p-2 rounded-lg border border-cyan-500/20 shadow-inner">
+              <p className="text-[8px] text-cyan-500 uppercase font-black mb-1 tracking-widest leading-none">Massa_Referência</p>
+              <p className="text-lg font-bold">{latestStats.weight}KG</p>
+            </div>
+            <div className="bg-slate-900/60 p-2 rounded-lg border border-pink-500/20 shadow-inner">
+              <p className="text-[8px] text-pink-500 uppercase font-black mb-1 tracking-widest leading-none">Cintura_Referência</p>
+              <p className="text-lg font-bold">{latestStats.waist}CM</p>
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setView('stats')} className="p-2 bg-slate-900 rounded-lg border border-slate-800 text-emerald-500"><TrendingDown size={20}/></button>
-          <button onClick={() => setView('history')} className={`p-2 rounded-lg border transition-all ${view === 'history' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'}`}><History size={20} /></button>
-          <button onClick={() => setView('manage')} className={`p-2 rounded-lg border transition-all ${view === 'manage' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'}`}><Settings size={20} /></button>
+          <button onClick={() => setView('stats')} className="p-3 bg-slate-900 rounded-xl border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all shadow-lg"><TrendingDown size={20}/></button>
+          <button onClick={() => setView('manage')} className="p-3 bg-slate-900 rounded-xl border border-pink-500/50 text-pink-400 hover:bg-pink-500 hover:text-black transition-all shadow-lg"><Settings size={20}/></button>
         </div>
       </header>
 
-      <nav className="flex gap-2 mb-8 overflow-x-auto no-scrollbar">
+      <nav className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-2 relative z-10">
         {Object.keys(workoutData).map(day => (
-          <button key={day} onClick={() => { setActiveDay(day); setView('workout'); }} className={`px-5 py-2 rounded-xl font-bold transition-all min-w-[70px] ${activeDay === day && view === 'workout' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>{day}</button>
+          <button 
+            key={day} 
+            onClick={() => { setActiveDay(day); setView('workout'); }} 
+            className={`px-6 py-3 rounded-lg font-black transition-all border-2 flex-shrink-0
+              ${activeDay === day && view === 'workout' 
+                ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_20px_rgba(0,243,255,0.5)]' 
+                : 'bg-slate-900/50 text-slate-500 border-slate-800 hover:border-slate-600'}`}
+          >
+            {day}
+          </button>
         ))}
       </nav>
 
-      {view === 'workout' && (
-        <WorkoutView 
-          activeDay={activeDay} workoutData={workoutData} selectedDate={selectedDate} setSelectedDate={setSelectedDate}
-          weightInput={weightInput} setWeightInput={setWeightInput} waistInput={waistInput} setWaistInput={setWaistInput}
-          latestStats={latestStats} progress={progress} toggleCheck={toggleCheck} updateSetData={updateSetData}
-          updateSessionSets={updateSessionSets} sessionNote={sessionNote} setSessionNote={setSessionNote} finishWorkout={finishWorkout}
-        />
-      )}
-
-      {view === 'manage' && (
-        <ManageView activeDay={activeDay} workoutData={workoutData} addExercise={addExercise} removeExercise={removeExercise} editExerciseBase={editExerciseBase} setView={setView} />
-      )}
-
-      {view === 'history' && (
-        <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} setView={setView} />
-      )}
-
-      {view === 'stats' && (
-        <StatsView bodyHistory={bodyHistory} setView={setView} />
-      )}
+      <div className="relative z-10">
+        {view === 'workout' && (
+          <WorkoutView 
+            activeDay={activeDay} workoutData={workoutData} 
+            selectedDate={selectedDate} setSelectedDate={handleDateChange}
+            weightInput={weightInput} setWeightInput={setWeightInput} 
+            waistInput={waistInput} setWaistInput={setWaistInput} 
+            latestStats={latestStats} progress={progress} 
+            toggleCheck={toggleCheck} updateSetData={updateSetData} 
+            updateSessionSets={updateSessionSets} sessionNote={sessionNote} 
+            setSessionNote={setSessionNote} finishWorkout={finishWorkout}
+            bodyHistory={bodyHistory} saveBiometrics={saveBiometrics}
+          />
+        )}
+        {view === 'manage' && (
+          <ManageView activeDay={activeDay} workoutData={workoutData} setWorkoutData={setWorkoutData} addExercise={addExercise} removeExercise={removeExercise} editExerciseBase={editExerciseBase} setView={setView} />
+        )}
+        {view === 'history' && <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} setView={setView} />}
+        {view === 'stats' && <StatsView bodyHistory={bodyHistory} history={history} setView={setView} workoutData={workoutData} />}
+      </div>
     </div>
   );
 };
