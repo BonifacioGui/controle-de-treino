@@ -165,6 +165,7 @@ const WorkoutApp = () => {
     const siuuuSound = new Audio('https://www.myinstants.com/media/sounds/cr7-siiii.mp3');
     siuuuSound.volume = 0.5; // Ajuste o volume se precisar
     siuuuSound.play().catch(e => console.warn("Áudio bloqueado pelo navegador:", e));
+    
     const session = {
       workout_date: selectedDate,
       workout_name: activeDay,
