@@ -300,22 +300,24 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* NAVEGAÇÃO DE DIAS */}
-      <nav className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-2 relative z-10">
-        {Object.keys(workoutData).map(day => (
-          <button 
-            key={day} 
-            onClick={() => { setActiveDay(day); setView('workout'); }} 
-            className={`px-6 py-3 rounded-lg font-black transition-all border-2 flex-shrink-0
-              ${activeDay === day && view === 'workout' 
-                ? 'bg-primary border-primary text-black shadow-[0_0_20px_rgba(var(--primary),0.5)]' 
-                : 'bg-card text-muted border-border hover:border-primary/50'}`}
-          >
-            {day}
-          </button>
-        ))}
-      </nav>
-
+      {/* --- SÓ MOSTRA SE A VIEW FOR 'WORKOUT' --- */}
+      {view === 'workout' && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
+          {Object.keys(workoutData).map((day) => (
+            <button
+              key={day}
+              onClick={() => setActiveDay(day)}
+              className={`px-6 py-3 rounded-xl font-black text-xs transition-all duration-300 uppercase tracking-widest border shrink-0
+                ${activeDay === day 
+                  ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgb(var(--primary))] scale-105' 
+                  : 'bg-card text-muted border-border hover:border-primary/50 hover:text-primary'
+                }`}
+            >
+              {day.replace('-FEIRA', '')}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="relative z-10">
         {view === 'workout' && (
           <WorkoutView 
