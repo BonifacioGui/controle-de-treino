@@ -6,7 +6,6 @@ const Importer = () => {
   const [status, setStatus] = useState('idle'); // idle, processing, success, error
   const [logs, setLogs] = useState([]);
 
-  // Função para converter data "5 de janeiro de 2026" -> "2026-01-05"
   const parseDate = (dateStr) => {
     if (!dateStr) return new Date().toISOString().split('T')[0];
     
@@ -44,7 +43,6 @@ const Importer = () => {
         const sessionsMap = {};
 
         dataLines.forEach(line => {
-          // Tenta separar por vírgula, ignorando vírgulas dentro de aspas
           const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
           
           if (cols.length < 3) return;
@@ -108,7 +106,6 @@ const Importer = () => {
     reader.readAsText(file);
   };
 
-  // Cores dinâmicas baseadas no status
   const getBorderColor = () => {
     if (status === 'success') return 'border-success text-success';
     if (status === 'error') return 'border-red-500 text-red-500';
@@ -147,7 +144,8 @@ const Importer = () => {
       <div className="mt-4 space-y-1 max-h-40 overflow-y-auto text-[10px] font-mono bg-black/30 p-3 rounded border border-border">
         {logs.map((log, i) => (
           <div key={i} className="text-primary/80 border-b border-white/5 pb-1 mb-1 last:border-0">
-            > {log}
+            {/* CORREÇÃO AQUI: Trocado > solto por string ou entidade HTML */}
+            &gt; {log}
           </div>
         ))}
         {logs.length === 0 && <span className="text-muted italic">Aguardando arquivo...</span>}
