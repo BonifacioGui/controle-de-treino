@@ -8,6 +8,7 @@ import WorkoutView from './components/WorkoutView';
 import HistoryView from './components/HistoryView';
 import ManageView from './components/ManageView';
 import StatsView from './components/StatsView';
+import CyberNav from './components/CyberNav';
 
 const WorkoutApp = () => {
   const [view, setView] = useState('workout');
@@ -240,7 +241,7 @@ const WorkoutApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-cyber pb-24 cyber-grid">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-cyber pb-32 cyber-grid">
       {showMeme && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
           {/* Para rodar como GIF, o MP4 precisa de autoPlay, loop e muted */}
@@ -273,10 +274,7 @@ const WorkoutApp = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setView('stats')} className="p-3 bg-slate-900 rounded-xl border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all shadow-lg"><TrendingDown size={20}/></button>
-          <button onClick={() => setView('manage')} className="p-3 bg-slate-900 rounded-xl border border-pink-500/50 text-pink-400 hover:bg-pink-500 hover:text-black transition-all shadow-lg"><Settings size={20}/></button>
-        </div>
+        
       </header>
 
       <nav className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-2 relative z-10">
@@ -314,6 +312,7 @@ const WorkoutApp = () => {
         {view === 'history' && <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} setView={setView} />}
         {view === 'stats' && <StatsView bodyHistory={bodyHistory} history={history} setView={setView} workoutData={workoutData} />}
       </div>
+      <CyberNav currentView={view} setView={setView} />
     </div>
   );
 };
