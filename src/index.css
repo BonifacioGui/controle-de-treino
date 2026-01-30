@@ -228,3 +228,32 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .react-datepicker__day:hover {
   background-color: rgba(var(--primary), 0.2) !important;
 }
+
+/* --- ADICIONE NO FINAL DO src/index.css --- */
+
+/* Scrollbar Personalizada que segue o Tema */
+::-webkit-scrollbar {
+  width: 8px;   /* Largura vertical */
+  height: 8px;  /* Altura horizontal */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-input); /* Cor do fundo do trilho */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--primary)); /* Cor da barra (SEGUE O TEMA) */
+  border-radius: 4px;
+  border: 2px solid var(--bg-input); /* Borda para dar respiro */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--primary), 0.8);
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--primary)) var(--bg-input);
+}
