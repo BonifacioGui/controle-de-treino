@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { History, Settings, Scale, Target, TrendingDown } from 'lucide-react';
+import { Sun, Moon, Terminal } from 'lucide-react'; // Ícones do Seletor de Tema
 import { initialWorkoutData } from './workoutData';
 import { supabase } from './supabaseClient'; 
+
 
 // Componentes modulares
 import WorkoutView from './components/WorkoutView';
@@ -9,8 +10,13 @@ import HistoryView from './components/HistoryView';
 import ManageView from './components/ManageView';
 import StatsView from './components/StatsView';
 import CyberNav from './components/CyberNav';
+import MatrixRain from './components/MatrixRain'; // Efeito Matrix
 
 const WorkoutApp = () => {
+  // 1. Estado do Tema (Padrão: 'driver')
+  const [theme, setTheme] = useState('driver');
+  
+  // Estados de Navegação e Dados
   const [view, setView] = useState('workout');
   const [activeDay, setActiveDay] = useState('SEG');
   const [sessionNote, setSessionNote] = useState('');
@@ -40,6 +46,11 @@ const WorkoutApp = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // --- EFEITO DE TEMA ---
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   // --- PIPELINE DE SINCRONIZAÇÃO INICIAL (FETCH) ---
   useEffect(() => {
     const fetchCloudData = async () => {
@@ -50,7 +61,6 @@ const WorkoutApp = () => {
           .select('*')
           .order('date', { ascending: false });
         
-        // CORREÇÃO: Usando a variável para limpar o erro do linter
         if (bodyError) console.error("Falha no fetch biometria:", bodyError.message);
 
         if (bodyData) {
@@ -67,7 +77,6 @@ const WorkoutApp = () => {
           .select('*')
           .order('workout_date', { ascending: false });
 
-        // CORREÇÃO: Usando a variável para limpar o erro do linter
         if (trainError) console.error("Falha no fetch treinos:", trainError.message);
 
         if (trainData) {
@@ -102,7 +111,7 @@ const WorkoutApp = () => {
     setWaistInput(entryForDate ? entryForDate.waist : '');
   };
 
-  // --- COMIT DE BIOMETRIA NO BANCO ---
+  // --- COMMIT DE BIOMETRIA NO BANCO ---
   const saveBiometrics = async () => {
     if (!weightInput && !waistInput) return;
 
@@ -137,7 +146,6 @@ const WorkoutApp = () => {
     }
   };
 
-  // Fallback seguro para evitar o erro de NaN no placeholder
   const latestStats = bodyHistory[0] || { weight: '--', waist: '--' };
 
   // Handlers de Treino
@@ -164,7 +172,7 @@ const WorkoutApp = () => {
     await saveBiometrics();
 
     const siuuuSound = new Audio('https://www.myinstants.com/media/sounds/cr7-siiii.mp3');
-    siuuuSound.volume = 0.5; // Ajuste o volume se precisar
+    siuuuSound.volume = 0.5; 
     siuuuSound.play().catch(e => console.warn("Áudio bloqueado pelo navegador:", e));
     
     const session = {
@@ -223,7 +231,7 @@ const WorkoutApp = () => {
     }
   };
 
-  // Funções de Edição
+  // Funções de Edição (ManageView)
   const addExercise = (day) => {
     const newEx = { name: "Novo Exercício", sets: "3x12", note: "" };
     setWorkoutData({ ...workoutData, [day]: { ...workoutData[day], exercises: [...workoutData[day].exercises, newEx] } });
@@ -241,42 +249,58 @@ const WorkoutApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-cyber pb-32 cyber-grid">
+    // USANDO VARIÁVEIS DE TEMA: bg-page, text-main, transition-colors
+    <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative">
+      
+      {/* Efeito Matrix (Só aparece no tema 'matrix') */}
+      {theme === 'matrix' && <MatrixRain />}
+
       {showMeme && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
-          {/* Para rodar como GIF, o MP4 precisa de autoPlay, loop e muted */}
           <video 
             src="https://i.imgur.com/1kSZ05R.mp4" 
             className="w-full max-w-sm rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
-            autoPlay 
-            loop 
-            muted 
-            playsInline
+            autoPlay loop muted playsInline
           />
           <h2 className="text-4xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center">
             SIIIIIIIIIIIU!
           </h2>
         </div>
-)}
-      
+      )}
 
-      <header className="flex justify-between items-start mb-10 border-b border-cyan-500/30 pb-6 relative z-10">
+      {/* HEADER DINÂMICO */}
+      <header className="flex justify-between items-start mb-10 border-b border-primary/30 pb-6 relative z-10">
         <div>
-          <h1 className="text-3xl font-black text-cyan-400 italic neon-text-cyan tracking-tighter">TREINO<span className="text-pink-500">.JS</span></h1>
+          <h1 className="text-3xl font-black text-primary italic neon-text-cyan tracking-tighter">
+            PROJETO<span className="text-secondary">.BOMBA</span>
+          </h1>
           <div className="mt-4 flex gap-4">
-            <div className="bg-slate-900/60 p-2 rounded-lg border border-cyan-500/20 shadow-inner">
-              <p className="text-[8px] text-cyan-500 uppercase font-black mb-1 tracking-widest leading-none">Massa_Referência</p>
+            <div className="bg-card/60 p-2 rounded-lg border border-primary/20 shadow-inner">
+              <p className="text-[8px] text-primary uppercase font-black mb-1 tracking-widest leading-none">Massa_Ref</p>
               <p className="text-lg font-bold">{latestStats.weight}KG</p>
             </div>
-            <div className="bg-slate-900/60 p-2 rounded-lg border border-pink-500/20 shadow-inner">
-              <p className="text-[8px] text-pink-500 uppercase font-black mb-1 tracking-widest leading-none">Cintura_Referência</p>
+            <div className="bg-card/60 p-2 rounded-lg border border-secondary/20 shadow-inner">
+              <p className="text-[8px] text-secondary uppercase font-black mb-1 tracking-widest leading-none">Cintura_Ref</p>
               <p className="text-lg font-bold">{latestStats.waist}CM</p>
             </div>
           </div>
         </div>
         
+        {/* SELETOR DE TEMAS */}
+        <div className="bg-card/50 backdrop-blur-md p-1 rounded-xl border border-border flex flex-col gap-1 z-50 shadow-xl">
+           <button onClick={() => setTheme('light')} className={`p-2 rounded-lg transition-all ${theme === 'light' ? 'bg-primary text-white shadow-lg' : 'text-muted hover:text-primary'}`} title="Modo Claro">
+             <Sun size={16} />
+           </button>
+           <button onClick={() => setTheme('driver')} className={`p-2 rounded-lg transition-all ${theme === 'driver' ? 'bg-primary text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'text-muted hover:text-primary'}`} title="Modo Driver">
+             <Moon size={16} />
+           </button>
+           <button onClick={() => setTheme('matrix')} className={`p-2 rounded-lg transition-all ${theme === 'matrix' ? 'bg-primary text-black shadow-[0_0_10px_#0f0]' : 'text-muted hover:text-primary'}`} title="Modo Matrix">
+             <Terminal size={16} />
+           </button>
+        </div>
       </header>
 
+      {/* NAVEGAÇÃO DE DIAS */}
       <nav className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-2 relative z-10">
         {Object.keys(workoutData).map(day => (
           <button 
@@ -284,8 +308,8 @@ const WorkoutApp = () => {
             onClick={() => { setActiveDay(day); setView('workout'); }} 
             className={`px-6 py-3 rounded-lg font-black transition-all border-2 flex-shrink-0
               ${activeDay === day && view === 'workout' 
-                ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_20px_rgba(0,243,255,0.5)]' 
-                : 'bg-slate-900/50 text-slate-500 border-slate-800 hover:border-slate-600'}`}
+                ? 'bg-primary border-primary text-black shadow-[0_0_20px_rgba(var(--primary),0.5)]' 
+                : 'bg-card text-muted border-border hover:border-primary/50'}`}
           >
             {day}
           </button>
@@ -304,6 +328,7 @@ const WorkoutApp = () => {
             updateSessionSets={updateSessionSets} sessionNote={sessionNote} 
             setSessionNote={setSessionNote} finishWorkout={finishWorkout}
             bodyHistory={bodyHistory} saveBiometrics={saveBiometrics}
+            history={history} // 🔥 CORREÇÃO CRÍTICA: Passando histórico para cálculo de PR
           />
         )}
         {view === 'manage' && (
@@ -312,6 +337,7 @@ const WorkoutApp = () => {
         {view === 'history' && <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} setView={setView} />}
         {view === 'stats' && <StatsView bodyHistory={bodyHistory} history={history} setView={setView} workoutData={workoutData} />}
       </div>
+      
       <CyberNav currentView={view} setView={setView} />
     </div>
   );
