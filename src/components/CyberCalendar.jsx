@@ -78,6 +78,6 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
   );
 };
 
-// ... todo o seu código do CyberCalendar ...
+// ... todo o seu código do CyberCalendar..
 
 export default CyberCalendar; // <--- Isso resolve o erro de exportação
