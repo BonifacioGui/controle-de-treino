@@ -1,104 +1,259 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-cyber: 'Orbitron', sans-serif;
-  --color-neon-cyan: #00f3ff;
-  --color-neon-pink: #ff00ff;
+  --font-cyber: var(--font-stack);
+  
+  --color-page: var(--bg-page);
+  --color-card: var(--bg-card);
+  --color-input: var(--bg-input);
+  
+  --color-main: var(--text-main);
+  --color-muted: var(--text-muted);
+
+  /* Configuração para permitir opacidade nas cores */
+  --color-primary: rgb(var(--primary));
+  --color-secondary: rgb(var(--secondary));
+  
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-border: var(--border-color);
 }
 
+@layer base {
+  /* =================================================================
+     TEMA 1: DRIVER (SEU PADRÃO - PERFEITO)
+     ================================================================= */
+  :root {
+    --font-stack: 'Orbitron', sans-serif;
+    
+    --bg-page: #020617;
+    --bg-card: rgba(15, 23, 42, 0.6);
+    --bg-input: rgba(2, 6, 23, 0.9);
+    --text-main: #ffffff;
+    --text-muted: #94a3b8;
+    
+    /* Cores DRIVER: Ciano e Pink */
+    --primary: 0, 243, 255;   
+    --secondary: 255, 0, 255; 
+    
+    --success: 16, 185, 129;
+    --warning: 245, 158, 11;
+    --border-color: #1e293b;
+    --grid-color: #0f172a; 
+    
+    /* Sombras Neon DRIVER */
+    --neon-shadow-primary: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
+    --neon-shadow-secondary: 0 0 10px rgba(255, 0, 255, 0.4);
+    
+    --texture-opacity: 0.15;
+    --border-width: 1px;
+    --input-placeholder-opacity: 0.5;
+  }
+
+  /* =================================================================
+     TEMA 2: MATRIX (CORRIGIDO: ELIMINAÇÃO TOTAL DO ROXO)
+     ================================================================= */
+  /* Aumentei a especificidade usando html[...] */
+  html[data-theme='matrix'] {
+    --font-stack: 'Orbitron', sans-serif;
+
+    --bg-page: #000000;
+    --bg-card: #050505;      
+    --bg-input: #0a0a0a;     
+    
+    --text-main: #00ff41;    
+    --text-muted: #005c00;   
+    
+    /* 🔥 FORÇA BRUTA: AMBAS AS CORES SÃO VERDE NEON 🔥 */
+    --primary: 0, 255, 65 !important;   
+    --secondary: 0, 255, 65 !important; /* Adeus Roxo */
+    
+    --success: 0, 255, 65;
+    --warning: 255, 255, 0;
+
+    --border-color: #004400;
+    --grid-color: #001a00;
+    
+    /* Sombras também ficam verdes */
+    --neon-shadow-primary: 0 0 5px rgba(0, 255, 65, 0.6) !important;
+    --neon-shadow-secondary: 0 0 5px rgba(0, 255, 65, 0.4) !important; 
+    
+    --texture-opacity: 0.1;
+    --border-width: 1px;
+    --input-placeholder-opacity: 0.5;
+  }
+
+  /* =================================================================
+     TEMA 3: CLARO (VISIBILIDADE DOS INPUTS MANTIDA)
+     ================================================================= */
+  [data-theme='light'] {
+    --font-stack: 'Rajdhani', sans-serif;
+    
+    --bg-page: #ffffff;
+    --bg-card: #f8fafc;
+    --bg-input: #ffffff;     
+    --text-main: #000000;    
+    --text-muted: #404040;
+
+    --primary: 0, 70, 255;     
+    --secondary: 255, 50, 0;   
+    
+    --success: 0, 160, 0;
+    --warning: 230, 120, 0;
+    
+    --border-color: #000000;
+    --grid-color: #e5e5e5;
+    
+    --neon-shadow-primary: none;
+    --neon-shadow-secondary: none;
+    --texture-opacity: 0;
+    --border-width: 2px;
+    --input-placeholder-opacity: 1;
+  }
+}
+
+/* --- GLOBAIS --- */
 body {
-  background-color: #020617;
+  background-color: var(--bg-page);
+  color: var(--text-main);
   font-family: var(--font-cyber);
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-/* Efeito de Brilho Neon */
-.neon-text-cyan {
-  text-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
+/* Sem itálico */
+* { font-style: normal !important; }
+
+/* Bordas dinâmicas */
+.border, .border-2 { border-width: var(--border-width) !important; }
+
+/* Placeholder */
+input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: var(--input-placeholder-opacity) !important;
+  font-weight: bold;
 }
 
-.neon-border-pink {
-  box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), inset 0 0 5px rgba(255, 0, 255, 0.2);
+/* Inputs Light */
+[data-theme='light'] input {
+  box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.05);
+  border-color: #94a3b8;
+}
+[data-theme='light'] input:focus {
+  border-color: rgb(var(--primary)) !important;
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 70, 255, 0.2); 
 }
 
+/* --- UTILITÁRIOS --- */
+.text-primary, .neon-text-cyan { text-shadow: var(--neon-shadow-primary); }
+.text-secondary, .neon-text-pink { text-shadow: var(--neon-shadow-secondary); }
+
+/* Grid */
 .cyber-grid {
-  background-image: linear-gradient(to right, #0f172a 1px, transparent 1px),
-    linear-gradient(to bottom, #0f172a 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(100,100,100,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100,100,100,0.1) 1px, transparent 1px);
   background-size: 40px 40px;
 }
-
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+[data-theme='matrix'] .cyber-grid {
+  background-image: linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+}
+[data-theme='light'] .cyber-grid {
+  background-image: linear-gradient(to right, #e2e8f0 2px, transparent 2px),
+    linear-gradient(to bottom, #e2e8f0 2px, transparent 2px);
+  background-size: 20px 20px;
+  opacity: 1;
 }
 
-/* Para Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
+/* Textura */
+.bg-carbon {
+  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  opacity: var(--texture-opacity);
+  pointer-events: none;
 }
 
-/* Remove as setas (spinners) dos campos de peso/reps */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type=number] {
-  -moz-appearance: textfield;
-}
-
-/* Esconde o ícone de calendário nativo que fica "vazando" */
+/* Resets */
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 input[type="date"]::-webkit-calendar-picker-indicator {
-  background: transparent;
-  bottom: 0;
-  color: transparent;
-  cursor: pointer;
-  height: auto;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: auto;
+  background: transparent; bottom: 0; color: transparent; cursor: pointer;
+  height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto;
 }
 
-@keyframes glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); }
-  80% { transform: translate(2px, -2px); }
-  100% { transform: translate(0); }
-}
-
-.animate-cyber-glitch:hover {
-  animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
-  text-shadow: 2px 0 #ff00ff, -2px 0 #00f3ff;
-}
-
-.neon-glow-pink {
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-}
-
-/* Customização Cyberpunk para o Datepicker */
+/* Datepicker */
 .cyber-calendar {
-  background-color: #0f172a !important; /* slate-900 */
-  border: 2px solid #06b6d4 !important; /* cyan-500 */
-  color: #fff !important;
-  font-family: 'Cyber', sans-serif; /* Use a sua fonte cyber */
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+  background-color: var(--bg-card) !important;
+  border: 2px solid rgb(var(--primary)) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-cyber) !important;
+  box-shadow: 0 0 15px rgba(var(--primary), 0.3);
+}
+
+[data-theme='light'] .cyber-calendar {
+  background-color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 6px 6px 0px #000000;
+  color: #000000 !important;
 }
 
 .react-datepicker__header {
-  background-color: #020617 !important; /* slate-950 */
-  border-bottom: 1px solid #06b6d4 !important;
+  background-color: var(--bg-input) !important;
+  border-bottom: 1px solid rgb(var(--primary)) !important;
 }
 
+[data-theme='light'] .react-datepicker__header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #f1f5f9 !important;
+}
+
+.react-datepicker__day { color: var(--text-main) !important; }
+
 .react-datepicker__day--selected {
-  background-color: #06b6d4 !important;
-  box-shadow: 0 0 10px #06b6d4;
+  background-color: rgb(var(--primary)) !important;
+  color: #fff !important; 
+}
+[data-theme='matrix'] .react-datepicker__day--selected {
+  color: #000000 !important;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgb(var(--primary));
+}
+[data-theme='light'] .react-datepicker__day--selected {
+  font-weight: 800;
+  border: 1px solid black;
 }
 
 .react-datepicker__day:hover {
-  background-color: rgba(0, 243, 255, 0.2) !important;
+  background-color: rgba(var(--primary), 0.2) !important;
+}
+
+/* --- ADICIONE NO FINAL DO src/index.css --- */
+
+/* Scrollbar Personalizada que segue o Tema */
+::-webkit-scrollbar {
+  width: 8px;   /* Largura vertical */
+  height: 8px;  /* Altura horizontal */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-input); /* Cor do fundo do trilho */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--primary)); /* Cor da barra (SEGUE O TEMA) */
+  border-radius: 4px;
+  border: 2px solid var(--bg-input); /* Borda para dar respiro */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--primary), 0.8);
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--primary)) var(--bg-input);
 }
