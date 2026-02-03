@@ -28,11 +28,12 @@ const WorkoutView = ({
   };
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
+  // Formatação segura da data
   const formattedSelectedDate = selectedDate.split('-').reverse().join('/');
 
   // Sincronização Visual
-  const isWeightSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.weight === weightInput && weightInput !== '');
-  const isWaistSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.waist === waistInput && waistInput !== '');
+  const isWeightSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.weight == weightInput && weightInput !== '');
+  const isWaistSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.waist == waistInput && waistInput !== '');
 
   return (
     <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28">
@@ -44,7 +45,7 @@ const WorkoutView = ({
         
         <div className="flex flex-col gap-5 relative z-10">
           
-          {/* SELETOR DE DATA (Agora mais compacto) */}
+          {/* SELETOR DE DATA */}
           <div 
             onClick={() => setIsCalendarOpen(true)}
             className="flex items-center justify-between cursor-pointer group/calendar"
@@ -109,7 +110,7 @@ const WorkoutView = ({
         </div>
       </div>
 
-      {/* 🚀 NAVEGAÇÃO TÁTICA (SUBSTITUI OS DIAS DA SEMANA) */}
+      {/* 🚀 NAVEGAÇÃO TÁTICA */}
       <div className="relative py-2">
         {/* Controle Principal */}
         <div className="flex items-center justify-between gap-4">
@@ -125,7 +126,7 @@ const WorkoutView = ({
                PROTOCOLO_ATUAL
             </span>
             <h2 className="text-xl md:text-2xl font-black text-main uppercase italic leading-none drop-shadow-md">
-              {workoutData[activeDay].title}
+              {workoutData[activeDay]?.title || 'Treino Desconhecido'}
             </h2>
             <span className="text-[10px] font-bold text-muted mt-1 uppercase">
               {activeDay}
@@ -157,7 +158,7 @@ const WorkoutView = ({
 
       {/* LISTAGEM DE EXERCÍCIOS */}
       <div className="space-y-4">
-        {workoutData[activeDay].exercises.map((ex, i) => {
+        {workoutData[activeDay]?.exercises.map((ex, i) => {
           const id = `${selectedDate}-${activeDay}-${i}`;
           const isDone = progress[id]?.done;
           
@@ -174,6 +175,7 @@ const WorkoutView = ({
               const sessionMax = Math.max(...(e.sets?.map(s => parseFloat(s.weight) || 0) || [0]));
               return Math.max(max, sessionMax);
             }, 0);
+          
           const isBreakingPR = (progress[id]?.sets || []).some(s => parseFloat(s.weight) > exercisePR && exercisePR > 0);
 
           return (
@@ -243,7 +245,7 @@ const WorkoutView = ({
         })}
       </div>
       
-      {/* FOOTER - BOTÃO EFETIVAR (CORRIGIDO PARA O MATRIX) */}
+      {/* FOOTER - BOTÃO EFETIVAR */}
       <div className="space-y-4 pt-6 pb-4">
         <textarea 
           placeholder="Relatório de danos e observações do sistema..." 
@@ -253,7 +255,6 @@ const WorkoutView = ({
         />
         <button 
           onClick={finishWorkout} 
-          // AQUI: Usa from-primary to-secondary (Verde no Matrix, Colorido no Driver)
           className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-secondary py-5 font-black text-white shadow-[0_10px_30px_rgba(var(--primary),0.3)] active:scale-[0.97] transition-all hover:shadow-[0_0_40px_rgba(var(--primary),0.5)]"
         >
           <span className="relative z-10 uppercase tracking-[0.3em] text-sm italic flex items-center justify-center gap-2">

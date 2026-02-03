@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Terminal } from 'lucide-react'; 
 import { initialWorkoutData } from './workoutData';
 import { supabase } from './supabaseClient'; 
@@ -11,6 +11,7 @@ import StatsView from './components/StatsView';
 import CyberNav from './components/CyberNav';
 import MatrixRain from './components/MatrixRain'; 
 import Importer from './components/Importer';
+
 const WorkoutApp = () => {
   // 1. Estado do Tema
   const [theme, setTheme] = useState('driver');
@@ -23,7 +24,6 @@ const WorkoutApp = () => {
   const [weightInput, setWeightInput] = useState('');
   const [waistInput, setWaistInput] = useState('');
   const [showMeme, setShowMeme] = useState(false);
-  
 
   // Estados com persistência (Cache Local)
   const [workoutData, setWorkoutData] = useState(() => {
@@ -51,49 +51,62 @@ const WorkoutApp = () => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // --- PIPELINE DE SINCRONIZAÇÃO (CORRIGIDO PARA SUAS TABELAS ANTIGAS) ---
-  useEffect(() => {
-    const fetchCloudData = async () => {
-      try {
-        // 1. Busca Biometria (Tabela: body_stats - NOME ANTIGO)
-        const { data: bodyData, error: bodyError } = await supabase
-          .from('body_stats') 
-          .select('*')
-          .order('date', { ascending: false });
-        
-        if (bodyError) console.error("Falha fetch biometria:", bodyError.message);
+  // --- FUNÇÃO DE FORMATAR DATA ---
+  const formatDateSecure = (dateString) => {
+    if (!dateString) return '';
+    const cleanDate = dateString.split('T')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}/${month}/${year}`;
+    }
+    return dateString;
+  };
 
-        if (bodyData) {
-          const formattedBody = bodyData.map(b => ({
-            ...b,
-            date: b.date.split('-').reverse().join('/')
-          }));
-          setBodyHistory(formattedBody);
-        }
+  // --- 🔥 FUNÇÃO DE BUSCA (AGORA ACESSÍVEL PARA O IMPORTADOR) ---
+  const fetchCloudData = useCallback(async () => {
+    try {
+      // 1. Busca Biometria
+      const { data: bodyData, error: bodyError } = await supabase
+        .from('body_stats') 
+        .select('*')
+        .order('date', { ascending: false });
+      
+      if (bodyError) console.error("Falha fetch biometria:", bodyError.message);
 
-        // 2. Busca Histórico (Tabela: workout_history - NOME ANTIGO)
-        const { data: trainData, error: trainError } = await supabase
-          .from('workout_history')
-          .select('*')
-          .order('workout_date', { ascending: false });
-
-        if (trainError) console.error("Falha fetch treinos:", trainError.message);
-
-        if (trainData) {
-          setHistory(trainData.map(t => ({
-            ...t,
-            id: t.id,
-            date: t.workout_date.split('-').reverse().join('/'), // Traduz workout_date -> date
-            dayName: t.workout_name // Traduz workout_name -> dayName
-          })));
-        }
-      } catch (err) {
-        console.error("Mainframe Offline: Operando em modo cache local.", err);
+      if (bodyData) {
+        const formattedBody = bodyData.map(b => ({
+          ...b,
+          date: formatDateSecure(b.date)
+        }));
+        setBodyHistory(formattedBody);
       }
-    };
 
+      // 2. Busca Histórico
+      const { data: trainData, error: trainError } = await supabase
+        .from('workout_history')
+        .select('*')
+        .order('workout_date', { ascending: false });
+
+      if (trainError) console.error("Falha fetch treinos:", trainError.message);
+
+      if (trainData) {
+        setHistory(trainData.map(t => ({
+          ...t,
+          id: t.id,
+          date: formatDateSecure(t.workout_date),
+          dayName: t.workout_name
+        })));
+      }
+    } catch (err) {
+      console.error("Mainframe Offline: Operando em modo cache local.", err);
+    }
+  }, []); // Dependências vazias = função estável
+
+  // --- EFEITO INICIAL (BUSCA DADOS AO ABRIR) ---
+  useEffect(() => {
     fetchCloudData();
-  }, []);
+  }, [fetchCloudData]);
 
   // Cache local para redundância
   useEffect(() => {
@@ -111,33 +124,27 @@ const WorkoutApp = () => {
     setWaistInput(entryForDate ? entryForDate.waist : '');
   };
 
-  // --- SAVE BIOMETRIA (CORRIGIDO PARA body_stats) ---
+  // --- SAVE BIOMETRIA ---
   const saveBiometrics = async () => {
     if (!weightInput && !waistInput) return;
 
     const dateDisplay = selectedDate.split('-').reverse().join('/');
     const newEntry = {
-      date: selectedDate, // Salva YYYY-MM-DD no banco
+      date: selectedDate,
       weight: weightInput ? parseFloat(weightInput) : null,
       waist: waistInput ? parseFloat(waistInput) : null
     };
 
     try {
       const { error: upsertError } = await supabase
-        .from('body_stats') // Tabela antiga
+        .from('body_stats')
         .upsert(newEntry, { onConflict: 'date' });
 
       if (upsertError) console.error("Erro upload:", upsertError.message);
 
       if (!upsertError) {
-        const updatedHistory = [...bodyHistory];
-        const idx = updatedHistory.findIndex(h => h.date === dateDisplay);
-        const displayEntry = { ...newEntry, date: dateDisplay, id: Date.now() };
-
-        if (idx >= 0) updatedHistory[idx] = displayEntry;
-        else updatedHistory.unshift(displayEntry);
-        
-        setBodyHistory(updatedHistory);
+        // Atualiza localmente para feedback instantâneo
+        fetchCloudData(); 
       }
     } catch (err) {
       console.error("Erro upload biométrico:", err);
@@ -165,18 +172,22 @@ const WorkoutApp = () => {
     setProgress(prev => ({ ...prev, [id]: { ...prev[id], done: !prev[id]?.done } }));
   };
 
-  // --- FINALIZAR TREINO (CORRIGIDO PARA workout_history) ---
+  // --- FINALIZAR TREINO ---
   const finishWorkout = async () => {
     await saveBiometrics();
 
-    const siuuuSound = new Audio('https://www.myinstants.com/media/sounds/cr7-siiii.mp3');
-    siuuuSound.volume = 0.5; 
+    const siuuuSound = new Audio('https://www.myinstants.com/pt/instant/grito-ronaldo-siii-20/?utm_source=copy&utm_medium=share');
+    
+    // Volume: 0.0 a 1.0 (Coloquei 1.0 para ser alto!)
+    siuuuSound.volume = 1.0; 
+    
+    // Tenta tocar. O .catch evita erro se o navegador bloquear
     siuuuSound.play().catch(e => console.warn("Áudio bloqueado:", e));
     
-    // Prepara objeto para o banco (USANDO NOMES ANTIGOS)
+    // ... O resto do código continua igual abaixo (sessionForDB, supabase, etc)...    
     const sessionForDB = {
-      workout_date: selectedDate, // Era 'date'
-      workout_name: activeDay,    // Era 'day_name'
+      workout_date: selectedDate,
+      workout_name: activeDay,
       note: sessionNote,
       exercises: workoutData[activeDay].exercises.map((ex, i) => {
         const p = progress[`${selectedDate}-${activeDay}-${i}`];
@@ -186,7 +197,7 @@ const WorkoutApp = () => {
 
     try {
       const { data, error: insertError } = await supabase
-        .from('workout_history') // Tabela antiga
+        .from('workout_history')
         .insert([sessionForDB])
         .select();
 
@@ -196,14 +207,9 @@ const WorkoutApp = () => {
       }
 
       if (!insertError && data) {
-        const savedSessionLocal = {
-          ...sessionForDB,
-          id: data[0].id,
-          date: selectedDate.split('-').reverse().join('/'),
-          dayName: activeDay // Uso interno do App continua dayName
-        };
+        setHistory([sessionForDB, ...history]); // Optimistic update simples
+        fetchCloudData(); // Garante sincronia total
         
-        setHistory([savedSessionLocal, ...history]);
         setProgress({});
         setSessionNote('');
         setShowMeme(true);
@@ -220,7 +226,6 @@ const WorkoutApp = () => {
   const deleteEntry = async (id, type) => {
     if (window.confirm("ELIMINAR REGISTRO?")) {
       try {
-        // Seleciona a tabela correta (nomes antigos)
         const table = type === 'body' ? 'body_stats' : 'workout_history';
         const { error: deleteError } = await supabase.from(table).delete().eq('id', id);
         
@@ -236,15 +241,12 @@ const WorkoutApp = () => {
     }
   };
 
-  // --- ATUALIZAR REGISTRO (CORRIGIDO PARA workout_history) ---
   const updateHistoryEntry = async (id, updatedData) => {
-    // 1. Atualiza visualmente (Optimistic)
     const updatedHistory = history.map(h => h.id === id ? { ...h, ...updatedData } : h);
     setHistory(updatedHistory);
 
-    // 2. Atualiza no Banco (Tabela: workout_history)
     const { error } = await supabase
-      .from('workout_history') // Tabela antiga
+      .from('workout_history')
       .update({
         note: updatedData.note,
         exercises: updatedData.exercises
@@ -283,10 +285,10 @@ const WorkoutApp = () => {
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
           <video 
             src="https://i.imgur.com/1kSZ05R.mp4" 
-            className="w-full max-w-sm rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
+            className="w-full max-w-7xl h-auto rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
             autoPlay loop muted playsInline
           />
-          <h2 className="text-4xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center">
+          <h2 className="text-5xl md:text-7xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)]">
             SIIIIIIIIIIIU!
           </h2>
         </div>
@@ -324,7 +326,7 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* HEADER DE NAVEGAÇÃO (BOTÕES SEG/TER/QUA) - SÓ APARECE EM WORKOUT */}
+      {/* HEADER DE NAVEGAÇÃO */}
       {view === 'workout' && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
           {Object.keys(workoutData).map((day) => (
@@ -374,8 +376,9 @@ const WorkoutApp = () => {
           />
         )}
         {view === 'stats' && <StatsView bodyHistory={bodyHistory} history={history} setView={setView} workoutData={workoutData} />}
-        {/* ROTA SECRETA DE IMPORTAÇÃO */}
-        {view === 'import' && <Importer />}
+        
+        {/* 🔥 GATILHO DE ATUALIZAÇÃO CONECTADO AQUI */}
+        {view === 'import' && <Importer onSuccess={fetchCloudData} />}
       </div>
       
       <CyberNav currentView={view} setView={setView} />
