@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { Calendar, CheckCircle2, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import CyberCalendar from './CyberCalendar';
 
+// Função para calcular 1RM (Fórmula de Epley)
+const calculate1RM = (weight, reps) => {
+  const w = parseFloat(weight);
+  const r = parseFloat(reps);
+  if (!w || !r || r === 0) return null;
+  return Math.round(w * (1 + r / 30));
+};
+
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
   weightInput, setWeightInput, waistInput, setWaistInput, 
@@ -213,7 +221,7 @@ const WorkoutView = ({
                   <input 
                     type={isTimeBased ? "text" : "number"} 
                     className="bg-transparent text-primary font-black outline-none w-24 text-center text-sm border-b border-primary/30" 
-                    value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")} 
+                    value={progress[id]?.sets || (isTimeBased ? ex.sets : "")}
                     onChange={(e) => updateSessionSets(id, e.target.value)} 
                   />
                 </div>
@@ -223,20 +231,42 @@ const WorkoutView = ({
                     {Array.from({ length: currentSetCount }).map((_, setIdx) => (
                       <div key={setIdx} className="flex items-center gap-3 group/row">
                         <span className="text-[10px] font-black text-muted w-6 group-focus-within/row:text-primary transition-colors">#{setIdx + 1}</span>
-                        <div className="flex-1 flex gap-2">
-                          <input 
-                            type="text" placeholder="KG" 
-                            value={progress[id]?.sets?.[setIdx]?.weight || ""} 
-                            onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                            className={`w-full bg-input border rounded-lg p-2 font-black text-xs outline-none transition-all text-center
-                              ${parseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 
-                                ? 'border-warning text-warning shadow-[0_0_10px_rgba(var(--warning),0.2)]' 
-                                : 'border-border text-success focus:border-success/50'}`} 
-                          />
-                          <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-secondary font-black text-xs outline-none focus:border-secondary/50 transition-all text-center" />
+                        <div className="flex-1 flex gap-2 items-center">
+                            {/* Input de Peso */}
+                            <input 
+                              type="text" placeholder="KG" 
+                              value={progress[id]?.sets?.[setIdx]?.weight || ""} 
+                              onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
+                              className={`w-full bg-input border rounded-lg p-2 font-black text-xs outline-none transition-all text-center
+                                ${parseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 
+                                  ? 'border-warning text-warning shadow-[0_0_10px_rgba(var(--warning),0.2)]' 
+                                  : 'border-border text-success focus:border-success/50'}`} 
+                            />
+                            
+                            {/* Input de Reps */}
+                            <input 
+                              type="text" placeholder="REPS" 
+                              value={progress[id]?.sets?.[setIdx]?.reps || ""} 
+                              onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
+                              className="w-full bg-input border border-border rounded-lg p-2 text-secondary font-black text-xs outline-none focus:border-secondary/50 transition-all text-center" 
+                            />
+
+                            {/* 🔥 NOVO: MOSTRADOR DE 1RM (Cálculo Automático) */}
+                            {(() => {
+                               const w = progress[id]?.sets?.[setIdx]?.weight;
+                               const r = progress[id]?.sets?.[setIdx]?.reps;
+                               const oneRM = calculate1RM(w, r);
+                               
+                               if (oneRM) return (
+                                   <div className="flex flex-col justify-center items-center min-w-[35px] animate-in zoom-in duration-300">
+                                       <span className="text-[6px] text-muted font-black uppercase leading-none">1RM</span>
+                                       <span className="text-[10px] text-secondary font-black font-mono leading-none">{oneRM}</span>
+                                   </div>
+                               );
+                            })()}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                        ))}
                   </div>
                 )}
               </div>
