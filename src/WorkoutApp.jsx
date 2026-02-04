@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react'; 
+import { Sun, Moon, Terminal, Wifi, WifiOff, Flame } from 'lucide-react'; // 🔥 Flame para Streak
 import { useWorkout } from './hooks/useWorkout'; 
 
 // Componentes
@@ -10,7 +10,6 @@ import StatsView from './components/StatsView';
 import CyberNav from './components/CyberNav';
 import MatrixRain from './components/MatrixRain'; 
 import Importer from './components/Importer';
-import RestTimer from './components/RestTimer';
 
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
@@ -32,8 +31,6 @@ const WorkoutApp = () => {
     };
   }, []);
 
-  // --- CALLBACK ESTÁVEL PARA O IMPORTADOR ---
-  // Isso impede que a função seja recriada a cada render, evitando o loop
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
@@ -60,16 +57,25 @@ const WorkoutApp = () => {
       {/* HEADER */}
       <header className="flex justify-between items-start mb-10 border-b border-primary/30 pb-6 relative z-10">
         <div>
-          <h1 className="text-3xl font-black text-primary italic neon-text-cyan tracking-tighter">
+          <h1 className="text-5xl font-black text-primary italic neon-text-cyan tracking-tighter">
             PROJETO<span className="text-secondary">.BOMBA</span>
           </h1>
           <div className="mt-4 flex gap-4">
             <div className="bg-card/60 p-2 rounded-lg border border-primary/20 shadow-inner">
-              <p className="text-[8px] text-primary uppercase font-black mb-1 tracking-widest leading-none">Massa_Ref</p>
+              <p className="text-[9px] text-primary uppercase font-black mb-1 tracking-widest leading-none">Massa_Ref</p>
               <p className="text-lg font-bold">{stats.latest.weight || '--'}KG</p>
             </div>
+            
+            {/* CONTADOR DE STREAK (NOVO) */}
+            <div className={`bg-card/60 p-2 rounded-lg border shadow-inner flex flex-col items-center min-w-[60px] ${stats.streak > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
+               <p className="text-[9px] text-orange-500 uppercase font-black mb-1 tracking-widest leading-none flex items-center gap-1">
+                  <Flame size={10} className="fill-orange-500 animate-pulse" /> STREAK
+               </p>
+               <p className="text-lg font-bold text-orange-400">{stats.streak || 0}</p>
+            </div>
+
             <div className="bg-card/60 p-2 rounded-lg border border-secondary/20 shadow-inner">
-              <p className="text-[8px] text-secondary uppercase font-black mb-1 tracking-widest leading-none">Cintura_Ref</p>
+              <p className="text-[9px] text-secondary uppercase font-black mb-2 tracking-widest leading-none">Cintura_Ref</p>
               <p className="text-lg font-bold">{stats.latest.waist || '--'}CM</p>
             </div>
           </div>
@@ -89,18 +95,20 @@ const WorkoutApp = () => {
                 <button onClick={() => setTheme('light')} className="p-2 rounded-lg hover:text-primary"><Sun size={16} /></button>
                 <button onClick={() => setTheme('driver')} className="p-2 rounded-lg hover:text-primary"><Moon size={16} /></button>
                 <button onClick={() => setTheme('matrix')} className="p-2 rounded-lg hover:text-primary"><Terminal size={16} /></button>
+                <button onClick={() => setTheme('spiderman')} className="p-2 rounded-lg hover:text-red-600 transition-colors" title="Modo Peter Parker"><span className="text-base">🕷️</span> </button>
             </div>
         </div>
       </header>
 
-      {/* NAVEGAÇÃO DE DIAS */}
+     {/* NAVEGAÇÃO DE DIAS */}
       {state.view === 'workout' && (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
           {Object.keys(state.workoutData).map((day) => (
             <button
               key={day}
               onClick={() => setters.setActiveDay(day)}
-              className={`px-6 py-3 rounded-xl font-black text-xs transition-all duration-300 uppercase tracking-widest border shrink-0
+              // Mudei 'rounded-xl' -> 'rounded-2xl' e 'text-sm' -> 'text-base'
+              className={`px-8 py-4 rounded-2xl font-black text-lm transition-all duration-300 uppercase tracking-widest border shrink-0
                 ${state.activeDay === day 
                   ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgb(var(--primary))] scale-105' 
                   : 'bg-card text-muted border-border hover:border-primary/50 hover:text-primary'
@@ -115,16 +123,22 @@ const WorkoutApp = () => {
       {/* VIEWS */}
       <div className="relative z-10 min-h-[50vh]">
         {state.view === 'workout' && (
+          // Proteção contra crash se o dia não existir
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
+              // DADOS BÁSICOS
               activeDay={state.activeDay} 
               setActiveDay={setters.setActiveDay}
               workoutData={state.workoutData} 
               selectedDate={state.selectedDate} 
               setSelectedDate={actions.handleDateChange}
+              
+              // INPUTS
               weightInput={state.weightInput} setWeightInput={setters.setWeightInput} 
               waistInput={state.waistInput} setWaistInput={setters.setWaistInput} 
               latestStats={stats.latest} 
+              
+              // AÇÕES
               progress={state.progress} 
               toggleCheck={actions.toggleCheck} 
               updateSetData={actions.updateSetData} 
@@ -132,9 +146,18 @@ const WorkoutApp = () => {
               sessionNote={state.sessionNote} 
               setSessionNote={setters.setSessionNote} 
               finishWorkout={actions.finishWorkout}
-              bodyHistory={state.bodyHistory} 
               saveBiometrics={actions.saveBiometrics}
+              
+              // HISTÓRICO
+              bodyHistory={state.bodyHistory} 
               history={state.history}
+              
+              // 🔥 TIMERS & CONTROLES EXTRAS
+              timerState={state.timerState}
+              closeTimer={actions.closeTimer}
+              workoutTimer={state.workoutTimer}
+              toggleWorkoutTimer={actions.toggleWorkoutTimer}
+              resetWorkoutTimer={actions.resetWorkoutTimer} // Passando Reset
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -170,27 +193,14 @@ const WorkoutApp = () => {
             <StatsView bodyHistory={state.bodyHistory} history={state.history} setView={setters.setView} />
         )}
         
-        {/* CORREÇÃO DO IMPORTADOR */}
         {state.view === 'import' && (
             <Importer onSuccess={handleImportSuccess} />
         )}
       </div>
       
+      {/* NAVEGAÇÃO INFERIOR */}
       <CyberNav currentView={state.view} setView={setters.setView} />
-      {/* --- TIMER FLUTUANTE --- */}
-      {state.timerState?.active && (
-        <RestTimer 
-          initialSeconds={90} // Ou state.timerState.seconds se quiser customizar por exercício
-          onClose={actions.closeTimer} 
-        />
-      )}
       
-      <CyberNav currentView={state.view} setView={setters.setView} />
-      <WorkoutView 
-    // ... seus outros props
-    timerState={state.timerState}
-    closeTimer={actions.closeTimer}
-      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, CheckCircle2, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera } from 'lucide-react';
 import CyberCalendar from './CyberCalendar';
+import RestTimer from './RestTimer'; 
 
 // Função para calcular 1RM (Fórmula de Epley)
 const calculate1RM = (weight, reps) => {
@@ -10,13 +11,23 @@ const calculate1RM = (weight, reps) => {
   return Math.round(w * (1 + r / 30));
 };
 
+// Helper para formatar HH:MM:SS
+const formatTime = (seconds) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
   weightInput, setWeightInput, waistInput, setWaistInput, 
   latestStats, progress, toggleCheck, updateSetData, 
   updateSessionSets, sessionNote, setSessionNote, finishWorkout,
-  bodyHistory, history, 
-  saveBiometrics 
+  bodyHistory, history, saveBiometrics,
+  timerState, closeTimer,
+  // Props do Timer
+  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
@@ -36,19 +47,43 @@ const WorkoutView = ({
   };
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
-  // Formatação segura da data
   const formattedSelectedDate = selectedDate.split('-').reverse().join('/');
+  
+  // Verifica se temos foto para hoje
+  const currentEntry = bodyHistory?.find(h => h.date === formattedSelectedDate);
+  const hasPhoto = !!currentEntry?.photo;
 
-  // Sincronização Visual
   const isWeightSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.weight == weightInput && weightInput !== '');
   const isWaistSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.waist == waistInput && waistInput !== '');
 
+  // Verifica se o timer começou
+  const hasStarted = workoutTimer?.elapsed > 0 || workoutTimer?.isRunning;
+
+  // 📸 Lógica de Upload de Foto
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            saveBiometrics(reader.result);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28">
+    <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative">
       
-      {/* 🛠️ PAINEL DE CONTROLE SUPERIOR (DATA + BIOMETRIA) */}
+      {/* RENDERIZAÇÃO DO TIMER FLUTUANTE */}
+      {timerState && timerState.active && (
+         <RestTimer 
+            initialSeconds={timerState.seconds} 
+            onClose={closeTimer} 
+         />
+      )}
+
+      {/* 🛠️ PAINEL DE CONTROLE SUPERIOR */}
       <div className="bg-card border-2 border-border p-5 rounded-3xl relative overflow-hidden group shadow-lg">
-        {/* Textura de fundo sutil */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
         
         <div className="flex flex-col gap-5 relative z-10">
@@ -59,7 +94,7 @@ const WorkoutView = ({
             className="flex items-center justify-between cursor-pointer group/calendar"
           >
             <div className="flex flex-col">
-              <span className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mb-1">DATA_DA_MISSÃO</span>
+              <span className="text-[12px] font-black text-primary uppercase tracking-[0.3em] mb-1">DATA_DA_MISSÃO</span>
               <div className="flex items-baseline gap-2">
                  <span className="text-3xl font-black text-main italic leading-none">
                     {selectedDate.split('-').reverse()[0]}
@@ -77,42 +112,94 @@ const WorkoutView = ({
 
           <div className="h-[1px] w-full bg-border/50"></div>
 
-          {/* SENSORES BIOMÉTRICOS (Grid Compacto) */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* CRONÔMETRO DE TREINO */}
+          {!hasStarted ? (
+            <button 
+              onClick={toggleWorkoutTimer}
+              className="w-full py-4 rounded-xl bg-primary/10 border-2 border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(var(--primary),0.2)] active:scale-95"
+            >
+               <Play size={24} className="fill-current" />
+               <span className="font-black italic text-xl tracking-widest">INICIAR TREINO</span>
+            </button>
+          ) : (
+            <div className="flex items-center justify-between bg-black/40 border border-primary/50 p-4 rounded-xl shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+               <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg transition-colors ${workoutTimer.isRunning ? 'bg-primary text-black animate-pulse' : 'bg-gray-800 text-gray-400'}`}>
+                     <TimerIcon size={20} className={workoutTimer.isRunning ? "animate-spin-slow" : ""} />
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[9px] font-black text-primary uppercase tracking-widest leading-none">
+                        {workoutTimer.isRunning ? 'EM ANDAMENTO' : 'PAUSADO'}
+                     </span>
+                     <span className={`text-3xl font-mono font-black leading-none tracking-wider drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] ${workoutTimer.isRunning ? 'text-white' : 'text-gray-400'}`}>
+                        {formatTime(workoutTimer.elapsed)}
+                     </span>
+                  </div>
+               </div>
+               
+               <div className="flex gap-2">
+                   <button 
+                     onClick={toggleWorkoutTimer} 
+                     className="p-2 rounded-lg bg-gray-800 border border-gray-600 hover:border-primary hover:text-primary transition-all active:scale-95"
+                   >
+                       {workoutTimer.isRunning ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+                   </button>
+                   
+                   <button 
+                     onClick={resetWorkoutTimer} 
+                     className="p-2 rounded-lg bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                   >
+                       <Trash2 size={20} />
+                   </button>
+               </div>
+            </div>
+          )}
+
+          {/* SENSORES BIOMÉTRICOS & FOTO */}
+          <div className="grid grid-cols-2 gap-3 mt-2">
             {/* PESO */}
             <div className="relative">
               <span className={`absolute top-2 left-3 text-[7px] font-black uppercase tracking-widest z-10 ${isWeightSynced ? 'text-success' : 'text-muted'}`}>
                  MASSA (KG)
               </span>
+              {/* 🔥 AJUSTADO: text-2xl (era 3xl) */}
               <input 
                 type="number" step="0.1" 
                 placeholder={String(latestStats?.weight || '--')} 
                 value={weightInput || ''} 
                 onChange={(e) => setWeightInput(e.target.value)} 
-                className={`w-full bg-input border-2 rounded-xl pt-6 pb-2 px-3 font-black text-center outline-none transition-all text-lg
+                className={`w-full bg-input border-2 rounded-xl pt-9 pb-5 px-3 font-black text-center outline-none transition-all text-2xl
                   ${isWeightSynced ? 'border-success/50 text-success' : 'border-border text-main focus:border-primary'}`}
               />
               {!isWeightSynced && weightInput !== '' && (
-                 <button onClick={saveBiometrics} className="absolute right-2 bottom-2 text-success"><CheckCircle2 size={14}/></button>
+                 <button onClick={() => saveBiometrics()} className="absolute right-2 bottom-2 text-success"><CheckCircle2 size={14}/></button>
               )}
             </div>
 
-            {/* CINTURA */}
-            <div className="relative">
-              <span className={`absolute top-2 left-3 text-[7px] font-black uppercase tracking-widest z-10 ${isWaistSynced ? 'text-primary' : 'text-muted'}`}>
-                 CINTURA (CM)
-              </span>
-              <input 
-                type="number" step="0.1" 
-                placeholder={String(latestStats?.waist || '--')} 
-                value={waistInput || ''}
-                onChange={(e) => setWaistInput(e.target.value)} 
-                className={`w-full bg-input border-2 rounded-xl pt-6 pb-2 px-3 font-black text-center outline-none transition-all text-lg
-                  ${isWaistSynced ? 'border-primary/50 text-primary' : 'border-border text-main focus:border-primary'}`}
-              />
-              {!isWaistSynced && waistInput !== '' && (
-                 <button onClick={saveBiometrics} className="absolute right-2 bottom-2 text-primary"><CheckCircle2 size={14}/></button>
-              )}
+            {/* CINTURA + CÂMERA */}
+            <div className="relative flex gap-2">
+               <div className="relative flex-1">
+                  <span className={`absolute top-2 left-3 text-[9px] font-black uppercase tracking-widest z-10 ${isWaistSynced ? 'text-primary' : 'text-muted'}`}>
+                     CINTURA (CM)
+                  </span>
+                  {/* 🔥 AJUSTADO: text-2xl (era 3xl) */}
+                  <input 
+                    type="number" step="0.1" 
+                    placeholder={String(latestStats?.waist || '--')} 
+                    value={waistInput || ''}
+                    onChange={(e) => setWaistInput(e.target.value)} 
+                    className={`w-full bg-input border-2 rounded-xl pt-9 pb-5 px-3 font-black text-center outline-none transition-all text-2xl
+                      ${isWaistSynced ? 'border-primary/50 text-primary' : 'border-border text-main focus:border-primary'}`}
+                  />
+                  {!isWaistSynced && waistInput !== '' && (
+                      <button onClick={() => saveBiometrics()} className="absolute right-2 bottom-2 text-primary"><CheckCircle2 size={14}/></button>
+                  )}
+               </div>
+
+               <label className={`w-14 h-full rounded-xl border-2 flex items-center justify-center cursor-pointer transition-all ${hasPhoto ? 'border-secondary bg-secondary/20' : 'border-border bg-card hover:border-primary'}`}>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  <Camera size={20} className={hasPhoto ? "text-secondary" : "text-muted"} />
+               </label>
             </div>
           </div>
         </div>
@@ -120,7 +207,6 @@ const WorkoutView = ({
 
       {/* 🚀 NAVEGAÇÃO TÁTICA */}
       <div className="relative py-2">
-        {/* Controle Principal */}
         <div className="flex items-center justify-between gap-4">
           <button 
             onClick={handlePrevDay}
@@ -131,9 +217,9 @@ const WorkoutView = ({
 
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <span className="text-[9px] font-black text-secondary tracking-[0.4em] uppercase mb-1 animate-pulse">
-               PROTOCOLO_ATUAL
+                PROTOCOLO_ATUAL
             </span>
-            <h2 className="text-xl md:text-2xl font-black text-main uppercase italic leading-none drop-shadow-md">
+            <h2 className="text-xl md:text-4xl font-black text-main uppercase italic leading-none drop-shadow-md">
               {workoutData[activeDay]?.title || 'Treino Desconhecido'}
             </h2>
             <span className="text-[10px] font-bold text-muted mt-1 uppercase">
@@ -165,7 +251,7 @@ const WorkoutView = ({
       </div>
 
       {/* LISTAGEM DE EXERCÍCIOS */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {workoutData[activeDay]?.exercises.map((ex, i) => {
           const id = `${selectedDate}-${activeDay}-${i}`;
           const isDone = progress[id]?.done;
@@ -202,11 +288,12 @@ const WorkoutView = ({
 
               <div className="flex justify-between items-start mb-6 relative z-10">
                 <div className="flex-1">
-                  <h3 className={`font-black text-lg leading-tight transition-colors flex items-center gap-2 ${isBreakingPR ? 'text-warning' : isDone ? 'text-primary' : 'text-main'}`}>
+                  <h3 className={`font-black text-2xl leading-tight transition-colors flex items-center gap-2 ${isBreakingPR ? 'text-warning' : isDone ? 'text-primary' : 'text-main'}`}>
                     {ex.name}
                     {isBreakingPR && <Star size={16} className="text-warning fill-warning animate-pulse" />}
                   </h3>
-                  <p className="text-[10px] text-muted font-bold uppercase tracking-tighter mt-1 italic">{ex.note}</p>
+                  {/* 🔥 AUMENTADO: text-sm (dica) */}
+                  <p className="text-sm text-muted font-bold uppercase tracking-tighter mt-1 italic">{ex.note}</p>
                 </div>
                 <button onClick={() => toggleCheck(id)} className={`ml-4 p-1 rounded-full transition-all duration-500 ${isDone ? 'text-primary rotate-[360deg] scale-125' : 'text-muted hover:text-main'}`}>
                   <CheckCircle2 size={40} fill={isDone ? "currentColor" : "none"} strokeWidth={isDone ? 3 : 1.5} />
@@ -214,14 +301,17 @@ const WorkoutView = ({
               </div>
               
               <div className="space-y-4 relative z-10">
+                {/* INPUT DE CICLOS (SETS) */}
                 <div className="flex items-center gap-3 bg-input/50 p-3 rounded-xl border border-border group-focus-within:border-primary/50 transition-all shadow-inner">
-                  <span className="text-[9px] font-black text-muted uppercase tracking-widest">
+                  {/* 🔥 AUMENTADO: text-xs (label ciclo) */}
+                  <span className="text-xs font-black text-muted uppercase tracking-widest">
                     {isTimeBased ? 'Tempo_Alvo' : 'Ciclos'}
                   </span>
+                  {/* 🔥 AUMENTADO: text-xl (input ciclo) */}
                   <input 
                     type={isTimeBased ? "text" : "number"} 
-                    className="bg-transparent text-primary font-black outline-none w-24 text-center text-sm border-b border-primary/30" 
-                    value={progress[id]?.sets || (isTimeBased ? ex.sets : "")}
+                    className="bg-transparent text-primary font-black outline-none w-24 text-center text-xl border-b border-primary/30" 
+                    value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")} 
                     onChange={(e) => updateSessionSets(id, e.target.value)} 
                   />
                 </div>
@@ -230,16 +320,17 @@ const WorkoutView = ({
                   <div className="grid gap-3">
                     {Array.from({ length: currentSetCount }).map((_, setIdx) => (
                       <div key={setIdx} className="flex items-center gap-3 group/row">
-                        <span className="text-[10px] font-black text-muted w-6 group-focus-within/row:text-primary transition-colors">#{setIdx + 1}</span>
+                        {/* 🔥 AUMENTADO: text-base (número série) */}
+                        <span className="text-base font-black text-muted w-6 group-focus-within/row:text-primary transition-colors">#{setIdx + 1}</span>
                         <div className="flex-1 flex gap-2 items-center">
                             {/* Input de Peso */}
                             <input 
                               type="text" placeholder="KG" 
                               value={progress[id]?.sets?.[setIdx]?.weight || ""} 
                               onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                              className={`w-full bg-input border rounded-lg p-2 font-black text-xs outline-none transition-all text-center
+                              className={`w-full bg-input border rounded-lg p-3 font-black text-xl outline-none transition-all text-center
                                 ${parseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 
-                                  ? 'border-warning text-warning shadow-[0_0_10px_rgba(var(--warning),0.2)]' 
+                                  ? 'border-warning text-warning shadow-[0_0_15px_rgba(var(--warning),0.2)]' 
                                   : 'border-border text-success focus:border-success/50'}`} 
                             />
                             
@@ -248,10 +339,10 @@ const WorkoutView = ({
                               type="text" placeholder="REPS" 
                               value={progress[id]?.sets?.[setIdx]?.reps || ""} 
                               onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
-                              className="w-full bg-input border border-border rounded-lg p-2 text-secondary font-black text-xs outline-none focus:border-secondary/50 transition-all text-center" 
+                              className="w-full bg-input border border-border rounded-lg p-3 text-secondary font-black text-xl outline-none focus:border-secondary/50 transition-all text-center" 
                             />
 
-                            {/* 🔥 NOVO: MOSTRADOR DE 1RM (Cálculo Automático) */}
+                            {/* MOSTRADOR DE 1RM */}
                             {(() => {
                                const w = progress[id]?.sets?.[setIdx]?.weight;
                                const r = progress[id]?.sets?.[setIdx]?.reps;
@@ -276,10 +367,10 @@ const WorkoutView = ({
       </div>
       
       {/* FOOTER - BOTÃO EFETIVAR */}
-      <div className="space-y-4 pt-6 pb-4">
+      <div className="space-y-5 pt-7 pb-5">
         <textarea 
           placeholder="Relatório de danos e observações do sistema..." 
-          className="w-full bg-card border-2 border-border rounded-2xl p-4 text-xs font-bold h-24 outline-none focus:border-primary/50 transition-all text-main placeholder-muted" 
+          className="w-full bg-card border-2 border-border rounded-2xl p-4 text-xl font-bold h-28 outline-none focus:border-primary/50 transition-all text-main placeholder-muted" 
           value={sessionNote} 
           onChange={(e) => setSessionNote(e.target.value)} 
         />

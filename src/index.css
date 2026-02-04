@@ -1,115 +1,106 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-cyber: var(--font-stack);
-  
   --color-page: var(--bg-page);
   --color-card: var(--bg-card);
   --color-input: var(--bg-input);
-  
   --color-main: var(--text-main);
   --color-muted: var(--text-muted);
-
-  /* Configuração para permitir opacidade nas cores */
   --color-primary: rgb(var(--primary));
   --color-secondary: rgb(var(--secondary));
-  
   --color-success: rgb(var(--success));
   --color-warning: rgb(var(--warning));
   --color-border: var(--border-color);
 }
 
 @layer base {
-  /* =================================================================
-     TEMA 1: DRIVER (SEU PADRÃO - PERFEITO)
-     ================================================================= */
+  /* ================= TEMA 1: DRIVER (DARK NEON) ================= */
   :root {
     --font-stack: 'Orbitron', sans-serif;
-    
     --bg-page: #020617;
     --bg-card: rgba(15, 23, 42, 0.6);
     --bg-input: rgba(2, 6, 23, 0.9);
     --text-main: #ffffff;
     --text-muted: #94a3b8;
-    
-    /* Cores DRIVER: Ciano e Pink */
     --primary: 0, 243, 255;   
     --secondary: 255, 0, 255; 
-    
     --success: 16, 185, 129;
     --warning: 245, 158, 11;
     --border-color: #1e293b;
     --grid-color: #0f172a; 
-    
-    /* Sombras Neon DRIVER */
     --neon-shadow-primary: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
     --neon-shadow-secondary: 0 0 10px rgba(255, 0, 255, 0.4);
-    
     --texture-opacity: 0.15;
     --border-width: 1px;
     --input-placeholder-opacity: 0.5;
   }
 
-  /* =================================================================
-     TEMA 2: MATRIX (CORRIGIDO: ELIMINAÇÃO TOTAL DO ROXO)
-     ================================================================= */
-  /* Aumentei a especificidade usando html[...] */
+  /* ================= TEMA 2: MATRIX ================= */
   html[data-theme='matrix'] {
     --font-stack: 'Orbitron', sans-serif;
-
     --bg-page: #000000;
     --bg-card: #050505;      
     --bg-input: #0a0a0a;     
-    
     --text-main: #00ff41;    
     --text-muted: #005c00;   
-    
-    /* 🔥 FORÇA BRUTA: AMBAS AS CORES SÃO VERDE NEON 🔥 */
     --primary: 0, 255, 65 !important;   
-    --secondary: 0, 255, 65 !important; /* Adeus Roxo */
-    
+    --secondary: 0, 255, 65 !important;
     --success: 0, 255, 65;
     --warning: 255, 255, 0;
-
     --border-color: #004400;
     --grid-color: #001a00;
-    
-    /* Sombras também ficam verdes */
     --neon-shadow-primary: 0 0 5px rgba(0, 255, 65, 0.6) !important;
     --neon-shadow-secondary: 0 0 5px rgba(0, 255, 65, 0.4) !important; 
-    
     --texture-opacity: 0.1;
     --border-width: 1px;
     --input-placeholder-opacity: 0.5;
   }
 
-  /* =================================================================
-     TEMA 3: CLARO (VISIBILIDADE DOS INPUTS MANTIDA)
-     ================================================================= */
+  /* ================= TEMA 3: LIGHT - "WHITE NEON" ================= */
   [data-theme='light'] {
-    --font-stack: 'Rajdhani', sans-serif;
-    
-    --bg-page: #ffffff;
-    --bg-card: #f8fafc;
-    --bg-input: #ffffff;     
-    --text-main: #000000;    
-    --text-muted: #404040;
+    --font-stack: 'Orbitron', sans-serif;
+    --bg-page: #f0f4f8; 
+    --bg-card: rgba(255, 255, 255, 0.75); 
+    --bg-input: rgba(255, 255, 255, 0.9);
+    --text-main: #1e293b; 
+    --text-muted: #64748b; 
+    --primary: 0, 110, 255;
+    --secondary: 220, 0, 140;
+    --success: 0, 180, 100;
+    --warning: 255, 120, 0;
+    --border-color: rgba(0, 110, 255, 0.2);
+    --grid-color: #d1d5db; 
+    --neon-shadow-primary: 0 4px 15px rgba(0, 110, 255, 0.25);
+    --neon-shadow-secondary: 0 4px 15px rgba(220, 0, 140, 0.25);
+    --texture-opacity: 0.05;
+    --border-width: 1px;
+    --input-placeholder-opacity: 0.6;
+  }
 
-    --primary: 0, 70, 255;     
-    --secondary: 255, 50, 0;   
+  /* ================= TEMA 4: SPIDER-MAN (CORRIGIDO) ================= */
+  html[data-theme='spiderman'] {
+    --font-stack: 'Rajdhani', sans-serif; 
+    --bg-page: #ef4444; 
+    --bg-card: #ffffff; 
+    --bg-input: #ffffff;
     
-    --success: 0, 160, 0;
-    --warning: 230, 120, 0;
+    /* VOLTAMOS PARA PRETO: Para ler no fundo branco dos cards */
+    --text-main: #000000; 
+    --text-muted: #000000; 
     
-    --border-color: #000000;
-    --grid-color: #e5e5e5;
-    
-    --neon-shadow-primary: none;
-    --neon-shadow-secondary: none;
-    --texture-opacity: 0;
-    --border-width: 2px;
-    --input-placeholder-opacity: 1;
+    --primary: 37, 99, 235;   /* Azul */
+    --secondary: 220, 38, 38; /* Vermelho */
+    --success: 22, 163, 74;
+    --warning: 250, 204, 21; 
+    --border-color: #000000; 
+    --grid-color: rgba(0,0,0,0.1); 
+    --neon-shadow-primary: 3px 3px 0px #000000;
+    --neon-shadow-secondary: 3px 3px 0px #000000;
+    --texture-opacity: 1; 
+    --border-width: 3px;
+    --input-placeholder-opacity: 0.7;
   }
 }
 
@@ -122,36 +113,150 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Sem itálico */
 * { font-style: normal !important; }
-
-/* Bordas dinâmicas */
 .border, .border-2 { border-width: var(--border-width) !important; }
 
-/* Placeholder */
 input::placeholder {
   color: var(--text-muted) !important;
   opacity: var(--input-placeholder-opacity) !important;
   font-weight: bold;
 }
 
-/* Inputs Light */
+/* Neon Glow (Padrão) */
+.text-primary, .neon-text-cyan { 
+    color: rgb(var(--primary));
+    text-shadow: var(--neon-shadow-primary); 
+}
+.text-secondary, .neon-text-pink { 
+    color: rgb(var(--secondary));
+    text-shadow: var(--neon-shadow-secondary); 
+}
+
+/* --- OVERRIDES: LIGHT THEME --- */
+[data-theme='light'] .text-primary, [data-theme='light'] .text-secondary { text-shadow: none; font-weight: 800; }
+[data-theme='light'] .bg-card, [data-theme='light'] .bg-card\/60, [data-theme='light'] .bg-card\/20 {
+    background-color: var(--bg-card) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(var(--primary), 0.3) !important;
+    box-shadow: 0 8px 32px rgba(var(--primary), 0.15) !important;
+}
 [data-theme='light'] input {
-  box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.05);
-  border-color: #94a3b8;
-}
-[data-theme='light'] input:focus {
-  border-color: rgb(var(--primary)) !important;
-  background-color: #ffffff;
-  color: #000000;
-  box-shadow: 0 0 0 3px rgba(0, 70, 255, 0.2); 
+    background-color: #ffffff !important;
+    border: 2px solid rgba(var(--primary), 0.2) !important;
+    color: var(--text-main) !important;
 }
 
-/* --- UTILITÁRIOS --- */
-.text-primary, .neon-text-cyan { text-shadow: var(--neon-shadow-primary); }
-.text-secondary, .neon-text-pink { text-shadow: var(--neon-shadow-secondary); }
+/* --- OVERRIDES: SPIDER-MAN (CORREÇÃO DO HALL OF FAME) --- */
 
-/* Grid */
+html[data-theme='spiderman'] body {
+  /* Fundo Vermelho Aranha + Retícula */
+  background-image: radial-gradient(#991b1b 20%, transparent 20%),
+                    radial-gradient(#991b1b 20%, transparent 20%);
+  background-color: #ef4444;
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700;
+  font-size: 18px; 
+  /* GARANTINDO QUE O TEXTO PADRÃO SEJA PRETO */
+  color: #000000 !important;
+}
+
+/* 1. TÍTULOS E LOGS VIRAM CAIXAS DE NARRAÇÃO (AMARELAS) */
+/* Apenas os títulos soltos ganham fundo para leitura no vermelho */
+html[data-theme='spiderman'] h2,
+html[data-theme='spiderman'] h3,
+html[data-theme='spiderman'] .text-xl, 
+html[data-theme='spiderman'] .text-lg {
+    background-color: #facc15; /* Amarelo Narração */
+    color: #000000 !important;
+    font-family: 'Bangers', cursive !important;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border: 3px solid black;
+    box-shadow: 4px 4px 0 black;
+    padding: 5px 15px;
+    display: inline-block; 
+    transform: rotate(-1deg);
+    margin-bottom: 15px;
+    border-radius: 4px;
+    text-shadow: none !important;
+}
+
+/* Título Principal */
+html[data-theme='spiderman'] h1 {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #facc15 !important;
+    -webkit-text-stroke: 2px black;
+    text-shadow: 4px 4px 0 #991b1b !important;
+    font-size: 3.5rem !important;
+}
+
+/* REMOVIDA A REGRA QUE FORÇAVA TEXTO BRANCO EM TUDO */
+
+/* 3. CARDS BRANCOS COM TEXTO PRETO */
+html[data-theme='spiderman'] .bg-card, 
+html[data-theme='spiderman'] .bg-card\/60,
+html[data-theme='spiderman'] .bg-card\/20 {
+  background-color: #ffffff !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 6px 6px 0px #2563eb !important; /* Sombra Azul */
+  margin-bottom: 20px;
+  border-radius: 6px !important;
+  /* FORÇA O TEXTO DENTRO DO CARD A SER PRETO */
+  color: #000000 !important;
+}
+
+/* 4. BOTÕES */
+html[data-theme='spiderman'] button {
+  background-color: #2563eb !important; /* Azul */
+  color: #ffffff !important;
+  border: 3px solid black !important;
+  box-shadow: 4px 4px 0 black !important;
+  font-family: 'Bangers', cursive;
+  font-size: 1.4rem !important;
+  border-radius: 8px !important;
+  text-shadow: 2px 2px 0 black !important;
+}
+
+/* INPUTS */
+html[data-theme='spiderman'] input {
+  background: #ffffff !important;
+  border: 3px solid #000000 !important;
+  color: #000000 !important;
+  font-family: 'Bangers', cursive;
+  font-size: 1.8rem !important; 
+  height: 3.5rem !important;
+  box-shadow: 3px 3px 0px rgba(0,0,0,0.2) !important;
+  border-radius: 12px !important;
+}
+
+/* DATEPICKER */
+html[data-theme='spiderman'] .cyber-calendar {
+    font-family: 'Rajdhani', sans-serif !important;
+    border: 3px solid #000 !important;
+    color: black !important;
+    background-color: white !important;
+}
+html[data-theme='spiderman'] .react-datepicker__header {
+    background-color: #facc15 !important;
+    border-bottom: 3px solid black !important;
+    color: black !important;
+    text-shadow: none !important;
+}
+html[data-theme='spiderman'] .react-datepicker__current-month {
+    color: black !important;
+    text-shadow: none !important;
+}
+html[data-theme='spiderman'] .react-datepicker__day--selected {
+    background-color: #2563eb !important;
+    border: 2px solid black !important;
+    color: white !important;
+}
+
+/* --- GRIDS --- */
 .cyber-grid {
   background-image: linear-gradient(to right, rgba(100,100,100,0.1) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(100,100,100,0.1) 1px, transparent 1px);
@@ -162,20 +267,18 @@ input::placeholder {
   linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
 }
 [data-theme='light'] .cyber-grid {
-  background-image: linear-gradient(to right, #e2e8f0 2px, transparent 2px),
-    linear-gradient(to bottom, #e2e8f0 2px, transparent 2px);
-  background-size: 20px 20px;
+  background-image: linear-gradient(to right, rgba(0, 110, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 110, 255, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
   opacity: 1;
 }
 
-/* Textura */
 .bg-carbon {
   background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
   opacity: var(--texture-opacity);
   pointer-events: none;
 }
 
-/* Resets */
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -183,7 +286,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto;
 }
 
-/* Datepicker */
+/* Datepicker Geral */
 .cyber-calendar {
   background-color: var(--bg-card) !important;
   border: 2px solid rgb(var(--primary)) !important;
@@ -192,21 +295,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 0 15px rgba(var(--primary), 0.3);
 }
 
+/* Datepicker Light */
 [data-theme='light'] .cyber-calendar {
-  background-color: #ffffff !important;
-  border: 2px solid #000000 !important;
-  box-shadow: 6px 6px 0px #000000;
-  color: #000000 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(var(--primary), 0.3) !important;
+  box-shadow: 0 10px 25px rgba(var(--primary), 0.25) !important;
+  color: #1e293b !important;
 }
 
 .react-datepicker__header {
   background-color: var(--bg-input) !important;
   border-bottom: 1px solid rgb(var(--primary)) !important;
 }
-
 [data-theme='light'] .react-datepicker__header {
-  border-bottom: 2px solid #000000 !important;
-  background-color: #f1f5f9 !important;
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-bottom: 2px solid rgba(var(--primary), 0.2) !important;
 }
 
 .react-datepicker__day { color: var(--text-main) !important; }
@@ -215,45 +319,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: rgb(var(--primary)) !important;
   color: #fff !important; 
 }
-[data-theme='matrix'] .react-datepicker__day--selected {
-  color: #000000 !important;
-  font-weight: 900;
-  box-shadow: 0 0 10px rgb(var(--primary));
-}
-[data-theme='light'] .react-datepicker__day--selected {
-  font-weight: 800;
-  border: 1px solid black;
-}
 
 .react-datepicker__day:hover {
   background-color: rgba(var(--primary), 0.2) !important;
 }
 
-/* --- ADICIONE NO FINAL DO src/index.css --- */
-
-/* Scrollbar Personalizada que segue o Tema */
-::-webkit-scrollbar {
-  width: 8px;   /* Largura vertical */
-  height: 8px;  /* Altura horizontal */
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-input); /* Cor do fundo do trilho */
-  border-radius: 4px;
-}
-
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 4px; }
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--primary)); /* Cor da barra (SEGUE O TEMA) */
-  border-radius: 4px;
-  border: 2px solid var(--bg-input); /* Borda para dar respiro */
+  background: rgb(var(--primary)); border-radius: 4px; border: 2px solid var(--bg-input); 
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.8); }
+
+[data-theme='light'] ::-webkit-scrollbar-track { background: #e2e8f0; }
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(var(--primary), 0.5); border: 2px solid #f0f4f8;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--primary), 0.8);
+[data-theme='spiderman'] ::-webkit-scrollbar-thumb {
+    background: #2563eb; border: 2px solid #000; border-radius: 0;
+}
+[data-theme='spiderman'] ::-webkit-scrollbar-track {
+    background: #ffffff; border-left: 2px solid #000; border-radius: 0;
 }
 
-/* Para Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgb(var(--primary)) var(--bg-input);
-}
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--primary)) var(--bg-input); }
+[data-theme='light'] * { scrollbar-color: rgba(var(--primary), 0.5) #e2e8f0; }
+[data-theme='spiderman'] * { scrollbar-color: #2563eb #ffffff; }
