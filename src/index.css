@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&family=Cinzel+Decorative:wght@700;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -60,7 +60,7 @@
 
   /* ================= TEMA 3: LIGHT - "WHITE NEON" ================= */
   [data-theme='light'] {
-    --font-stack: 'Orbitron', sans-serif;
+    --font-stack: 'Rajdhani', sans-serif; /* Mudei para Rajdhani para caber melhor */
     --bg-page: #f0f4f8; 
     --bg-card: rgba(255, 255, 255, 0.75); 
     --bg-input: rgba(255, 255, 255, 0.9);
@@ -146,6 +146,24 @@ input::placeholder {
     color: var(--text-main) !important;
 }
 
+/* 🔥 CORREÇÃO TÍTULO LIGHT: Tamanho Responsivo */
+[data-theme='light'] h1 {
+    font-family: 'Cinzel Decorative', 'Rajdhani', serif !important;
+    font-weight: 900;
+    text-transform: uppercase;
+    /* Usa tamanho dinâmico: Mínimo 2rem, Ideal 10% da tela, Máximo 3.5rem */
+    font-size: clamp(2rem, 10vw, 3.5rem) !important;
+    line-height: 1.1;
+    text-align: center;
+    width: 100%;
+    
+    background: linear-gradient(180deg, #1a1a1a 30%, #ca8a04 80%, #facc15 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0px rgba(0,0,0,0.1));
+}
+
+
 /* --- OVERRIDES: SPIDER-MAN (CORREÇÃO DO HALL OF FAME) --- */
 
 html[data-theme='spiderman'] body {
@@ -189,12 +207,16 @@ html[data-theme='spiderman'] h1 {
     border: none !important;
     box-shadow: none !important;
     color: #facc15 !important;
-    -webkit-text-stroke: 2px black;
+    -webkit-text-stroke: 1.5px black; /* Borda um pouco mais fina para não embolar */
     text-shadow: 4px 4px 0 #991b1b !important;
-    font-size: 3.5rem !important;
+    
+    /* 🔥 CORREÇÃO: Tamanho Responsivo (Clamp) */
+    /* Em celular pequeno fica 2.5rem, em tablet cresce, e trava em 4rem no PC */
+    font-size: clamp(2.5rem, 13vw, 4rem) !important;
+    line-height: 1 !important;
+    width: 100%;
+    text-align: center;
 }
-
-/* REMOVIDA A REGRA QUE FORÇAVA TEXTO BRANCO EM TUDO */
 
 /* 3. CARDS BRANCOS COM TEXTO PRETO */
 html[data-theme='spiderman'] .bg-card, 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera } from 'lucide-react';
+import { Calendar, CheckCircle2, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, History } from 'lucide-react'; // 🔥 Adicionei History
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
 
@@ -30,6 +30,9 @@ const WorkoutView = ({
   workoutTimer, toggleWorkoutTimer, resetWorkoutTimer
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  // 🔥 NOVO: Estado para o Timer de Descanso Rápido (Por série)
+  const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
 
   // Array ordenado dos dias para navegação
   const days = Object.keys(workoutData); 
@@ -71,14 +74,27 @@ const WorkoutView = ({
     }
   };
 
+  // 🔥 NOVO: Função para abrir o timer rápido
+  const openRestTimer = (seconds = 60) => {
+    setRestTimerConfig({ isOpen: true, duration: seconds });
+  };
+
   return (
     <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative">
       
-      {/* RENDERIZAÇÃO DO TIMER FLUTUANTE */}
+      {/* RENDERIZAÇÃO DO TIMER FLUTUANTE GLOBAL (MANTIDO) */}
       {timerState && timerState.active && (
          <RestTimer 
             initialSeconds={timerState.seconds} 
             onClose={closeTimer} 
+         />
+      )}
+
+      {/* 🔥 NOVO: RENDERIZAÇÃO DO TIMER DE SÉRIE */}
+      {restTimerConfig.isOpen && (
+         <RestTimer 
+            initialSeconds={restTimerConfig.duration} 
+            onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} 
          />
       )}
 
@@ -162,7 +178,6 @@ const WorkoutView = ({
               <span className={`absolute top-2 left-3 text-[7px] font-black uppercase tracking-widest z-10 ${isWeightSynced ? 'text-success' : 'text-muted'}`}>
                  MASSA (KG)
               </span>
-              {/* 🔥 AJUSTADO: text-2xl (era 3xl) */}
               <input 
                 type="number" step="0.1" 
                 placeholder={String(latestStats?.weight || '--')} 
@@ -182,7 +197,6 @@ const WorkoutView = ({
                   <span className={`absolute top-2 left-3 text-[9px] font-black uppercase tracking-widest z-10 ${isWaistSynced ? 'text-primary' : 'text-muted'}`}>
                      CINTURA (CM)
                   </span>
-                  {/* 🔥 AJUSTADO: text-2xl (era 3xl) */}
                   <input 
                     type="number" step="0.1" 
                     placeholder={String(latestStats?.waist || '--')} 
@@ -262,9 +276,10 @@ const WorkoutView = ({
                               !ex.sets.includes('x');
           const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
+          // 🔥 LÓGICA DE RECORDE (PR) MELHORADA: Ignora maiúsculas e espaços
           const exercisePR = (history || [])
             .flatMap(s => s.exercises)
-            .filter(e => e.name === ex.name)
+            .filter(e => e.name.trim().toLowerCase() === ex.name.trim().toLowerCase())
             .reduce((max, e) => {
               const sessionMax = Math.max(...(e.sets?.map(s => parseFloat(s.weight) || 0) || [0]));
               return Math.max(max, sessionMax);
@@ -275,9 +290,15 @@ const WorkoutView = ({
           return (
             <div key={id} className={`p-5 rounded-2xl border-2 transition-all duration-500 relative overflow-hidden 
               ${isBreakingPR ? 'border-warning shadow-[0_0_20px_rgba(var(--warning),0.2)] bg-warning/5' : 
-                isDone ? 'bg-primary/5 border-primary shadow-[0_0_15px_rgba(var(--primary),0.15)]' : 'bg-card border-border hover:border-primary/30'}`}>
+                isDone ? 'border-primary shadow-[0_0_20px_rgba(var(--primary),0.2)] bg-black/40' : // 🔥 CORREÇÃO: Fundo escuro transparente + Borda Neon
+                'bg-card border-border hover:border-primary/30'}`}>
               
-              {isDone && <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-[200%] w-full animate-[scanline_4s_linear_infinite] pointer-events-none"></div>}
+              {/* Marca D'água de Concluído */}
+              {isDone && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 border-primary/10 text-primary/10 font-black text-6xl uppercase pointer-events-none whitespace-nowrap z-0 select-none">
+                    CONCLUÍDO
+                </div>
+              )}
               
               {exercisePR > 0 && (
                 <div className={`absolute top-0 right-12 px-2 py-0.5 rounded-b-md flex items-center gap-1 z-20 border-x border-b ${isBreakingPR ? 'bg-warning border-warning text-black' : 'bg-input border-border text-muted'}`}>
@@ -292,22 +313,27 @@ const WorkoutView = ({
                     {ex.name}
                     {isBreakingPR && <Star size={16} className="text-warning fill-warning animate-pulse" />}
                   </h3>
-                  {/* 🔥 AUMENTADO: text-sm (dica) */}
                   <p className="text-sm text-muted font-bold uppercase tracking-tighter mt-1 italic">{ex.note}</p>
                 </div>
-                <button onClick={() => toggleCheck(id)} className={`ml-4 p-1 rounded-full transition-all duration-500 ${isDone ? 'text-primary rotate-[360deg] scale-125' : 'text-muted hover:text-main'}`}>
-                  <CheckCircle2 size={40} fill={isDone ? "currentColor" : "none"} strokeWidth={isDone ? 3 : 1.5} />
+                
+                {/* 🔥 CORREÇÃO DO CHECK: Botão vazado e brilhante */}
+                <button 
+                  onClick={() => toggleCheck(id)} 
+                  className={`ml-4 p-2 rounded-full transition-all duration-500 border-2 
+                  ${isDone 
+                      ? 'border-primary text-primary shadow-[0_0_20px_var(--primary)] bg-transparent scale-110' 
+                      : 'border-border text-muted hover:border-primary hover:text-white'}`}
+                >
+                  <CheckCircle2 size={32} />
                 </button>
               </div>
               
               <div className="space-y-4 relative z-10">
                 {/* INPUT DE CICLOS (SETS) */}
                 <div className="flex items-center gap-3 bg-input/50 p-3 rounded-xl border border-border group-focus-within:border-primary/50 transition-all shadow-inner">
-                  {/* 🔥 AUMENTADO: text-xs (label ciclo) */}
                   <span className="text-xs font-black text-muted uppercase tracking-widest">
                     {isTimeBased ? 'Tempo_Alvo' : 'Ciclos'}
                   </span>
-                  {/* 🔥 AUMENTADO: text-xl (input ciclo) */}
                   <input 
                     type={isTimeBased ? "text" : "number"} 
                     className="bg-transparent text-primary font-black outline-none w-24 text-center text-xl border-b border-primary/30" 
@@ -320,7 +346,16 @@ const WorkoutView = ({
                   <div className="grid gap-3">
                     {Array.from({ length: currentSetCount }).map((_, setIdx) => (
                       <div key={setIdx} className="flex items-center gap-3 group/row">
-                        {/* 🔥 AUMENTADO: text-base (número série) */}
+                        
+                        {/* 🔥 NOVO: Botão de Timer por Série */}
+                        <button 
+                            onClick={() => openRestTimer(60)} // Abre 60s
+                            className="h-10 w-10 flex items-center justify-center rounded-lg bg-input border border-border text-muted hover:text-primary hover:border-primary active:scale-90 transition-all"
+                            title="Descansar"
+                        >
+                            <History size={18} />
+                        </button>
+
                         <span className="text-base font-black text-muted w-6 group-focus-within/row:text-primary transition-colors">#{setIdx + 1}</span>
                         <div className="flex-1 flex gap-2 items-center">
                             {/* Input de Peso */}
