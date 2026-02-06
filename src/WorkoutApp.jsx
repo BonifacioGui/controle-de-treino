@@ -37,6 +37,62 @@ const WorkoutApp = () => {
     setters.setView('workout');
   }, [actions, setters]);
 
+  const runMaintenance = () => {
+  if (!window.confirm("Isso vai renomear os exercícios no histórico e nos treinos. Tem certeza?")) return;
+
+  // --- CONFIGURAÇÃO: O QUE VOCÊ QUER MUDAR ---
+  // Esquerda: Nome Errado (exatamente como aparece no console)
+  // Direita: Nome Certo (como deve ficar para sempre)
+  const replacements = {
+    "crossover na polia alta": "Crossover Polia Alta",
+    "Crossover polia alta": "Crossover Polia Alta", // Padronizar Maiúsculas
+    "Supino reto": "Supino Reto",
+    "supino reto barra": "Supino Reto",
+    "Agachamento livre": "Agachamento Livre",
+    // Adicione quantas linhas precisar...
+  };
+
+  // 1. CORRIGIR HISTÓRICO (Passado)
+  const history = JSON.parse(localStorage.getItem('workout-history') || '[]');
+  let historyChanges = 0;
+
+  const newHistory = history.map(session => ({
+    ...session,
+    exercises: session.exercises.map(ex => {
+      // Verifica se o nome atual está na lista de "errados"
+      if (replacements[ex.name]) {
+        historyChanges++;
+        return { ...ex, name: replacements[ex.name] }; // Troca pelo certo
+      }
+      // Se não estiver na lista, mantém igual, mas remove espaços extras nas pontas
+      return { ...ex, name: ex.name.trim() }; 
+    })
+  }));
+
+  // 2. CORRIGIR TREINOS ATUAIS (Futuro)
+  const templates = JSON.parse(localStorage.getItem('workout-data') || '{}');
+  let templateChanges = 0;
+  
+  const newTemplates = { ...templates };
+  Object.keys(newTemplates).forEach(dayKey => {
+    newTemplates[dayKey].exercises = newTemplates[dayKey].exercises.map(ex => {
+       if (replacements[ex.name]) {
+         templateChanges++;
+         return { ...ex, name: replacements[ex.name] };
+       }
+       return { ...ex, name: ex.name.trim() };
+    });
+  });
+
+  // 3. SALVAR TUDO
+  localStorage.setItem('workout-history', JSON.stringify(newHistory));
+  localStorage.setItem('workout-data', JSON.stringify(newTemplates));
+
+  // 4. RECARREGAR PÁGINA
+  alert(`Limpeza Concluída!\n\nHistórico alterado: ${historyChanges} vezes\nTreinos alterados: ${templateChanges} vezes.\n\nA página será recarregada.`);
+  window.location.reload();
+};
+
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
