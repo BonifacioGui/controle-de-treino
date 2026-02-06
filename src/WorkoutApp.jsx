@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Terminal, Wifi, WifiOff, Flame } from 'lucide-react'; // 🔥 Flame para Streak
+import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame } from 'lucide-react';
 import { useWorkout } from './hooks/useWorkout'; 
 
 // Componentes
@@ -13,6 +13,7 @@ import Importer from './components/Importer';
 
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -55,51 +56,46 @@ const WorkoutApp = () => {
       )}
 
       {/* HEADER */}
-      <header className="flex justify-between items-start mb-10 border-b border-primary/30 pb-6 relative z-10">
-        <div>
-          <h1 className="text-5xl font-black text-primary italic neon-text-cyan tracking-tighter">
-            PROJETO<span className="text-secondary">.BOMBA</span>
-          </h1>
-          <div className="mt-4 flex gap-4">
-            <div className="bg-card/60 p-2 rounded-lg border border-primary/20 shadow-inner">
-              <p className="text-[9px] text-primary uppercase font-black mb-1 tracking-widest leading-none">Massa_Ref</p>
-              <p className="text-lg font-bold">{stats.latest.weight || '--'}KG</p>
+      <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6">
+        
+        {/* ESQUERDA: Logo e Título */}
+        <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
+                <Zap className="text-black fill-black" size={24} />
             </div>
             
-            {/* CONTADOR DE STREAK (NOVO) */}
-            <div className={`bg-card/60 p-2 rounded-lg border shadow-inner flex flex-col items-center min-w-[60px] ${stats.streak > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
-               <p className="text-[9px] text-orange-500 uppercase font-black mb-1 tracking-widest leading-none flex items-center gap-1">
-                  <Flame size={10} className="fill-orange-500 animate-pulse" /> STREAK
-               </p>
-               <p className="text-lg font-bold text-orange-400">{stats.streak || 0}</p>
-            </div>
-
-            <div className="bg-card/60 p-2 rounded-lg border border-secondary/20 shadow-inner">
-              <p className="text-[9px] text-secondary uppercase font-black mb-2 tracking-widest leading-none">Cintura_Ref</p>
-              <p className="text-lg font-bold">{stats.latest.waist || '--'}CM</p>
-            </div>
-          </div>
+            <h1 className="leading-none select-none font-black text-left text-lg md:text-2xl tracking-tighter">
+                PROJETO<br/>
+                <span className="text-primary">BOMBA</span>
+            </h1>
         </div>
 
-        <div className="flex items-start gap-4">
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all
-            ${isOnline 
-                ? 'bg-green-500/10 border-green-500/50 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
-                : 'bg-red-500/10 border-red-500/50 text-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]'
-            }`}>
-            {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-            <span className="hidden sm:inline">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
-            </div>
-            
-            <div className="bg-card/50 backdrop-blur-md p-1 rounded-xl border border-border flex flex-col gap-1 z-50 shadow-xl">
-                <button onClick={() => setTheme('light')} className="p-2 rounded-lg hover:text-primary"><Sun size={16} /></button>
-                <button onClick={() => setTheme('driver')} className="p-2 rounded-lg hover:text-primary"><Moon size={16} /></button>
-                <button onClick={() => setTheme('matrix')} className="p-2 rounded-lg hover:text-primary"><Terminal size={16} /></button>
-                <button onClick={() => setTheme('spiderman')} className="p-2 rounded-lg hover:text-red-600 transition-colors" title="Modo Peter Parker"><span className="text-base">🕷️</span> </button>
-            </div>
+        {/* DIREITA: Streak e Menu */}
+        <div className="flex items-center gap-3">
+          
+          {/* CONTADOR DE STREAK (FOGO) */}
+          {/* Se stats não existir, assume 0 para não quebrar */}
+          <div className={`flex flex-col items-center justify-center px-3 py-1 rounded-xl border bg-card/50 
+              ${(stats?.streak || 0) > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
+              
+              <span className="text-[8px] text-orange-500 font-black uppercase tracking-widest flex items-center gap-1">
+                <Flame size={10} className="fill-orange-500 animate-pulse" />
+                STREAK
+              </span>
+              <span className="text-xl font-black text-orange-400 leading-none">
+                {stats?.streak || 0}
+              </span>
+          </div>
+
+          {/* BOTÃO DO MENU */}
+          <button 
+            onClick={() => setIsMenuOpen(true)}
+            className="p-3 rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
+          >
+            <Menu size={24} />
+          </button>
         </div>
       </header>
-
      {/* NAVEGAÇÃO DE DIAS */}
       {state.view === 'workout' && (
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
@@ -200,7 +196,42 @@ const WorkoutApp = () => {
       
       {/* NAVEGAÇÃO INFERIOR */}
       <CyberNav currentView={state.view} setView={setters.setView} />
-      
+      {/* --- CÓDIGO DA GAVETA DO MENU (COLE ISSO NO FINAL DO JSX) --- */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Fundo Escuro (Clica para fechar) */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
+          
+          {/* Conteúdo do Menu Lateral */}
+          <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">CONFIG</h2>
+              <button onClick={() => setIsMenuOpen(false)} className="text-muted hover:text-red-500 transition-colors">
+                <X size={32} />
+              </button>
+            </div>
+
+            {/* SELETOR DE TEMAS */}
+            <div className="space-y-4 mb-8">
+              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
+              <button onClick={() => setTheme('driver')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-primary text-muted hover:text-primary font-black uppercase tracking-wider transition-all flex justify-between">
+                <span>Cyberpunk</span> {theme === 'driver' && <Zap size={16} />}
+              </button>
+              <button onClick={() => setTheme('matrix')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-[#00ff41] text-muted hover:text-[#00ff41] font-black uppercase tracking-wider transition-all flex justify-between">
+                <span>Matrix</span> {theme === 'matrix' && <Zap size={16} />}
+              </button>
+              <button onClick={() => setTheme('light')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-blue-500 text-muted hover:text-blue-500 font-black uppercase tracking-wider transition-all flex justify-between">
+                <span>Light</span> {theme === 'light' && <Zap size={16} />}
+              </button>
+              <button onClick={() => setTheme('spiderman')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-red-600 text-muted hover:text-red-600 font-black uppercase tracking-wider transition-all flex justify-between">
+                <span>Aranha</span> {theme === 'spiderman' && <Zap size={16} />}
+              </button>
+            </div>
+            
+            <div className="mt-auto text-center text-xs text-muted opacity-30">V.2.0.77</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
