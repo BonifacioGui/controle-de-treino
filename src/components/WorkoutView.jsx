@@ -5,8 +5,9 @@ import RestTimer from './RestTimer';
 
 // --- FUNÇÕES AUXILIARES ---
 
-// 🔥 CORREÇÃO DE NOMES (Visual)
+// Normaliza para comparação visual, mas a limpeza real acontece no runMaintenance
 const normalizeName = (name) => {
+  if (!name) return "";
   return name
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
@@ -40,11 +41,12 @@ const WorkoutView = ({
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({ names: [], keys: [] });
 
-  const days = Object.keys(workoutData); 
+  const days = Object.keys(workoutData || {}); 
   const currentDayIndex = days.indexOf(activeDay);
 
-  // --- HANDLERS ---
   const handlePrevDay = () => {
     const newIndex = currentDayIndex === 0 ? days.length - 1 : currentDayIndex - 1;
     setActiveDay(days[newIndex]);
@@ -76,7 +78,7 @@ const WorkoutView = ({
     setRestTimerConfig({ isOpen: true, duration: seconds });
   };
 
-  // 🔥 CHECK DA SÉRIE (BOLINHA PEQUENA)
+  // 🔥 CHECK DA SÉRIE (BOLINHA) + AUTO TIMER
   const toggleSetComplete = (id, setIndex) => {
     const currentStatus = progress[id]?.sets?.[setIndex]?.completed || false;
     updateSetData(id, setIndex, 'completed', !currentStatus);
@@ -87,62 +89,186 @@ const WorkoutView = ({
     }
   };
 
-  // 🔥 FERRAMENTA DE LIMPEZA (CORRIGE NOMES NO BANCO DE DADOS)
-  const runMaintenance = () => {
-    if (!window.confirm("Isso vai renomear os exercícios no histórico e nos treinos para corrigir duplicatas. Tem certeza?")) return;
+  // DIAGNÓSTICO
+  const openDebugNames = () => {
+    const allNames = new Set();
+    if (history && Array.isArray(history)) {
+        history.forEach(s => { if(s.exercises) s.exercises.forEach(e => allNames.add(e.name)); });
+    }
+    if (workoutData) {
+        Object.values(workoutData).forEach(d => { if(d.exercises) d.exercises.forEach(e => allNames.add(e.name)); });
+    }
+    const keysFound = [];
+    for (let i = 0; i < localStorage.length; i++) keysFound.push(localStorage.key(i));
+    setDebugInfo({ names: [...allNames].sort(), keys: keysFound });
+    setDebugMode(true);
+  };
 
-    // LISTA DE CORREÇÕES (Adicione mais se precisar)
+  // 🔥 A GRANDE LIMPEZA (Baseada na sua lista de importação)
+  const runMaintenance = () => {
+    if (!window.confirm("Isso vai corrigir os nomes importados (ex: 'TríCeps FrancêS' -> 'Tríceps Francês'). Continuar?")) return;
+
+    // MAPA DE CORREÇÃO (Tudo minúsculo na esquerda -> Nome Oficial na direita)
     const replacements = {
+      // PERNAS
+      "leg press": "Leg Press 45 (Pés Afastados)",
+      "leg press (pés afastados)": "Leg Press 45 (Pés Afastados)",
+      "leg press 45 (pés afastados)": "Leg Press 45 (Pés Afastados)",
+      "agachamento isométrico": "Agachamento Isométrico",
+      "agachamento isométrico": "Agachamento Isométrico",
+      "agachamento hack": "Agachamento Hack",
+      "abdução (máquina)": "Abdução de Quadril (Máq)",
+      "cadeira abdutora": "Abdução de Quadril (Máq)",
+      "cadeira extensora": "Cadeira Extensora",
+      "elevação de quadril unilateral": "Elevação de Quadril",
+      "elevação pélvica": "Elevação de Quadril",
+      "stiff (barra)": "Stiff com Halteres",
+      "mesa flexora": "Mesa Flexora Unilateral",
+      "panturrilha (no leg)": "Panturrilha Sentado",
+      
+      // EMPURRAR (PUSH)
+      "supino reto (barra)": "Supino Reto (Barra)",
+      "supino reto": "Supino Reto (Barra)",
+      "supino inclinado (halter)": "Supino Inclinado (Halter)",
       "crossover na polia alta": "Crossover Polia Alta",
       "crossover polia alta": "Crossover Polia Alta",
-      "supino reto com barra": "Supino Reto",
-      "supino reto": "Supino Reto",
-      "agachamento livre": "Agachamento Livre",
-      // Exemplo: "nome errado": "Nome Certo",
+      "desenv. (halter neutro)": "Desenvolvimento Neutro",
+      "desenvolvimento com halteres": "Desenvolvimento Neutro",
+      "desenvolvimento neutro": "Desenvolvimento Neutro",
+      "elevaçáo lateral": "Elevação Lateral",
+      "elevação lateral": "Elevação Lateral",
+      
+      // PUXAR (PULL)
+      "crucifixo inverso (halter)": "Crucifixo Inverso (Halter)",
+      "crucifixo inverso (máq)": "Crucifixo Inverso (Halter)",
+      "puxada neutra (barra h)": "Puxada Neutra (Barra W)",
+      "puxada neutra (barra w)": "Puxada Neutra (Barra W)",
+      "remada baixa na polia baixa (neutra)": "Remada Baixa (Neutra)",
+      "remada baixa triângulo": "Remada Baixa (Neutra)",
+      "remada unilateral": "Remada Unilateral (Serrote)",
+      "rosca direta": "Rosca Direta (Barra W)",
+      "rosca martelo isom.": "Rosca Martelo Isométrica",
+      "rosca martelo isométrico": "Rosca Martelo Isométrica",
+      
+      // TRÍCEPS (A maior bagunça estava aqui)
+      "tríceps francês (corda)": "Tríceps Francês (Corda)",
+      "tríceps na polia (corda)": "Tríceps na Polia (Corda)",
+      "tríceps pulley (barra w)": "Tríceps Pulley (Barra Reta)",
+      "tríceps pulley (barra reta)": "Tríceps Pulley (Barra Reta)",
+      "tríceps pulley (corda)": "Tríceps na Polia (Corda)",
+      "tríceps testa (corda)": "Tríceps Testa (Halter/Barra)",
+      "tríceps testa com barra w": "Tríceps Testa (Halter/Barra)",
+      "tríceps testa unilateral": "Tríceps Testa (Halter/Barra)",
+      "tríceps testa (halter/barra)": "Tríceps Testa (Halter/Barra)",
+
+      // OUTROS
+      "abdominal infra": "Abdominal Infra",
+      "prancha abdominal": "Prancha Abdominal",
+      "prancha isométrica": "Prancha Isométrica",
+      "prancha lateral": "Prancha Lateral Baixa",
+      "prancha lateral baixa": "Prancha Lateral Baixa",
+      "stomach vacuum": "Stomach Vacuum",
+      "caminhada inclinada": "Caminhada Inclinada",
+      "peck deck": "Peck Deck",
+      "peck deck (bônus)": "Peck Deck"
     };
 
-    // 1. Corrige Histórico
-    const historyData = JSON.parse(localStorage.getItem('workout-history') || '[]');
+    // Chaves detectadas no seu localStorage
+    const historyKey = 'workout_history'; 
+    const planKey = 'workout_plan'; 
+
     let changes = 0;
 
-    const newHistory = historyData.map(session => ({
-      ...session,
-      exercises: session.exercises.map(ex => {
-        const key = ex.name.toLowerCase().trim();
-        if (replacements[key]) {
-          changes++;
-          return { ...ex, name: replacements[key] };
-        }
-        return ex;
-      })
-    }));
+    // 1. Corrige Histórico
+    const historyJson = localStorage.getItem(historyKey);
+    if (historyJson) {
+      const historyData = JSON.parse(historyJson);
+      const newHistory = historyData.map(session => ({
+        ...session,
+        exercises: session.exercises.map(ex => {
+          let name = ex.name.trim(); 
+          const lower = name.toLowerCase(); // Compara tudo minúsculo
+          
+          if (replacements[lower]) {
+            name = replacements[lower];
+            changes++;
+          } else {
+             // Tenta corrigir acentuação quebrada (Ex: TríCeps -> Tríceps)
+             // Se o nome em minúsculo for igual ao nome esperado em minúsculo, usa o esperado
+             Object.values(replacements).forEach(correct => {
+                 if (correct.toLowerCase() === lower) {
+                     name = correct;
+                     changes++;
+                 }
+             });
+          }
+          return { ...ex, name };
+        })
+      }));
+      localStorage.setItem(historyKey, JSON.stringify(newHistory));
+    }
 
-    // 2. Corrige Templates (Treinos Atuais)
-    const templates = JSON.parse(localStorage.getItem('workout-data') || '{}');
-    const newTemplates = { ...templates };
-    Object.keys(newTemplates).forEach(dayKey => {
-        newTemplates[dayKey].exercises = newTemplates[dayKey].exercises.map(ex => {
-            const key = ex.name.toLowerCase().trim();
-            if (replacements[key]) {
-                changes++;
-                return { ...ex, name: replacements[key] };
-            }
-            return ex;
+    // 2. Corrige Plano Atual (Templates)
+    const planJson = localStorage.getItem(planKey);
+    if (planJson) {
+      const planData = JSON.parse(planJson);
+      const newPlan = { ...planData };
+      Object.keys(newPlan).forEach(day => {
+        newPlan[day].exercises = newPlan[day].exercises.map(ex => {
+           let name = ex.name.trim();
+           const lower = name.toLowerCase();
+           if (replacements[lower]) {
+             return { ...ex, name: replacements[lower] };
+           }
+           return { ...ex, name };
         });
-    });
+      });
+      localStorage.setItem(planKey, JSON.stringify(newPlan));
+    }
 
-    localStorage.setItem('workout-history', JSON.stringify(newHistory));
-    localStorage.setItem('workout-data', JSON.stringify(newTemplates));
-    
-    alert(`Limpeza Concluída!\n${changes} nomes corrigidos.\nA página será recarregada.`);
+    alert(`Limpeza Concluída!\n${changes} registros foram corrigidos e unificados.\nA página será recarregada.`);
     window.location.reload();
   };
 
   return (
     <>
-      {/* CONTEÚDO PRINCIPAL (COM ANIMAÇÃO) */}
       <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative w-full">
         
+        {/* MODAL DE DIAGNÓSTICO */}
+        {debugMode && (
+            <div className="fixed inset-0 z-[10000] bg-black/95 text-green-400 p-8 overflow-auto font-mono text-xs flex flex-col gap-4">
+                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
+                    <h2 className="text-xl font-bold text-white">DIAGNÓSTICO</h2>
+                    <button onClick={() => setDebugMode(false)} className="text-red-500 font-bold text-xl">X</button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <h3 className="text-white font-bold mb-2">NOMES NO BANCO</h3>
+                        <div className="bg-gray-900 p-2 rounded border border-gray-700 h-64 overflow-y-auto select-text">
+                            <ul className="list-decimal pl-5 space-y-1">
+                                {debugInfo.names.map((name, i) => (
+                                    <li key={i} className="hover:bg-gray-800 p-1 text-yellow-300">"{name}"</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-white font-bold mb-2">CHAVES DETECTADAS</h3>
+                        <div className="bg-gray-900 p-2 rounded border border-gray-700 h-64 overflow-y-auto select-text">
+                            <ul className="list-disc pl-5 space-y-1">
+                                {debugInfo.keys.map((k, i) => (
+                                    <li key={i} className={k.includes('workout') ? "text-green-300 font-bold" : "text-gray-500"}>{k}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-4 mt-4">
+                    <button onClick={() => setDebugMode(false)} className="flex-1 bg-gray-700 text-white p-4 rounded font-bold hover:bg-gray-600">FECHAR</button>
+                </div>
+            </div>
+        )}
+
         {/* PAINEL SUPERIOR */}
         <div className="bg-card border-2 border-border p-5 rounded-3xl relative overflow-hidden group shadow-lg z-10">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
@@ -161,7 +287,6 @@ const WorkoutView = ({
             </div>
             <div className="h-[1px] w-full bg-border/50"></div>
             
-            {/* CRONÔMETRO DE TREINO */}
             {!hasStarted ? (
               <button onClick={toggleWorkoutTimer} className="w-full py-4 rounded-xl bg-primary/10 border-2 border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(var(--primary),0.2)] active:scale-95">
                  <Play size={24} className="fill-current" />
@@ -191,7 +316,6 @@ const WorkoutView = ({
               </div>
             )}
 
-            {/* SENSORES BIOMÉTRICOS */}
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div className="relative">
                 <span className={`absolute top-2 left-3 text-[7px] font-black uppercase tracking-widest z-10 ${isWeightSynced ? 'text-success' : 'text-muted'}`}>MASSA (KG)</span>
@@ -219,7 +343,7 @@ const WorkoutView = ({
             <button onClick={handlePrevDay} className="p-3 rounded-xl bg-card border border-border text-muted hover:text-primary hover:border-primary active:scale-95 transition-all shadow-sm"><ChevronLeft size={24} /></button>
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <span className="text-[9px] font-black text-secondary tracking-[0.4em] uppercase mb-1 animate-pulse">PROTOCOLO_ATUAL</span>
-              <h2 className="text-xl md:text-4xl font-black text-main uppercase italic leading-none drop-shadow-md">{workoutData[activeDay]?.title || 'Treino Desconhecido'}</h2>
+              <h2 className="text-xl md:text-4xl font-black text-main uppercase italic leading-none drop-shadow-md">{workoutData?.[activeDay]?.title || 'Treino Desconhecido'}</h2>
               <span className="text-[10px] font-bold text-muted mt-1 uppercase">{activeDay}</span>
             </div>
             <button onClick={handleNextDay} className="p-3 rounded-xl bg-card border border-border text-muted hover:text-primary hover:border-primary active:scale-95 transition-all shadow-sm"><ChevronRight size={24} /></button>
@@ -233,14 +357,12 @@ const WorkoutView = ({
 
         {/* LISTAGEM DE EXERCÍCIOS */}
         <div className="space-y-6 z-0">
-          {workoutData[activeDay]?.exercises.map((ex, i) => {
+          {workoutData?.[activeDay]?.exercises?.map((ex, i) => {
             const id = `${selectedDate}-${activeDay}-${i}`;
             const isDone = progress[id]?.done;
-            
             const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
             const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
-            // Histórico e Recorde (Usa a normalização nova)
             const exerciseHistory = (history || [])
               .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
               .filter(e => normalizeName(e.name) === normalizeName(ex.name));
@@ -282,7 +404,7 @@ const WorkoutView = ({
                        <p className="text-sm text-muted font-bold uppercase tracking-tighter italic">{ex.note}</p>
                     </div>
                   </div>
-                  {/* CHECK DO EXERCÍCIO GERAL (NÃO ABRE O TIMER) */}
+                  {/* CHECK DO EXERCÍCIO */}
                   <button onClick={() => toggleCheck(id)} className={`ml-4 p-2 rounded-full transition-all duration-500 border-2 ${isDone ? 'border-primary text-primary shadow-[0_0_20px_var(--primary)] bg-transparent scale-110' : 'border-border text-muted hover:border-primary hover:text-white'}`}>
                     <CheckCircle2 size={32} />
                   </button>
@@ -342,10 +464,14 @@ const WorkoutView = ({
             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
           </button>
           
-          {/* BOTÃO DE LIMPEZA DE NOMES */}
-          <button onClick={runMaintenance} className="p-4 bg-red-900 text-white font-bold w-full rounded-xl uppercase tracking-widest text-xs">
-             ⚠️ RODAR LIMPEZA DE NOMES
-          </button>
+          <div className="flex gap-2">
+             <button onClick={openDebugNames} className="p-4 bg-gray-800 text-white font-bold w-1/2 rounded-xl text-xs uppercase tracking-widest hover:bg-gray-700">
+               🔍 LISTAR NOMES
+             </button>
+             <button onClick={runMaintenance} className="p-4 bg-red-900/50 border border-red-500/30 text-white font-bold w-1/2 rounded-xl hover:bg-red-900 transition-all text-xs uppercase tracking-widest">
+               ⚠️ RODAR LIMPEZA
+             </button>
+          </div>
         </div>
 
         {isCalendarOpen && (
@@ -360,7 +486,6 @@ const WorkoutView = ({
 
       {/* --- TIMERS FORA DA TAG MAIN (FLUTUANDO LIVRES) --- */}
       
-      {/* Timer Global */}
       {timerState && timerState.active && (
          <RestTimer 
             initialSeconds={timerState.seconds} 
@@ -368,7 +493,6 @@ const WorkoutView = ({
          />
       )}
 
-      {/* Timer de Série (Agora vai aparecer!) */}
       {restTimerConfig.isOpen && (
          <RestTimer 
             initialSeconds={restTimerConfig.duration} 
