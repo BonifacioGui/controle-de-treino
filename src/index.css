@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&family=Cinzel+Decorative:wght@700;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -58,40 +58,46 @@
     --input-placeholder-opacity: 0.5;
   }
 
-  /* ================= TEMA 3: LIGHT - "WHITE NEON" ================= */
+  /* ================= TEMA 3: LIGHT - "MIRROR'S EDGE STYLE" (CORRIGIDO) ================= */
   [data-theme='light'] {
-    --font-stack: 'Orbitron', sans-serif;
-    --bg-page: #f0f4f8; 
-    --bg-card: rgba(255, 255, 255, 0.75); 
-    --bg-input: rgba(255, 255, 255, 0.9);
-    --text-main: #1e293b; 
-    --text-muted: #64748b; 
-    --primary: 0, 110, 255;
-    --secondary: 220, 0, 140;
-    --success: 0, 180, 100;
-    --warning: 255, 120, 0;
-    --border-color: rgba(0, 110, 255, 0.2);
-    --grid-color: #d1d5db; 
-    --neon-shadow-primary: 0 4px 15px rgba(0, 110, 255, 0.25);
-    --neon-shadow-secondary: 0 4px 15px rgba(220, 0, 140, 0.25);
-    --texture-opacity: 0.05;
+    --font-stack: 'Orbitron', sans-serif; /* VOLTAMOS PARA ORBITRON (Tech) */
+    --bg-page: #f8fafc; /* Branco Gelo Tech */
+    --bg-card: rgba(255, 255, 255, 0.85); /* Branco Vidro */
+    --bg-input: #ffffff;
+    
+    /* Contraste Alto: Preto Tech */
+    --text-main: #020617; 
+    --text-muted: #475569; 
+    
+    /* Cores Cyberpunk no Claro (Ciano e Rosa saturados) */
+    --primary: 0, 160, 200; /* Ciano mais escuro para ler no branco */
+    --secondary: 236, 72, 153; /* Pink */
+    
+    --success: 16, 185, 129;
+    --warning: 245, 158, 11;
+    
+    --border-color: #cbd5e1; /* Cinza claro tech */
+    --grid-color: #e2e8f0; 
+    
+    /* Sombras nítidas em vez de neon borrado */
+    --neon-shadow-primary: none;
+    --neon-shadow-secondary: none;
+    
+    --texture-opacity: 0.03;
     --border-width: 1px;
-    --input-placeholder-opacity: 0.6;
+    --input-placeholder-opacity: 0.4;
   }
 
-  /* ================= TEMA 4: SPIDER-MAN (CORRIGIDO) ================= */
+  /* ================= TEMA 4: SPIDER-MAN ================= */
   html[data-theme='spiderman'] {
     --font-stack: 'Rajdhani', sans-serif; 
     --bg-page: #ef4444; 
     --bg-card: #ffffff; 
     --bg-input: #ffffff;
-    
-    /* VOLTAMOS PARA PRETO: Para ler no fundo branco dos cards */
     --text-main: #000000; 
     --text-muted: #000000; 
-    
-    --primary: 37, 99, 235;   /* Azul */
-    --secondary: 220, 38, 38; /* Vermelho */
+    --primary: 37, 99, 235;   
+    --secondary: 220, 38, 38; 
     --success: 22, 163, 74;
     --warning: 250, 204, 21; 
     --border-color: #000000; 
@@ -132,24 +138,58 @@ input::placeholder {
     text-shadow: var(--neon-shadow-secondary); 
 }
 
-/* --- OVERRIDES: LIGHT THEME --- */
-[data-theme='light'] .text-primary, [data-theme='light'] .text-secondary { text-shadow: none; font-weight: 800; }
-[data-theme='light'] .bg-card, [data-theme='light'] .bg-card\/60, [data-theme='light'] .bg-card\/20 {
+/* --- OVERRIDES: LIGHT THEME (CORREÇÃO VISUAL) --- */
+[data-theme='light'] .text-primary, [data-theme='light'] .text-secondary { 
+    text-shadow: none; 
+    font-weight: 800; 
+}
+
+[data-theme='light'] .bg-card, 
+[data-theme='light'] .bg-card\/60, 
+[data-theme='light'] .bg-card\/20 {
     background-color: var(--bg-card) !important;
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(var(--primary), 0.3) !important;
-    box-shadow: 0 8px 32px rgba(var(--primary), 0.15) !important;
+    border: 1px solid #cbd5e1 !important; /* Borda cinza técnica */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; /* Sombra suave Apple/Tech */
 }
+
 [data-theme='light'] input {
+    background-color: #f1f5f9 !important; /* Cinza muito claro */
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme='light'] input:focus {
     background-color: #ffffff !important;
-    border: 2px solid rgba(var(--primary), 0.2) !important;
-    color: var(--text-main) !important;
+    border-color: rgb(var(--primary)) !important;
+    box-shadow: 0 0 0 2px rgba(var(--primary), 0.2) !important;
 }
 
-/* --- OVERRIDES: SPIDER-MAN (CORREÇÃO DO HALL OF FAME) --- */
+/* 🔥 TÍTULO DO PROJETO NO LIGHT (FIX) 🔥 */
+[data-theme='light'] h1 {
+    font-family: 'Orbitron', sans-serif !important; /* Mesma fonte do Dark */
+    font-weight: 900;
+    text-transform: uppercase;
+    text-align: left; /* Mantém alinhado com o logo */
+    
+    /* Gradiente Tech Escuro (Metal Gun) */
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    
+    /* Sombra sutil para destacar do fundo branco */
+    filter: drop-shadow(0px 2px 0px rgba(0,0,0,0.1));
+}
 
+/* Ajuste do subtítulo "BOMBA" no Light para ser da cor Primária (Ciano Escuro) */
+[data-theme='light'] h1 span.text-primary {
+    background: none;
+    -webkit-text-fill-color: rgb(var(--primary));
+    filter: drop-shadow(0px 1px 0px rgba(0,0,0,0.1));
+}
+
+
+/* --- OVERRIDES: SPIDER-MAN --- */
 html[data-theme='spiderman'] body {
-  /* Fundo Vermelho Aranha + Retícula */
   background-image: radial-gradient(#991b1b 20%, transparent 20%),
                     radial-gradient(#991b1b 20%, transparent 20%);
   background-color: #ef4444;
@@ -158,17 +198,14 @@ html[data-theme='spiderman'] body {
   font-family: 'Rajdhani', sans-serif !important;
   font-weight: 700;
   font-size: 18px; 
-  /* GARANTINDO QUE O TEXTO PADRÃO SEJA PRETO */
   color: #000000 !important;
 }
 
-/* 1. TÍTULOS E LOGS VIRAM CAIXAS DE NARRAÇÃO (AMARELAS) */
-/* Apenas os títulos soltos ganham fundo para leitura no vermelho */
 html[data-theme='spiderman'] h2,
 html[data-theme='spiderman'] h3,
 html[data-theme='spiderman'] .text-xl, 
 html[data-theme='spiderman'] .text-lg {
-    background-color: #facc15; /* Amarelo Narração */
+    background-color: #facc15; 
     color: #000000 !important;
     font-family: 'Bangers', cursive !important;
     text-transform: uppercase;
@@ -183,35 +220,32 @@ html[data-theme='spiderman'] .text-lg {
     text-shadow: none !important;
 }
 
-/* Título Principal */
 html[data-theme='spiderman'] h1 {
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
     color: #facc15 !important;
-    -webkit-text-stroke: 2px black;
+    -webkit-text-stroke: 1.5px black;
     text-shadow: 4px 4px 0 #991b1b !important;
-    font-size: 3.5rem !important;
+    font-size: clamp(2.5rem, 13vw, 4rem) !important;
+    line-height: 1 !important;
+    width: 100%;
+    text-align: center;
 }
 
-/* REMOVIDA A REGRA QUE FORÇAVA TEXTO BRANCO EM TUDO */
-
-/* 3. CARDS BRANCOS COM TEXTO PRETO */
 html[data-theme='spiderman'] .bg-card, 
 html[data-theme='spiderman'] .bg-card\/60,
 html[data-theme='spiderman'] .bg-card\/20 {
   background-color: #ffffff !important;
   border: 3px solid #000000 !important;
-  box-shadow: 6px 6px 0px #2563eb !important; /* Sombra Azul */
+  box-shadow: 6px 6px 0px #2563eb !important; 
   margin-bottom: 20px;
   border-radius: 6px !important;
-  /* FORÇA O TEXTO DENTRO DO CARD A SER PRETO */
   color: #000000 !important;
 }
 
-/* 4. BOTÕES */
 html[data-theme='spiderman'] button {
-  background-color: #2563eb !important; /* Azul */
+  background-color: #2563eb !important; 
   color: #ffffff !important;
   border: 3px solid black !important;
   box-shadow: 4px 4px 0 black !important;
@@ -221,7 +255,6 @@ html[data-theme='spiderman'] button {
   text-shadow: 2px 2px 0 black !important;
 }
 
-/* INPUTS */
 html[data-theme='spiderman'] input {
   background: #ffffff !important;
   border: 3px solid #000000 !important;
@@ -233,7 +266,7 @@ html[data-theme='spiderman'] input {
   border-radius: 12px !important;
 }
 
-/* DATEPICKER */
+/* DATEPICKER FIXES */
 html[data-theme='spiderman'] .cyber-calendar {
     font-family: 'Rajdhani', sans-serif !important;
     border: 3px solid #000 !important;
@@ -246,14 +279,9 @@ html[data-theme='spiderman'] .react-datepicker__header {
     color: black !important;
     text-shadow: none !important;
 }
-html[data-theme='spiderman'] .react-datepicker__current-month {
-    color: black !important;
-    text-shadow: none !important;
-}
+html[data-theme='spiderman'] .react-datepicker__current-month { color: black !important; text-shadow: none !important; }
 html[data-theme='spiderman'] .react-datepicker__day--selected {
-    background-color: #2563eb !important;
-    border: 2px solid black !important;
-    color: white !important;
+    background-color: #2563eb !important; border: 2px solid black !important; color: white !important;
 }
 
 /* --- GRIDS --- */
@@ -267,8 +295,8 @@ html[data-theme='spiderman'] .react-datepicker__day--selected {
   linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
 }
 [data-theme='light'] .cyber-grid {
-  background-image: linear-gradient(to right, rgba(0, 110, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 110, 255, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 30px 30px;
   opacity: 1;
 }
@@ -295,12 +323,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 0 15px rgba(var(--primary), 0.3);
 }
 
-/* Datepicker Light */
 [data-theme='light'] .cyber-calendar {
   background-color: rgba(255, 255, 255, 0.95) !important;
   backdrop-filter: blur(10px);
-  border: 2px solid rgba(var(--primary), 0.3) !important;
-  box-shadow: 0 10px 25px rgba(var(--primary), 0.25) !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
   color: #1e293b !important;
 }
 
@@ -309,8 +336,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-bottom: 1px solid rgb(var(--primary)) !important;
 }
 [data-theme='light'] .react-datepicker__header {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-  border-bottom: 2px solid rgba(var(--primary), 0.2) !important;
+  background-color: #f1f5f9 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
 }
 
 .react-datepicker__day { color: var(--text-main) !important; }
@@ -334,7 +361,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 [data-theme='light'] ::-webkit-scrollbar-track { background: #e2e8f0; }
 [data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(var(--primary), 0.5); border: 2px solid #f0f4f8;
+  background: #94a3b8; border: 2px solid #f8fafc;
 }
 
 [data-theme='spiderman'] ::-webkit-scrollbar-thumb {
@@ -345,5 +372,5 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--primary)) var(--bg-input); }
-[data-theme='light'] * { scrollbar-color: rgba(var(--primary), 0.5) #e2e8f0; }
+[data-theme='light'] * { scrollbar-color: #94a3b8 #e2e8f0; }
 [data-theme='spiderman'] * { scrollbar-color: #2563eb #ffffff; }
