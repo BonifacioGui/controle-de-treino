@@ -1,19 +1,68 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Circle, Zap, Cpu, X, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, History } from 'lucide-react'; 
+import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera } from 'lucide-react'; 
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
 
 // --- FUNÇÕES AUXILIARES ---
 
-// Normaliza para comparação visual, mas a limpeza real acontece no runMaintenance
-const normalizeName = (name) => {
-  if (!name) return "";
-  return name
+const cleanString = (str) => {
+  if (!str) return "";
+  return str
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-    .replace(/\b(na|no|em|de|da|do|com|a|o|e)\b/g, "") 
-    .replace(/\s+/g, " ") 
-    .trim();
+    .replace(/[^a-z0-9]/g, ""); 
+};
+
+// COMPARADOR DE NOMES
+const isSameExercise = (currentName, historyName) => {
+  const currentKey = cleanString(currentName);
+  const historyKey = cleanString(historyName);
+
+  // 1. Match Básico
+  if (historyKey.includes(currentKey)) return true;
+  if (currentKey.includes(historyKey) && historyKey.length > 4) return true; 
+
+  // 2. Sinônimos Específicos
+  const synonyms = {
+    // 🔥 CORREÇÃO DA ROSCA 45º 🔥
+    "rosca45": ["incline", "banco", "inclinada", "45"],
+
+    // Outros já corrigidos
+    "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta"],
+    "elevacaopelvica": ["quadril", "pelvica", "elevacao"],
+    "cadeiraabdutora": ["abducao", "abdutora"],
+    "mesaflexora": ["flexora"],
+    "cadeiraextensora": ["extensora"],
+    "serrote": ["remadaunilateral", "unilateral"],
+    "tricepspulley": ["tricepsnapolia", "tricepscorda", "barrareta", "volume"],
+    "tricepscorda": ["tricepsnapolia", "tricepspulley"],
+    "agachamentolivre": ["agachamento"],
+    "legpress": ["legpress45", "pesafastados"],
+    "abdominalinfra": ["abdominal"],
+    "vacuum": ["stomachvacuum"],
+    "supinoinclinado": ["supinoinclinado", "controlar"],
+    "crucifixoinverso": ["halter", "postural", "cifose", "substituto", "bosta"] 
+  };
+
+  if (synonyms[currentKey]) {
+    return synonyms[currentKey].some(syn => historyKey.includes(syn));
+  }
+
+  return false;
+};
+
+// Tradutor de Datas para Ordenação
+const parseDateTimestamp = (dateStr) => {
+    if (!dateStr) return 0;
+    try {
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            }
+        }
+        return new Date(dateStr).getTime();
+    } catch (e) { return 0; }
 };
 
 const calculate1RM = (weight, reps) => {
@@ -41,8 +90,6 @@ const WorkoutView = ({
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
-  const [debugMode, setDebugMode] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({ names: [], keys: [] });
 
   const days = Object.keys(workoutData || {}); 
   const currentDayIndex = days.indexOf(activeDay);
@@ -58,12 +105,13 @@ const WorkoutView = ({
   };
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
-  const formattedSelectedDate = selectedDate.split('-').reverse().join('/');
-  const currentEntry = bodyHistory?.find(h => h.date === formattedSelectedDate);
-  const hasPhoto = !!currentEntry?.photo;
-  const isWeightSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.weight == weightInput && weightInput !== '');
-  const isWaistSynced = bodyHistory?.some(h => h.date === formattedSelectedDate && h.waist == waistInput && waistInput !== '');
+  
+  const isWeightSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.weight == weightInput && weightInput !== '');
+  const isWaistSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.waist == waistInput && waistInput !== '');
   const hasStarted = workoutTimer?.elapsed > 0 || workoutTimer?.isRunning;
+  
+  const currentEntry = bodyHistory?.find(h => h.date === selectedDate.split('-').reverse().join('/'));
+  const hasPhoto = !!currentEntry?.photo;
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -78,197 +126,18 @@ const WorkoutView = ({
     setRestTimerConfig({ isOpen: true, duration: seconds });
   };
 
-  // 🔥 CHECK DA SÉRIE (BOLINHA) + AUTO TIMER
   const toggleSetComplete = (id, setIndex) => {
     const currentStatus = progress[id]?.sets?.[setIndex]?.completed || false;
     updateSetData(id, setIndex, 'completed', !currentStatus);
-    
-    // Se marcou como feito, ABRE O TIMER
     if (!currentStatus) {
       openRestTimer(60); 
     }
-  };
-
-  // DIAGNÓSTICO
-  const openDebugNames = () => {
-    const allNames = new Set();
-    if (history && Array.isArray(history)) {
-        history.forEach(s => { if(s.exercises) s.exercises.forEach(e => allNames.add(e.name)); });
-    }
-    if (workoutData) {
-        Object.values(workoutData).forEach(d => { if(d.exercises) d.exercises.forEach(e => allNames.add(e.name)); });
-    }
-    const keysFound = [];
-    for (let i = 0; i < localStorage.length; i++) keysFound.push(localStorage.key(i));
-    setDebugInfo({ names: [...allNames].sort(), keys: keysFound });
-    setDebugMode(true);
-  };
-
-  // 🔥 A GRANDE LIMPEZA (Baseada na sua lista de importação)
-  const runMaintenance = () => {
-    if (!window.confirm("Isso vai corrigir os nomes importados (ex: 'TríCeps FrancêS' -> 'Tríceps Francês'). Continuar?")) return;
-
-    // MAPA DE CORREÇÃO (Tudo minúsculo na esquerda -> Nome Oficial na direita)
-    const replacements = {
-      // PERNAS
-      "leg press": "Leg Press 45 (Pés Afastados)",
-      "leg press (pés afastados)": "Leg Press 45 (Pés Afastados)",
-      "leg press 45 (pés afastados)": "Leg Press 45 (Pés Afastados)",
-      "agachamento isométrico": "Agachamento Isométrico",
-      "agachamento isométrico": "Agachamento Isométrico",
-      "agachamento hack": "Agachamento Hack",
-      "abdução (máquina)": "Abdução de Quadril (Máq)",
-      "cadeira abdutora": "Abdução de Quadril (Máq)",
-      "cadeira extensora": "Cadeira Extensora",
-      "elevação de quadril unilateral": "Elevação de Quadril",
-      "elevação pélvica": "Elevação de Quadril",
-      "stiff (barra)": "Stiff com Halteres",
-      "mesa flexora": "Mesa Flexora Unilateral",
-      "panturrilha (no leg)": "Panturrilha Sentado",
-      
-      // EMPURRAR (PUSH)
-      "supino reto (barra)": "Supino Reto (Barra)",
-      "supino reto": "Supino Reto (Barra)",
-      "supino inclinado (halter)": "Supino Inclinado (Halter)",
-      "crossover na polia alta": "Crossover Polia Alta",
-      "crossover polia alta": "Crossover Polia Alta",
-      "desenv. (halter neutro)": "Desenvolvimento Neutro",
-      "desenvolvimento com halteres": "Desenvolvimento Neutro",
-      "desenvolvimento neutro": "Desenvolvimento Neutro",
-      "elevaçáo lateral": "Elevação Lateral",
-      "elevação lateral": "Elevação Lateral",
-      
-      // PUXAR (PULL)
-      "crucifixo inverso (halter)": "Crucifixo Inverso (Halter)",
-      "crucifixo inverso (máq)": "Crucifixo Inverso (Halter)",
-      "puxada neutra (barra h)": "Puxada Neutra (Barra W)",
-      "puxada neutra (barra w)": "Puxada Neutra (Barra W)",
-      "remada baixa na polia baixa (neutra)": "Remada Baixa (Neutra)",
-      "remada baixa triângulo": "Remada Baixa (Neutra)",
-      "remada unilateral": "Remada Unilateral (Serrote)",
-      "rosca direta": "Rosca Direta (Barra W)",
-      "rosca martelo isom.": "Rosca Martelo Isométrica",
-      "rosca martelo isométrico": "Rosca Martelo Isométrica",
-      
-      // TRÍCEPS (A maior bagunça estava aqui)
-      "tríceps francês (corda)": "Tríceps Francês (Corda)",
-      "tríceps na polia (corda)": "Tríceps na Polia (Corda)",
-      "tríceps pulley (barra w)": "Tríceps Pulley (Barra Reta)",
-      "tríceps pulley (barra reta)": "Tríceps Pulley (Barra Reta)",
-      "tríceps pulley (corda)": "Tríceps na Polia (Corda)",
-      "tríceps testa (corda)": "Tríceps Testa (Halter/Barra)",
-      "tríceps testa com barra w": "Tríceps Testa (Halter/Barra)",
-      "tríceps testa unilateral": "Tríceps Testa (Halter/Barra)",
-      "tríceps testa (halter/barra)": "Tríceps Testa (Halter/Barra)",
-
-      // OUTROS
-      "abdominal infra": "Abdominal Infra",
-      "prancha abdominal": "Prancha Abdominal",
-      "prancha isométrica": "Prancha Isométrica",
-      "prancha lateral": "Prancha Lateral Baixa",
-      "prancha lateral baixa": "Prancha Lateral Baixa",
-      "stomach vacuum": "Stomach Vacuum",
-      "caminhada inclinada": "Caminhada Inclinada",
-      "peck deck": "Peck Deck",
-      "peck deck (bônus)": "Peck Deck"
-    };
-
-    // Chaves detectadas no seu localStorage
-    const historyKey = 'workout_history'; 
-    const planKey = 'workout_plan'; 
-
-    let changes = 0;
-
-    // 1. Corrige Histórico
-    const historyJson = localStorage.getItem(historyKey);
-    if (historyJson) {
-      const historyData = JSON.parse(historyJson);
-      const newHistory = historyData.map(session => ({
-        ...session,
-        exercises: session.exercises.map(ex => {
-          let name = ex.name.trim(); 
-          const lower = name.toLowerCase(); // Compara tudo minúsculo
-          
-          if (replacements[lower]) {
-            name = replacements[lower];
-            changes++;
-          } else {
-             // Tenta corrigir acentuação quebrada (Ex: TríCeps -> Tríceps)
-             // Se o nome em minúsculo for igual ao nome esperado em minúsculo, usa o esperado
-             Object.values(replacements).forEach(correct => {
-                 if (correct.toLowerCase() === lower) {
-                     name = correct;
-                     changes++;
-                 }
-             });
-          }
-          return { ...ex, name };
-        })
-      }));
-      localStorage.setItem(historyKey, JSON.stringify(newHistory));
-    }
-
-    // 2. Corrige Plano Atual (Templates)
-    const planJson = localStorage.getItem(planKey);
-    if (planJson) {
-      const planData = JSON.parse(planJson);
-      const newPlan = { ...planData };
-      Object.keys(newPlan).forEach(day => {
-        newPlan[day].exercises = newPlan[day].exercises.map(ex => {
-           let name = ex.name.trim();
-           const lower = name.toLowerCase();
-           if (replacements[lower]) {
-             return { ...ex, name: replacements[lower] };
-           }
-           return { ...ex, name };
-        });
-      });
-      localStorage.setItem(planKey, JSON.stringify(newPlan));
-    }
-
-    alert(`Limpeza Concluída!\n${changes} registros foram corrigidos e unificados.\nA página será recarregada.`);
-    window.location.reload();
   };
 
   return (
     <>
       <main className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative w-full">
         
-        {/* MODAL DE DIAGNÓSTICO */}
-        {debugMode && (
-            <div className="fixed inset-0 z-[10000] bg-black/95 text-green-400 p-8 overflow-auto font-mono text-xs flex flex-col gap-4">
-                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-                    <h2 className="text-xl font-bold text-white">DIAGNÓSTICO</h2>
-                    <button onClick={() => setDebugMode(false)} className="text-red-500 font-bold text-xl">X</button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <h3 className="text-white font-bold mb-2">NOMES NO BANCO</h3>
-                        <div className="bg-gray-900 p-2 rounded border border-gray-700 h-64 overflow-y-auto select-text">
-                            <ul className="list-decimal pl-5 space-y-1">
-                                {debugInfo.names.map((name, i) => (
-                                    <li key={i} className="hover:bg-gray-800 p-1 text-yellow-300">"{name}"</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-white font-bold mb-2">CHAVES DETECTADAS</h3>
-                        <div className="bg-gray-900 p-2 rounded border border-gray-700 h-64 overflow-y-auto select-text">
-                            <ul className="list-disc pl-5 space-y-1">
-                                {debugInfo.keys.map((k, i) => (
-                                    <li key={i} className={k.includes('workout') ? "text-green-300 font-bold" : "text-gray-500"}>{k}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex gap-4 mt-4">
-                    <button onClick={() => setDebugMode(false)} className="flex-1 bg-gray-700 text-white p-4 rounded font-bold hover:bg-gray-600">FECHAR</button>
-                </div>
-            </div>
-        )}
-
         {/* PAINEL SUPERIOR */}
         <div className="bg-card border-2 border-border p-5 rounded-3xl relative overflow-hidden group shadow-lg z-10">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
@@ -363,20 +232,21 @@ const WorkoutView = ({
             const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
             const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
+            // 1. Busca e Filtra
             const exerciseHistory = (history || [])
               .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
-              .filter(e => normalizeName(e.name) === normalizeName(ex.name));
+              .filter(e => isSameExercise(ex.name, e.name));
 
+            // 2. Recorde
             const exercisePR = exerciseHistory.reduce((max, e) => {
                 const sessionMax = Math.max(...(e.sets?.map(s => parseFloat(s.weight) || 0) || [0]));
                 return Math.max(max, sessionMax);
             }, 0);
             
-            const lastWorkoutEntry = exerciseHistory.sort((a, b) => {
-               const dateA = a.date.split('/').reverse().join('-');
-               const dateB = b.date.split('/').reverse().join('-');
-               return new Date(dateB) - new Date(dateA); 
-            })[0];
+            // 3. Última Carga (Ordenação por timestamp + filtro de peso > 0)
+            const lastWorkoutEntry = [...exerciseHistory]
+                .sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))
+                .find(entry => entry.sets && entry.sets.some(s => parseFloat(s.weight) > 0));
             
             const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => parseFloat(s.weight) || 0) || [0])) : 0;
             const isBreakingPR = (progress[id]?.sets || []).some(s => parseFloat(s.weight) > exercisePR && exercisePR > 0);
@@ -463,15 +333,6 @@ const WorkoutView = ({
             <span className="relative z-10 uppercase tracking-[0.3em] text-sm italic flex items-center justify-center gap-2"><Star size={16} fill="white" /> EFETIVAR ALTERAÇÕES</span>
             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
           </button>
-          
-          <div className="flex gap-2">
-             <button onClick={openDebugNames} className="p-4 bg-gray-800 text-white font-bold w-1/2 rounded-xl text-xs uppercase tracking-widest hover:bg-gray-700">
-               🔍 LISTAR NOMES
-             </button>
-             <button onClick={runMaintenance} className="p-4 bg-red-900/50 border border-red-500/30 text-white font-bold w-1/2 rounded-xl hover:bg-red-900 transition-all text-xs uppercase tracking-widest">
-               ⚠️ RODAR LIMPEZA
-             </button>
-          </div>
         </div>
 
         {isCalendarOpen && (
@@ -484,21 +345,9 @@ const WorkoutView = ({
         )}
       </main>
 
-      {/* --- TIMERS FORA DA TAG MAIN (FLUTUANDO LIVRES) --- */}
-      
-      {timerState && timerState.active && (
-         <RestTimer 
-            initialSeconds={timerState.seconds} 
-            onClose={closeTimer} 
-         />
-      )}
-
-      {restTimerConfig.isOpen && (
-         <RestTimer 
-            initialSeconds={restTimerConfig.duration} 
-            onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} 
-         />
-      )}
+      {/* --- TIMERS FORA DA TAG MAIN --- */}
+      {timerState && timerState.active && <RestTimer initialSeconds={timerState.seconds} onClose={closeTimer} />}
+      {restTimerConfig.isOpen && <RestTimer initialSeconds={restTimerConfig.duration} onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} />}
       
     </>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame } from 'lucide-react';
 import { useWorkout } from './hooks/useWorkout'; 
+import { initialWorkoutData } from './workoutData'; // 🔥 IMPORTAÇÃO ESSENCIAL ADICIONADA
 
 // Componentes
 import WorkoutView from './components/WorkoutView';
@@ -32,66 +33,90 @@ const WorkoutApp = () => {
     };
   }, []);
 
+  // 🔥 CORREÇÃO PRINCIPAL: AUTO-INICIALIZAÇÃO
+  // Se abrir na tela de import ou sem dados, carrega o padrão e vai pro treino.
+  useEffect(() => {
+    if (state.view === 'import' || !state.workoutData || Object.keys(state.workoutData).length === 0) {
+       const saved = localStorage.getItem('workout_plan');
+       if (!saved) {
+           // Se não tem nada salvo, salva o initialWorkoutData
+           localStorage.setItem('workout_plan', JSON.stringify(initialWorkoutData));
+           if (setters.setWorkoutData) setters.setWorkoutData(initialWorkoutData);
+       }
+       // Força a ida para a tela de treino
+       if (setters.setView) setters.setView('workout');
+    }
+  }, [state.view, state.workoutData, setters]);
+
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
   }, [actions, setters]);
 
   const runMaintenance = () => {
-  if (!window.confirm("Isso vai renomear os exercícios no histórico e nos treinos. Tem certeza?")) return;
+    if (!window.confirm("Isso vai renomear os exercícios no histórico e nos treinos para o padrão simplificado. Tem certeza?")) return;
 
-  // --- CONFIGURAÇÃO: O QUE VOCÊ QUER MUDAR ---
-  // Esquerda: Nome Errado (exatamente como aparece no console)
-  // Direita: Nome Certo (como deve ficar para sempre)
-  const replacements = {
-    "crossover na polia alta": "Crossover Polia Alta",
-    "Crossover polia alta": "Crossover Polia Alta", // Padronizar Maiúsculas
-    "Supino reto": "Supino Reto",
-    "supino reto barra": "Supino Reto",
-    "Agachamento livre": "Agachamento Livre",
-    // Adicione quantas linhas precisar...
-  };
+    // --- CONFIGURAÇÃO CORRIGIDA (PARA NOMES SIMPLES) ---
+    const replacements = {
+      // Crossover
+      "crossover na polia alta": "Crossover",
+      "Crossover polia alta": "Crossover",
+      "Crossover Polia Alta": "Crossover",
+      // Supino
+      "Supino reto": "Supino Reto",
+      "supino reto barra": "Supino Reto",
+      "supino reto (barra)": "Supino Reto",
+      "Supino Inclinado (Halter)": "Supino Inclinado",
+      // Pernas
+      "Agachamento livre": "Agachamento Livre",
+      "Leg Press 45": "Leg Press",
+      "Elevação Pélvica (Barra)": "Elevação Pélvica",
+      // Costas
+      "Puxada Alta": "Puxada Frontal",
+      // Adicione outros conforme necessário
+    };
 
-  // 1. CORRIGIR HISTÓRICO (Passado)
-  const history = JSON.parse(localStorage.getItem('workout-history') || '[]');
-  let historyChanges = 0;
+    // 1. CORRIGIR HISTÓRICO (Passado)
+    const history = JSON.parse(localStorage.getItem('workout-history') || '[]');
+    let historyChanges = 0;
 
-  const newHistory = history.map(session => ({
-    ...session,
-    exercises: session.exercises.map(ex => {
-      // Verifica se o nome atual está na lista de "errados"
-      if (replacements[ex.name]) {
-        historyChanges++;
-        return { ...ex, name: replacements[ex.name] }; // Troca pelo certo
-      }
-      // Se não estiver na lista, mantém igual, mas remove espaços extras nas pontas
-      return { ...ex, name: ex.name.trim() }; 
-    })
-  }));
+    const newHistory = history.map(session => ({
+      ...session,
+      exercises: session.exercises.map(ex => {
+        const trimmedName = ex.name.trim();
+        // Verifica se o nome atual está na lista de "errados"
+        if (replacements[trimmedName]) {
+          historyChanges++;
+          return { ...ex, name: replacements[trimmedName] }; 
+        }
+        return { ...ex, name: trimmedName }; 
+      })
+    }));
 
-  // 2. CORRIGIR TREINOS ATUAIS (Futuro)
-  const templates = JSON.parse(localStorage.getItem('workout-data') || '{}');
-  let templateChanges = 0;
-  
-  const newTemplates = { ...templates };
-  Object.keys(newTemplates).forEach(dayKey => {
-    newTemplates[dayKey].exercises = newTemplates[dayKey].exercises.map(ex => {
-       if (replacements[ex.name]) {
-         templateChanges++;
-         return { ...ex, name: replacements[ex.name] };
-       }
-       return { ...ex, name: ex.name.trim() };
+    // 2. CORRIGIR TREINOS ATUAIS (Futuro)
+    const templates = JSON.parse(localStorage.getItem('workout-data') || '{}');
+    let templateChanges = 0;
+    
+    const newTemplates = { ...templates };
+    Object.keys(newTemplates).forEach(dayKey => {
+      newTemplates[dayKey].exercises = newTemplates[dayKey].exercises.map(ex => {
+         const trimmedName = ex.name.trim();
+         if (replacements[trimmedName]) {
+           templateChanges++;
+           return { ...ex, name: replacements[trimmedName] };
+         }
+         return { ...ex, name: trimmedName };
+      });
     });
-  });
 
-  // 3. SALVAR TUDO
-  localStorage.setItem('workout-history', JSON.stringify(newHistory));
-  localStorage.setItem('workout-data', JSON.stringify(newTemplates));
+    // 3. SALVAR TUDO
+    localStorage.setItem('workout-history', JSON.stringify(newHistory));
+    localStorage.setItem('workout-data', JSON.stringify(newTemplates));
 
-  // 4. RECARREGAR PÁGINA
-  alert(`Limpeza Concluída!\n\nHistórico alterado: ${historyChanges} vezes\nTreinos alterados: ${templateChanges} vezes.\n\nA página será recarregada.`);
-  window.location.reload();
-};
+    // 4. RECARREGAR PÁGINA
+    alert(`Limpeza Concluída!\n\nHistórico alterado: ${historyChanges} vezes\nTreinos alterados: ${templateChanges} vezes.\n\nA página será recarregada.`);
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
@@ -130,7 +155,6 @@ const WorkoutApp = () => {
         <div className="flex items-center gap-3">
           
           {/* CONTADOR DE STREAK (FOGO) */}
-          {/* Se stats não existir, assume 0 para não quebrar */}
           <div className={`flex flex-col items-center justify-center px-3 py-1 rounded-xl border bg-card/50 
               ${(stats?.streak || 0) > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
               
@@ -153,13 +177,12 @@ const WorkoutApp = () => {
         </div>
       </header>
      {/* NAVEGAÇÃO DE DIAS */}
-      {state.view === 'workout' && (
+      {state.view === 'workout' && state.workoutData && (
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
           {Object.keys(state.workoutData).map((day) => (
             <button
               key={day}
               onClick={() => setters.setActiveDay(day)}
-              // Mudei 'rounded-xl' -> 'rounded-2xl' e 'text-sm' -> 'text-base'
               className={`px-8 py-4 rounded-2xl font-black text-lm transition-all duration-300 uppercase tracking-widest border shrink-0
                 ${state.activeDay === day 
                   ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgb(var(--primary))] scale-105' 
@@ -174,8 +197,7 @@ const WorkoutApp = () => {
 
       {/* VIEWS */}
       <div className="relative z-10 min-h-[50vh]">
-        {state.view === 'workout' && (
-          // Proteção contra crash se o dia não existir
+        {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
               // DADOS BÁSICOS
@@ -204,12 +226,12 @@ const WorkoutApp = () => {
               bodyHistory={state.bodyHistory} 
               history={state.history}
               
-              // 🔥 TIMERS & CONTROLES EXTRAS
+              // TIMERS
               timerState={state.timerState}
               closeTimer={actions.closeTimer}
               workoutTimer={state.workoutTimer}
               toggleWorkoutTimer={actions.toggleWorkoutTimer}
-              resetWorkoutTimer={actions.resetWorkoutTimer} // Passando Reset
+              resetWorkoutTimer={actions.resetWorkoutTimer}
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -242,23 +264,24 @@ const WorkoutApp = () => {
         )}
 
         {state.view === 'stats' && (
-            <StatsView bodyHistory={state.bodyHistory} history={state.history} setView={setters.setView} />
+            <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />
         )}
         
         {state.view === 'import' && (
-            <Importer onSuccess={handleImportSuccess} />
+            <div className="flex items-center justify-center h-64 text-primary animate-pulse font-black uppercase tracking-widest">
+                Inicializando Sistema...
+            </div>
         )}
       </div>
       
       {/* NAVEGAÇÃO INFERIOR */}
       <CyberNav currentView={state.view} setView={setters.setView} />
-      {/* --- CÓDIGO DA GAVETA DO MENU (COLE ISSO NO FINAL DO JSX) --- */}
+      
+      {/* MENU LATERAL */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Fundo Escuro (Clica para fechar) */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
           
-          {/* Conteúdo do Menu Lateral */}
           <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-black text-primary uppercase tracking-widest">CONFIG</h2>
@@ -267,7 +290,6 @@ const WorkoutApp = () => {
               </button>
             </div>
 
-            {/* SELETOR DE TEMAS */}
             <div className="space-y-4 mb-8">
               <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
               <button onClick={() => setTheme('driver')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-primary text-muted hover:text-primary font-black uppercase tracking-wider transition-all flex justify-between">
@@ -284,7 +306,13 @@ const WorkoutApp = () => {
               </button>
             </div>
             
-            <div className="mt-auto text-center text-xs text-muted opacity-30">V.2.0.77</div>
+            {/* Opção para rodar manutenção caso precise um dia */}
+            <div className="mt-auto space-y-4">
+                <button onClick={runMaintenance} className="w-full py-3 rounded-lg border border-red-900/50 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-900/20">
+                    🛠️ Resetar Nomes
+                </button>
+                <div className="text-center text-xs text-muted opacity-30">V.2.0.77</div>
+            </div>
           </div>
         </div>
       )}
