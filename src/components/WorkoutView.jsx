@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera } from 'lucide-react'; 
+import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X } from 'lucide-react'; 
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
+import BossBattle from './BossBattle'; // <--- Importado corretamente
 
 // --- FUNÇÕES AUXILIARES ---
 
@@ -13,39 +14,49 @@ const cleanString = (str) => {
     .replace(/[^a-z0-9]/g, ""); 
 };
 
-// COMPARADOR DE NOMES
+// Parse seguro de números (aceita vírgula e ponto)
+const safeParseFloat = (val) => {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  return parseFloat(String(val).replace(',', '.')) || 0;
+};
+
+// COMPARADOR DE NOMES (Otimizado)
 const isSameExercise = (currentName, historyName) => {
   const currentKey = cleanString(currentName);
   const historyKey = cleanString(historyName);
 
-  // 1. Match Básico
+  // 1. Match Exato ou Contém
+  if (currentKey === historyKey) return true;
   if (historyKey.includes(currentKey)) return true;
   if (currentKey.includes(historyKey) && historyKey.length > 4) return true; 
 
-  // 2. Sinônimos Específicos
+  // 2. Sinônimos Específicos (Sua lista personalizada)
   const synonyms = {
-    // 🔥 CORREÇÃO DA ROSCA 45º 🔥
     "rosca45": ["incline", "banco", "inclinada", "45"],
-
-    // Outros já corrigidos
-    "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta"],
+    "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta", "cross"],
     "elevacaopelvica": ["quadril", "pelvica", "elevacao"],
     "cadeiraabdutora": ["abducao", "abdutora"],
     "mesaflexora": ["flexora"],
     "cadeiraextensora": ["extensora"],
     "serrote": ["remadaunilateral", "unilateral"],
-    "tricepspulley": ["tricepsnapolia", "tricepscorda", "barrareta", "volume"],
+    "tricepspulley": ["tricepsnapolia", "tricepscorda", "barrareta", "volume", "polia"],
     "tricepscorda": ["tricepsnapolia", "tricepspulley"],
     "agachamentolivre": ["agachamento"],
     "legpress": ["legpress45", "pesafastados"],
     "abdominalinfra": ["abdominal"],
     "vacuum": ["stomachvacuum"],
-    "supinoinclinado": ["supinoinclinado", "controlar"],
-    "crucifixoinverso": ["halter", "postural", "cifose", "substituto", "bosta"] 
+    "supinoinclinado": ["supinoinclinado", "controlar", "halter"],
+    "crucifixoinverso": ["halter", "postural", "cifose", "substituto"] 
   };
 
   if (synonyms[currentKey]) {
     return synonyms[currentKey].some(syn => historyKey.includes(syn));
+  }
+  
+  // Tenta o inverso (se o nome histórico for a chave)
+  if (synonyms[historyKey]) {
+    return synonyms[historyKey].some(syn => currentKey.includes(syn));
   }
 
   return false;
@@ -66,8 +77,8 @@ const parseDateTimestamp = (dateStr) => {
 };
 
 const calculate1RM = (weight, reps) => {
-  const w = parseFloat(weight);
-  const r = parseFloat(reps);
+  const w = safeParseFloat(weight);
+  const r = safeParseFloat(reps);
   if (!w || !r || r === 0) return null;
   return Math.round(w * (1 + r / 30));
 };
@@ -133,6 +144,28 @@ const WorkoutView = ({
       openRestTimer(60); 
     }
   };
+
+  // 🔥 CÁLCULO DE DANO NO BOSS (VOLUME TOTAL DO TREINO ATUAL)
+  const currentSessionVolume = Object.keys(progress).reduce((total, key) => {
+     // Verifica se o exercício pertence ao dia e data selecionados
+     if (key.startsWith(`${selectedDate}-${activeDay}`)) {
+        const exerciseProgress = progress[key];
+        if (exerciseProgress?.sets) {
+           return total + exerciseProgress.sets.reduce((exTotal, set) => {
+              // Só conta se a série estiver completada (check verde)
+              if (set.completed) {
+                 const w = safeParseFloat(set.weight);
+                 const r = safeParseFloat(set.reps);
+                 // Se for peso do corpo (0kg), considera 50kg fictícios pro Boss não ficar imortal
+                 const effectiveWeight = w > 0 ? w : 50; 
+                 return exTotal + (effectiveWeight * r);
+              }
+              return exTotal;
+           }, 0);
+        }
+     }
+     return total;
+  }, 0);
 
   return (
     <>
@@ -206,6 +239,11 @@ const WorkoutView = ({
           </div>
         </div>
 
+        {/* --- ⚔️ BOSS BATTLE ⚔️ --- */}
+        <div className="animate-in slide-in-from-top-4 duration-700 delay-100 z-0">
+           <BossBattle currentVolume={currentSessionVolume} />
+        </div>
+
         {/* NAVEGAÇÃO */}
         <div className="relative py-2 z-0">
           <div className="flex items-center justify-between gap-4">
@@ -232,24 +270,24 @@ const WorkoutView = ({
             const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
             const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
-            // 1. Busca e Filtra
+            // 1. Busca e Filtra (usando a função isSameExercise corrigida)
             const exerciseHistory = (history || [])
               .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
               .filter(e => isSameExercise(ex.name, e.name));
 
             // 2. Recorde
             const exercisePR = exerciseHistory.reduce((max, e) => {
-                const sessionMax = Math.max(...(e.sets?.map(s => parseFloat(s.weight) || 0) || [0]));
+                const sessionMax = Math.max(...(e.sets?.map(s => safeParseFloat(s.weight)) || [0]));
                 return Math.max(max, sessionMax);
             }, 0);
             
-            // 3. Última Carga (Ordenação por timestamp + filtro de peso > 0)
+            // 3. Última Carga
             const lastWorkoutEntry = [...exerciseHistory]
                 .sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))
-                .find(entry => entry.sets && entry.sets.some(s => parseFloat(s.weight) > 0));
+                .find(entry => entry.sets && entry.sets.some(s => safeParseFloat(s.weight) > 0));
             
-            const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => parseFloat(s.weight) || 0) || [0])) : 0;
-            const isBreakingPR = (progress[id]?.sets || []).some(s => parseFloat(s.weight) > exercisePR && exercisePR > 0);
+            const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => safeParseFloat(s.weight)) || [0])) : 0;
+            const isBreakingPR = (progress[id]?.sets || []).some(s => safeParseFloat(s.weight) > exercisePR && exercisePR > 0);
 
             return (
               <div key={id} className={`p-5 rounded-2xl border-2 transition-all duration-500 relative overflow-hidden ${isBreakingPR ? 'border-warning shadow-[0_0_20px_rgba(var(--warning),0.2)] bg-warning/5' : isDone ? 'border-primary shadow-[0_0_20px_rgba(var(--primary),0.2)] bg-black/40' : 'bg-card border-border hover:border-primary/30'}`}>
@@ -274,7 +312,6 @@ const WorkoutView = ({
                        <p className="text-sm text-muted font-bold uppercase tracking-tighter italic">{ex.note}</p>
                     </div>
                   </div>
-                  {/* CHECK DO EXERCÍCIO */}
                   <button onClick={() => toggleCheck(id)} className={`ml-4 p-2 rounded-full transition-all duration-500 border-2 ${isDone ? 'border-primary text-primary shadow-[0_0_20px_var(--primary)] bg-transparent scale-110' : 'border-border text-muted hover:border-primary hover:text-white'}`}>
                     <CheckCircle2 size={32} />
                   </button>
@@ -293,7 +330,6 @@ const WorkoutView = ({
                         return (
                         <div key={setIdx} className={`flex items-center gap-3 p-2 rounded-xl transition-all ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent border border-transparent'}`}>
                           
-                          {/* 🔥 CHECK DA SÉRIE (Abre Timer) */}
                           <button 
                               onClick={() => toggleSetComplete(id, setIdx)}
                               className={`h-10 w-10 flex items-center justify-center rounded-full border-2 transition-all active:scale-90 ${isSetDone ? 'bg-primary text-black border-primary shadow-[0_0_10px_var(--primary)]' : 'bg-input border-border text-muted hover:border-primary hover:text-primary'}`}
@@ -303,8 +339,13 @@ const WorkoutView = ({
 
                           <span className="text-base font-black text-muted w-6">#{setIdx + 1}</span>
                           <div className="flex-1 flex gap-2 items-center">
-                              <input type="text" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                                className={`w-full bg-input border rounded-lg p-3 font-black text-xl outline-none transition-all text-center ${parseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-warning text-warning shadow-[0_0_15px_rgba(var(--warning),0.2)]' : 'border-border text-success focus:border-success/50'}`} 
+                              <input 
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="KG" 
+                                value={progress[id]?.sets?.[setIdx]?.weight || ""} 
+                                onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
+                                className={`w-full bg-input border rounded-lg p-3 font-black text-xl outline-none transition-all text-center ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-warning text-warning shadow-[0_0_15px_rgba(var(--warning),0.2)]' : 'border-border text-success focus:border-success/50'}`} 
                               />
                               <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
                                 className="w-full bg-input border border-border rounded-lg p-3 text-secondary font-black text-xl outline-none focus:border-secondary/50 transition-all text-center" 
