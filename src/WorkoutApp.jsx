@@ -12,6 +12,7 @@ import CyberNav from './components/CyberNav';
 import MatrixRain from './components/MatrixRain'; 
 import Importer from './components/Importer';
 import UserLevel from './components/UserLevel';
+import BadgeList from './components/BadgeList'; 
 
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
@@ -178,9 +179,12 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* 🔥 GAMIFICATION HUD (NOVO) */}
-      <div className="px-1 mb-6">
-         <UserLevel history={state.history} />
+      {/* ÁREA DE GAMIFICAÇÃO */}
+      <div className="mb-6 space-y-2">
+        <UserLevel history={state.history} />
+
+        {/* 🔥 ADICIONE ISTO AQUI 🔥 */}
+        <BadgeList history={state.history} />
       </div>
 
      {/* NAVEGAÇÃO DE DIAS */}
