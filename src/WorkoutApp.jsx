@@ -11,6 +11,7 @@ import StatsView from './components/StatsView';
 import CyberNav from './components/CyberNav';
 import MatrixRain from './components/MatrixRain'; 
 import Importer from './components/Importer';
+import UserLevel from './components/UserLevel';
 
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
@@ -176,6 +177,12 @@ const WorkoutApp = () => {
           </button>
         </div>
       </header>
+
+      {/* 🔥 GAMIFICATION HUD (NOVO) */}
+      <div className="px-1 mb-6">
+         <UserLevel history={state.history} />
+      </div>
+
      {/* NAVEGAÇÃO DE DIAS */}
       {state.view === 'workout' && state.workoutData && (
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
