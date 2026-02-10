@@ -14,6 +14,19 @@ export const initialWorkoutData = {
     ]
   },
   TER: {
+    title: "PULL",
+    focus: "Costas, Posterior de Ombro e Bíceps",
+    exercises: [
+      { name: "Crucifixo Inverso", sets: "3x12", target: "Postural", note: "Controle" },
+      { name: "Puxada Neutra", sets: "3x10", target: "Barra W", note: "Cotovelos fechados" },
+      { name: "Remada Baixa", sets: "3x10", target: "50kg", note: "Trazer no umbigo" },
+      { name: "Serrote", sets: "3x10", target: "Halter", note: "Tronco paralelo" },
+      { name: "Face Pull", sets: "3x15", target: "Corda", note: "Foco deltoide post." },
+      { name: "Rosca Direta", sets: "3x10", target: "Barra W", note: "Sem balanço" },
+      { name: "Rosca Martelo", sets: "3x10", target: "Halter", note: "Sustentar 2s no topo" },
+    ]
+  },
+  QUA: {
     title: "Legs 1",
     focus: "Quadríceps e Core",
     exercises: [
@@ -24,19 +37,6 @@ export const initialWorkoutData = {
       { name: "Elevação Pélvica", sets: "3x12", target: "Controle", note: "Contração máxima" },
       { name: "Prancha", sets: "3x45s", target: "Estático", note: "Abdômen contraído" },
       { name: "Vacuum", sets: "4x30s", target: "98cm", note: "Vácuo total" },
-    ]
-  },
-  QUA: {
-    title: "PULL",
-    focus: "Costas, Posterior de Ombro e Bíceps",
-    exercises: [
-      { name: "Crucifixo Inverso", sets: "3x12", target: "Postural", note: "Controle" },
-      { name: "Puxada Neutra", sets: "3x10", target: "Barra W", note: "Cotovelos fechados" },
-      { name: "Remada Baixa", sets: "3x10", target: "50kg", note: "Meta batida" },
-      { name: "Serrote", sets: "3x10", target: "Halter", note: "Tronco paralelo" },
-      { name: "Face Pull", sets: "3x15", target: "Corda", note: "Foco deltoide post." },
-      { name: "Rosca Direta", sets: "3x10", target: "Barra W", note: "Sem balanço" },
-      { name: "Rosca Martelo", sets: "3x10", target: "Halter", note: "Sustentar 2s no topo" },
     ]
   },
   QUI: {

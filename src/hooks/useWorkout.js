@@ -61,31 +61,60 @@ export const useWorkout = () => {
     } catch { return []; }
   });
 
-  // --- 🔥 NOVO: CÁLCULO DE STREAK (OFENSIVA) ---
+  // --- 🔥 CÁLCULO DE STREAK (COM PROTEÇÃO DE DOMINGO) ---
   const streak = useMemo(() => {
     if (!history || history.length === 0) return 0;
     
-    // Normaliza datas
+    // 1. Normaliza datas para YYYY-MM-DD e remove duplicatas
     const uniqueDates = [...new Set(history.map(h => {
         if (h.date.includes('/')) return h.date.split('/').reverse().join('-');
-        return h.date; 
-    }))].sort().reverse();
+        return h.date.split('T')[0]; 
+    }))].sort().reverse(); // Do mais recente para o mais antigo
     
     if (uniqueDates.length === 0) return 0;
 
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    
-    // Se não treinou hoje nem ontem, quebrou
-    if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
+    // Helper para criar data local (evita bugs de fuso horário do toISOString)
+    const createDate = (str) => {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    };
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const lastWorkoutDate = createDate(uniqueDates[0]);
+
+    // Diferença em dias entre HOJE e o ÚLTIMO TREINO
+    const diffTime = today - lastWorkoutDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Regra de Sobrevivência do Streak:
+    // 0 = Treinou hoje
+    // 1 = Treinou ontem
+    // 2 = Treinou anteontem (SÓ ACEITA SE HOJE FOR SEGUNDA E O TREINO FOI SÁBADO)
+    const isMonday = today.getDay() === 1;
+    const isStreakAlive = diffDays === 0 || diffDays === 1 || (isMonday && diffDays <= 2);
+
+    if (!isStreakAlive) return 0;
 
     let currentStreak = 1;
-    let lastDate = new Date(uniqueDates[0]);
 
-    for (let i = 1; i < uniqueDates.length; i++) {
-        const thisDate = new Date(uniqueDates[i]);
-        const diffDays = Math.ceil(Math.abs(lastDate - thisDate) / (1000 * 60 * 60 * 24)); 
-        if (diffDays === 1) { currentStreak++; lastDate = thisDate; } else { break; }
+    // Loop para contar para trás
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+        const current = createDate(uniqueDates[i]);
+        const next = createDate(uniqueDates[i+1]);
+        
+        const gap = Math.floor((current - next) / (1000 * 60 * 60 * 24));
+
+        if (gap === 1) {
+            // Dias consecutivos normais
+            currentStreak++; 
+        } else if (gap === 2 && current.getDay() === 1) {
+            // Gap de 2 dias permitido se for de Segunda para Sábado (pula Domingo)
+            currentStreak++;
+        } else {
+            // Gap muito grande, quebrou a sequência
+            break; 
+        }
     }
     return currentStreak;
   }, [history]);

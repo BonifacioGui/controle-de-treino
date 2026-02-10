@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame } from 'lucide-react';
+import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react';
 import { useWorkout } from './hooks/useWorkout'; 
-import { initialWorkoutData } from './workoutData'; // 🔥 IMPORTAÇÃO ESSENCIAL ADICIONADA
+import { initialWorkoutData } from './workoutData'; 
 
 // Componentes
 import WorkoutView from './components/WorkoutView';
@@ -17,9 +17,11 @@ import BadgeList from './components/BadgeList';
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false); // 🔥 Lógica para esconder o menu
+
+  const hasSavedData = !!localStorage.getItem('workout_plan');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -35,17 +37,14 @@ const WorkoutApp = () => {
     };
   }, []);
 
-  // 🔥 CORREÇÃO PRINCIPAL: AUTO-INICIALIZAÇÃO
-  // Se abrir na tela de import ou sem dados, carrega o padrão e vai pro treino.
+  // AUTO-INICIALIZAÇÃO
   useEffect(() => {
     if (state.view === 'import' || !state.workoutData || Object.keys(state.workoutData).length === 0) {
        const saved = localStorage.getItem('workout_plan');
        if (!saved) {
-           // Se não tem nada salvo, salva o initialWorkoutData
            localStorage.setItem('workout_plan', JSON.stringify(initialWorkoutData));
            if (setters.setWorkoutData) setters.setWorkoutData(initialWorkoutData);
        }
-       // Força a ida para a tela de treino
        if (setters.setView) setters.setView('workout');
     }
   }, [state.view, state.workoutData, setters]);
@@ -55,140 +54,107 @@ const WorkoutApp = () => {
     setters.setView('workout');
   }, [actions, setters]);
 
-  const runMaintenance = () => {
-    if (!window.confirm("Isso vai renomear os exercícios no histórico e nos treinos para o padrão simplificado. Tem certeza?")) return;
-
-    // --- CONFIGURAÇÃO CORRIGIDA (PARA NOMES SIMPLES) ---
-    const replacements = {
-      // Crossover
-      "crossover na polia alta": "Crossover",
-      "Crossover polia alta": "Crossover",
-      "Crossover Polia Alta": "Crossover",
-      // Supino
-      "Supino reto": "Supino Reto",
-      "supino reto barra": "Supino Reto",
-      "supino reto (barra)": "Supino Reto",
-      "Supino Inclinado (Halter)": "Supino Inclinado",
-      // Pernas
-      "Agachamento livre": "Agachamento Livre",
-      "Leg Press 45": "Leg Press",
-      "Elevação Pélvica (Barra)": "Elevação Pélvica",
-      // Costas
-      "Puxada Alta": "Puxada Frontal",
-      // Adicione outros conforme necessário
+  // 🔥 LÓGICA DO FOGO EVOLUTIVO 🔥
+  const getFlameStyle = (streak) => {
+    if (streak >= 30) return {
+        color: "text-cyan-400",
+        shadow: "shadow-[0_0_20px_rgba(34,211,238,0.6)] border-cyan-500/50 bg-cyan-950/30",
+        iconClass: "fill-cyan-400 animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,1)]"
     };
-
-    // 1. CORRIGIR HISTÓRICO (Passado)
-    const history = JSON.parse(localStorage.getItem('workout-history') || '[]');
-    let historyChanges = 0;
-
-    const newHistory = history.map(session => ({
-      ...session,
-      exercises: session.exercises.map(ex => {
-        const trimmedName = ex.name.trim();
-        // Verifica se o nome atual está na lista de "errados"
-        if (replacements[trimmedName]) {
-          historyChanges++;
-          return { ...ex, name: replacements[trimmedName] }; 
-        }
-        return { ...ex, name: trimmedName }; 
-      })
-    }));
-
-    // 2. CORRIGIR TREINOS ATUAIS (Futuro)
-    const templates = JSON.parse(localStorage.getItem('workout-data') || '{}');
-    let templateChanges = 0;
-    
-    const newTemplates = { ...templates };
-    Object.keys(newTemplates).forEach(dayKey => {
-      newTemplates[dayKey].exercises = newTemplates[dayKey].exercises.map(ex => {
-         const trimmedName = ex.name.trim();
-         if (replacements[trimmedName]) {
-           templateChanges++;
-           return { ...ex, name: replacements[trimmedName] };
-         }
-         return { ...ex, name: trimmedName };
-      });
-    });
-
-    // 3. SALVAR TUDO
-    localStorage.setItem('workout-history', JSON.stringify(newHistory));
-    localStorage.setItem('workout-data', JSON.stringify(newTemplates));
-
-    // 4. RECARREGAR PÁGINA
-    alert(`Limpeza Concluída!\n\nHistórico alterado: ${historyChanges} vezes\nTreinos alterados: ${templateChanges} vezes.\n\nA página será recarregada.`);
-    window.location.reload();
+    if (streak >= 7) return {
+        color: "text-red-500",
+        shadow: "shadow-[0_0_15px_rgba(239,68,68,0.5)] border-red-500/50 bg-red-950/30",
+        iconClass: "fill-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]"
+    };
+    if (streak > 0) return {
+        color: "text-orange-500",
+        shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-950/20",
+        iconClass: "fill-orange-500 animate-pulse drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]"
+    };
+    return {
+        color: "text-muted",
+        shadow: "border-border bg-card/50",
+        iconClass: "text-muted"
+    };
   };
+
+  const flameStyle = getFlameStyle(stats?.streak || 0);
 
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
       {theme === 'matrix' && <MatrixRain />}
 
+      {/* --- MEME DO CR7 --- */}
       {state.showMeme && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-black animate-in zoom-in duration-300 p-4">
           <video 
             src="https://i.imgur.com/1kSZ05R.mp4" 
-            className="w-full max-w-7xl h-auto rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
+            className="w-full md:w-auto max-h-[55vh] object-contain rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
             autoPlay loop muted playsInline
           />
-          <h2 className="text-5xl md:text-7xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)]">
+          <h2 className="text-6xl md:text-9xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)] animate-pulse pb-10">
             SIIIIIIIIIIIU!
           </h2>
         </div>
       )}
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6">
-        
-        {/* ESQUERDA: Logo e Título */}
-        <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
-                <Zap className="text-black fill-black" size={24} />
-            </div>
-            
-            <h1 className="leading-none select-none font-black text-left text-lg md:text-2xl tracking-tighter">
-                PROJETO<br/>
-                <span className="text-primary">BOMBA</span>
-            </h1>
-        </div>
-
-        {/* DIREITA: Streak e Menu */}
-        <div className="flex items-center gap-3">
+      {/* HEADER CORRIGIDO (CENTRALIZADO) */}
+      {!state.showMeme && (
+        <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
           
-          {/* CONTADOR DE STREAK (FOGO) */}
-          <div className={`flex flex-col items-center justify-center px-3 py-1 rounded-xl border bg-card/50 
-              ${(stats?.streak || 0) > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
-              
-              <span className="text-[8px] text-orange-500 font-black uppercase tracking-widest flex items-center gap-1">
-                <Flame size={10} className="fill-orange-500 animate-pulse" />
-                STREAK
-              </span>
-              <span className="text-xl font-black text-orange-400 leading-none">
-                {stats?.streak || 0}
-              </span>
+          {/* ESQUERDA: TÍTULO */}
+          <div className="flex items-center gap-2 z-10">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
+                  <Zap className="text-black fill-black" size={24} />
+              </div>
+              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter hidden sm:block uppercase">
+                  PROJETO<br/>
+                  <span className="text-primary">BOMBA</span>
+              </h1>
           </div>
 
-          {/* BOTÃO DO MENU */}
-          <button 
-            onClick={() => setIsMenuOpen(true)}
-            className="p-3 rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
-          >
-            <Menu size={24} />
-          </button>
-        </div>
-      </header>
+          {/* CENTRO: STREAK (FOGO) - ABSOLUTO PARA CENTRALIZAR */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+            <div className={`flex flex-col items-center justify-center px-4 h-14 rounded-2xl border transition-all duration-500 min-w-[80px] ${flameStyle.shadow} relative overflow-hidden group`}>
+                <div className="relative mb-0.5 z-10">
+                    <Flame size={38} className={`${flameStyle.iconClass}`} />
+                </div>
+                <div className="flex items-center justify-center gap-1 z-10">
+                    <span className={`text-[8px] font-bold uppercase tracking-widest opacity-80 ${flameStyle.color}`}>
+                        STREAK {stats?.streak || 0}
+                    </span>
+                </div>
+                <div className={`absolute inset-0 blur-md opacity-20 ${flameStyle.color.replace('text-', 'bg-')}`}></div>
+            </div>
+          </div>
+
+          {/* DIREITA: WIFI + MENU */}
+          <div className="flex items-center gap-3 z-10">
+            <div className={`hidden sm:flex flex-col justify-center text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
+               {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
+            </div>
+
+            <button 
+              onClick={() => setIsMenuOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* ÁREA DE GAMIFICAÇÃO */}
-      <div className="mb-6 space-y-2">
-        <UserLevel history={state.history} />
+      {state.view === 'workout' && !state.showMeme && (
+        <div className="mb-6 space-y-2">
+          <UserLevel history={state.history} />
+          <BadgeList history={state.history} />
+        </div>
+      )}
 
-        {/* 🔥 ADICIONE ISTO AQUI 🔥 */}
-        <BadgeList history={state.history} />
-      </div>
-
-     {/* NAVEGAÇÃO DE DIAS */}
-      {state.view === 'workout' && state.workoutData && (
+      {/* NAVEGAÇÃO DE DIAS */}
+      {state.view === 'workout' && state.workoutData && !state.showMeme && (
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
           {Object.keys(state.workoutData).map((day) => (
             <button
@@ -211,19 +177,16 @@ const WorkoutApp = () => {
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
-              // DADOS BÁSICOS
               activeDay={state.activeDay} 
               setActiveDay={setters.setActiveDay}
               workoutData={state.workoutData} 
               selectedDate={state.selectedDate} 
               setSelectedDate={actions.handleDateChange}
               
-              // INPUTS
               weightInput={state.weightInput} setWeightInput={setters.setWeightInput} 
               waistInput={state.waistInput} setWaistInput={setters.setWaistInput} 
               latestStats={stats.latest} 
               
-              // AÇÕES
               progress={state.progress} 
               toggleCheck={actions.toggleCheck} 
               updateSetData={actions.updateSetData} 
@@ -233,11 +196,9 @@ const WorkoutApp = () => {
               finishWorkout={actions.finishWorkout}
               saveBiometrics={actions.saveBiometrics}
               
-              // HISTÓRICO
               bodyHistory={state.bodyHistory} 
               history={state.history}
               
-              // TIMERS
               timerState={state.timerState}
               closeTimer={actions.closeTimer}
               workoutTimer={state.workoutTimer}
@@ -275,18 +236,24 @@ const WorkoutApp = () => {
         )}
 
         {state.view === 'stats' && (
-            <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />
+            <StatsView 
+              bodyHistory={state.bodyHistory} 
+              history={state.history} 
+              workoutData={state.workoutData} 
+              setView={setters.setView}
+              setIsModalOpen={setIsAnyModalOpen} // 🔥 Passa a função
+            />
         )}
         
-        {state.view === 'import' && (
-            <div className="flex items-center justify-center h-64 text-primary animate-pulse font-black uppercase tracking-widest">
-                Inicializando Sistema...
-            </div>
+        {state.view === 'import' && !hasSavedData && (
+            <Importer onSuccess={handleImportSuccess} />
         )}
       </div>
       
-      {/* NAVEGAÇÃO INFERIOR */}
-      <CyberNav currentView={state.view} setView={setters.setView} />
+      {/* NAVEGAÇÃO INFERIOR 🔥 Sumir se modal estiver aberto */}
+      {!state.showMeme && !isAnyModalOpen && (
+        <CyberNav currentView={state.view} setView={setters.setView} />
+      )}
       
       {/* MENU LATERAL */}
       {isMenuOpen && (
@@ -304,25 +271,24 @@ const WorkoutApp = () => {
             <div className="space-y-4 mb-8">
               <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
               <button onClick={() => setTheme('driver')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-primary text-muted hover:text-primary font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Cyberpunk</span> {theme === 'driver' && <Zap size={16} />}
+                <span>Cyberpunk</span> {theme === 'driver' && <Moon size={16} />}
               </button>
               <button onClick={() => setTheme('matrix')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-[#00ff41] text-muted hover:text-[#00ff41] font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Matrix</span> {theme === 'matrix' && <Zap size={16} />}
+                <span>Matrix</span> {theme === 'matrix' && <Terminal size={16} />}
               </button>
               <button onClick={() => setTheme('light')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-blue-500 text-muted hover:text-blue-500 font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Light</span> {theme === 'light' && <Zap size={16} />}
+                <span>Light</span> {theme === 'light' && <Sun size={16} />}
               </button>
               <button onClick={() => setTheme('spiderman')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-red-600 text-muted hover:text-red-600 font-black uppercase tracking-wider transition-all flex justify-between">
                 <span>Aranha</span> {theme === 'spiderman' && <Zap size={16} />}
               </button>
             </div>
             
-            {/* Opção para rodar manutenção caso precise um dia */}
-            <div className="mt-auto space-y-4">
-                <button onClick={runMaintenance} className="w-full py-3 rounded-lg border border-red-900/50 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-900/20">
-                    🛠️ Resetar Nomes
-                </button>
-                <div className="text-center text-xs text-muted opacity-30">V.2.0.77</div>
+            <div className="mt-auto space-y-4 border-t border-border pt-4">
+                <div className="text-center text-xs text-muted opacity-30">
+                  Projeto Bomba v2.3<br/>
+                  System Online
+                </div>
             </div>
           </div>
         </div>
