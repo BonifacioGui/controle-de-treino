@@ -108,7 +108,7 @@ const WorkoutApp = () => {
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
                   <Zap className="text-black fill-black" size={24} />
               </div>
-              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter block uppercase">
+              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter hidden sm:block uppercase">
                   PROJETO<br/>
                   <span className="text-primary">BOMBA</span>
               </h1>
