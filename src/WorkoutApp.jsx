@@ -17,9 +17,10 @@ import BadgeList from './components/BadgeList';
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const hasSavedData = !!localStorage.getItem('workout_plan');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -35,7 +36,7 @@ const WorkoutApp = () => {
     };
   }, []);
 
-  // AUTO-INICIALIZAÇÃO (Mantida para novos usuários)
+  // AUTO-INICIALIZAÇÃO
   useEffect(() => {
     if (state.view === 'import' || !state.workoutData || Object.keys(state.workoutData).length === 0) {
        const saved = localStorage.getItem('workout_plan');
@@ -52,75 +53,111 @@ const WorkoutApp = () => {
     setters.setView('workout');
   }, [actions, setters]);
 
+  // 🔥 LÓGICA DO FOGO EVOLUTIVO 🔥
+  const getFlameStyle = (streak) => {
+    if (streak >= 30) return {
+        color: "text-cyan-400",
+        shadow: "shadow-[0_0_20px_rgba(34,211,238,0.6)] border-cyan-500/50 bg-cyan-950/30",
+        iconClass: "fill-cyan-400 animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,1)]"
+    };
+    if (streak >= 7) return {
+        color: "text-red-500",
+        shadow: "shadow-[0_0_15px_rgba(239,68,68,0.5)] border-red-500/50 bg-red-950/30",
+        iconClass: "fill-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]"
+    };
+    if (streak > 0) return {
+        color: "text-orange-500",
+        shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-950/20",
+        iconClass: "fill-orange-500 animate-pulse drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]"
+    };
+    return {
+        color: "text-muted",
+        shadow: "border-border bg-card/50",
+        iconClass: "text-muted"
+    };
+  };
+
+  const flameStyle = getFlameStyle(stats?.streak || 0);
+
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
       {theme === 'matrix' && <MatrixRain />}
 
+      {/* --- MEME DO CR7 --- */}
       {state.showMeme && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-black animate-in zoom-in duration-300 p-4">
           <video 
             src="https://i.imgur.com/1kSZ05R.mp4" 
-            className="w-full max-w-7xl h-auto rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
+            className="w-full md:w-auto max-h-[55vh] object-contain rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
             autoPlay loop muted playsInline
           />
-          <h2 className="text-5xl md:text-7xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)]">
+          <h2 className="text-6xl md:text-9xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)] animate-pulse pb-10">
             SIIIIIIIIIIIU!
           </h2>
         </div>
       )}
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6">
-        
-        {/* ESQUERDA: Logo e Título */}
-        <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
-                <Zap className="text-black fill-black" size={24} />
-            </div>
-            
-            <h1 className="leading-none select-none font-black text-left text-lg md:text-2xl tracking-tighter">
-                PROJETO<br/>
-                <span className="text-primary">BOMBA</span>
-            </h1>
-        </div>
-
-        {/* DIREITA: Status, Streak e Menu */}
-        <div className="flex items-center gap-3">
+      {!state.showMeme && (
+        <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6">
           
-          <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded border text-[10px] font-black uppercase tracking-widest ${isOnline ? 'border-green-500/30 text-green-500' : 'border-red-500/30 text-red-500'}`}>
-             {isOnline ? <Wifi size={10}/> : <WifiOff size={10}/>}
+          <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
+                  <Zap className="text-black fill-black" size={24} />
+              </div>
+              <h1 className="leading-none select-none font-black text-left text-lg md:text-2xl tracking-tighter">
+                  PROJETO<br/>
+                  <span className="text-primary">BOMBA</span>
+              </h1>
           </div>
 
-          <div className={`flex flex-col items-center justify-center px-3 py-1 rounded-xl border bg-card/50 
-              ${(stats?.streak || 0) > 0 ? 'border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)]' : 'border-border'}`}>
-              
-              <span className="text-[8px] text-orange-500 font-black uppercase tracking-widest flex items-center gap-1">
-                <Flame size={10} className="fill-orange-500 animate-pulse" />
-                STREAK
-              </span>
-              <span className="text-xl font-black text-orange-400 leading-none">
-                {stats?.streak || 0}
-              </span>
-          </div>
+          <div className="flex items-center gap-3">
+            <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded border text-[10px] font-black uppercase tracking-widest ${isOnline ? 'border-green-500/30 text-green-500' : 'border-red-500/30 text-red-500'}`}>
+               {isOnline ? <Wifi size={10}/> : <WifiOff size={10}/>}
+            </div>
 
-          <button 
-            onClick={() => setIsMenuOpen(true)}
-            className="p-3 rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
-          >
-            <Menu size={24} />
-          </button>
-        </div>
-      </header>
+            {/* 🔥 CONTADOR DE STREAK (LAYOUT: FOGO NO TOPO / BASE: TEXTO + NÚMERO) 🔥 */}
+            <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-2xl border transition-all duration-500 min-w-[90px] ${flameStyle.shadow}`}>
+                
+                {/* 1. FOGO (EM CIMA, CENTRALIZADO) */}
+                <div className="relative mb-0.5">
+                    <Flame size={40} className={`${flameStyle.iconClass}`} />
+                    <div className={`absolute inset-0 blur-md opacity-50 ${flameStyle.color.replace('text-', 'bg-')}`}></div>
+                </div>
+
+                {/* 2. BASE: NOME "STREAK" + NÚMERO (LADO A LADO) */}
+                <div className="flex items-center justify-center gap-1.5">
+                    <span className={`text-[8px] font-bold uppercase tracking-widest opacity-60 pt-0.5 ${flameStyle.color}`}>
+                        STREAK
+                    </span>
+                    <span className={`text-[10.5px] font-black leading-none ${flameStyle.color}`}>
+                        {stats?.streak || 0}
+                    </span>
+                </div>
+
+            </div>
+
+            <button 
+              onClick={() => setIsMenuOpen(true)}
+              className="p-3 rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* ÁREA DE GAMIFICAÇÃO */}
-      <div className="mb-6 space-y-2">
-        <UserLevel history={state.history} />
-        <BadgeList history={state.history} />
-      </div>
+      {state.view === 'workout' && !state.showMeme && (
+        <div className="mb-6 space-y-2">
+          <UserLevel history={state.history} />
+          <BadgeList history={state.history} />
+        </div>
+      )}
 
       {/* NAVEGAÇÃO DE DIAS */}
-      {state.view === 'workout' && state.workoutData && (
+      {state.view === 'workout' && state.workoutData && !state.showMeme && (
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
           {Object.keys(state.workoutData).map((day) => (
             <button
@@ -143,19 +180,16 @@ const WorkoutApp = () => {
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
-              // DADOS BÁSICOS
               activeDay={state.activeDay} 
               setActiveDay={setters.setActiveDay}
               workoutData={state.workoutData} 
               selectedDate={state.selectedDate} 
               setSelectedDate={actions.handleDateChange}
               
-              // INPUTS
               weightInput={state.weightInput} setWeightInput={setters.setWeightInput} 
               waistInput={state.waistInput} setWaistInput={setters.setWaistInput} 
               latestStats={stats.latest} 
               
-              // AÇÕES
               progress={state.progress} 
               toggleCheck={actions.toggleCheck} 
               updateSetData={actions.updateSetData} 
@@ -165,11 +199,9 @@ const WorkoutApp = () => {
               finishWorkout={actions.finishWorkout}
               saveBiometrics={actions.saveBiometrics}
               
-              // HISTÓRICO
               bodyHistory={state.bodyHistory} 
               history={state.history}
               
-              // TIMERS
               timerState={state.timerState}
               closeTimer={actions.closeTimer}
               workoutTimer={state.workoutTimer}
@@ -210,13 +242,15 @@ const WorkoutApp = () => {
             <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />
         )}
         
-        {state.view === 'import' && (
+        {state.view === 'import' && !hasSavedData && (
             <Importer onSuccess={handleImportSuccess} />
         )}
       </div>
       
       {/* NAVEGAÇÃO INFERIOR */}
-      <CyberNav currentView={state.view} setView={setters.setView} />
+      {!state.showMeme && (
+        <CyberNav currentView={state.view} setView={setters.setView} />
+      )}
       
       {/* MENU LATERAL */}
       {isMenuOpen && (
@@ -249,7 +283,7 @@ const WorkoutApp = () => {
             
             <div className="mt-auto space-y-4 border-t border-border pt-4">
                 <div className="text-center text-xs text-muted opacity-30">
-                  Projeto Bomba v2.2<br/>
+                  Projeto Bomba v2.3<br/>
                   System Online
                 </div>
             </div>
