@@ -19,6 +19,7 @@ const WorkoutApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false); // 🔥 Lógica para esconder o menu
 
   const hasSavedData = !!localStorage.getItem('workout_plan');
 
@@ -107,7 +108,7 @@ const WorkoutApp = () => {
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
                   <Zap className="text-black fill-black" size={24} />
               </div>
-              <h1 className="leading-none select-none font-black text-left text-lg tracking-tighter hidden xs:block">
+              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter block uppercase">
                   PROJETO<br/>
                   <span className="text-primary">BOMBA</span>
               </h1>
@@ -235,7 +236,13 @@ const WorkoutApp = () => {
         )}
 
         {state.view === 'stats' && (
-            <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />
+            <StatsView 
+              bodyHistory={state.bodyHistory} 
+              history={state.history} 
+              workoutData={state.workoutData} 
+              setView={setters.setView}
+              setIsModalOpen={setIsAnyModalOpen} // 🔥 Passa a função
+            />
         )}
         
         {state.view === 'import' && !hasSavedData && (
@@ -243,8 +250,8 @@ const WorkoutApp = () => {
         )}
       </div>
       
-      {/* NAVEGAÇÃO INFERIOR */}
-      {!state.showMeme && (
+      {/* NAVEGAÇÃO INFERIOR 🔥 Sumir se modal estiver aberto */}
+      {!state.showMeme && !isAnyModalOpen && (
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       

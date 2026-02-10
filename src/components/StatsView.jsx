@@ -77,7 +77,7 @@ const getCanonicalName = (rawName) => {
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
-const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
+const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen }) => {
   const [selectedExercise, setSelectedExercise] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
@@ -90,6 +90,13 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
     const theme = document.documentElement.getAttribute('data-theme') || 'driver';
     setCurrentTheme(theme);
   }, []);
+
+  // 🔥 Monitora se o modal está aberto para avisar o componente pai (App.js)
+  useEffect(() => {
+    if (setIsModalOpen) {
+      setIsModalOpen(isSelectorOpen);
+    }
+  }, [isSelectorOpen, setIsModalOpen]);
 
   const chartColors = {
     driver: { primary: '#22d3ee', secondary: '#ec4899', grid: '#1e293b', text: '#94a3b8' },
@@ -182,7 +189,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
         <h3 className="text-xs font-black text-muted uppercase tracking-widest flex items-center gap-2 px-1">
           <Activity size={14} className="text-primary" /> BIOMETRIA
         </h3>
-        
         <div className="bg-card border border-border p-3 rounded-2xl h-56 w-full min-w-0 backdrop-blur-sm relative shadow-sm overflow-hidden">
           {biometryData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -220,7 +226,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
         <h3 className="text-xs font-black text-muted uppercase tracking-widest flex items-center gap-2 px-1">
           <Trophy size={14} className="text-warning" /> RECORDES (TOP 6)
         </h3>
-        
         <div className="grid grid-cols-2 gap-3">
           {hallOfFame.length > 0 ? (
             hallOfFame.map(([name, weight]) => (
@@ -244,8 +249,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
           <h3 className="text-xs font-black text-muted uppercase tracking-widest flex items-center gap-2 truncate">
             <Target size={14} className="text-success" /> EVOLUÇÃO DE CARGA
           </h3>
-          
-          {/* BOTÃO QUE ABRE O MODAL */}
           <button 
             onClick={() => setIsSelectorOpen(true)}
             className="bg-card border border-success/30 text-success text-xs font-black p-3 rounded-xl flex justify-between items-center active:scale-[0.98] transition-all"
@@ -287,7 +290,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
         </div>
       </section>
 
-      {/* --- BOTÃO VOLTAR (SÓ APARECE SE O SELETOR ESTIVER FECHADO) --- */}
       {!isSelectorOpen && (
         <button onClick={() => setView('workout')} className="w-full py-3 bg-card border border-border rounded-xl font-black text-xs tracking-widest text-muted hover:text-primary hover:border-primary/50 transition-all uppercase mt-4 shadow-sm active:scale-[0.98]">
             VOLTAR
@@ -295,11 +297,8 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
       )}
 
       {/* --- MODAL DE SELEÇÃO DE EXERCÍCIO --- */}
-      {/* 🔥 CORREÇÃO APLICADA AQUI 🔥
-          z-[9999] garante que o modal fique ACIMA do menu de navegação inferior 
-      */}
       {isSelectorOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black animate-in fade-in duration-200">
             <div className="bg-card w-full max-w-sm rounded-2xl border border-primary/30 shadow-2xl flex flex-col max-h-[80vh]">
                 <div className="p-4 border-b border-border flex justify-between items-center">
                     <h3 className="font-black text-primary uppercase tracking-widest">Selecionar</h3>
@@ -339,7 +338,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
             </div>
         </div>
       )}
-
     </main>
   );
 };
