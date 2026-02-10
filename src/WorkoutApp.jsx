@@ -98,49 +98,45 @@ const WorkoutApp = () => {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* HEADER CORRIGIDO (CENTRALIZADO) */}
       {!state.showMeme && (
-        <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6">
+        <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
           
-          <div className="flex items-center gap-2">
+          {/* ESQUERDA: TÍTULO */}
+          <div className="flex items-center gap-2 z-10">
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
                   <Zap className="text-black fill-black" size={24} />
               </div>
-              <h1 className="leading-none select-none font-black text-left text-lg md:text-2xl tracking-tighter">
+              <h1 className="leading-none select-none font-black text-left text-lg tracking-tighter hidden xs:block">
                   PROJETO<br/>
                   <span className="text-primary">BOMBA</span>
               </h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded border text-[10px] font-black uppercase tracking-widest ${isOnline ? 'border-green-500/30 text-green-500' : 'border-red-500/30 text-red-500'}`}>
-               {isOnline ? <Wifi size={10}/> : <WifiOff size={10}/>}
+          {/* CENTRO: STREAK (FOGO) - ABSOLUTO PARA CENTRALIZAR */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+            <div className={`flex flex-col items-center justify-center px-4 h-14 rounded-2xl border transition-all duration-500 min-w-[80px] ${flameStyle.shadow} relative overflow-hidden group`}>
+                <div className="relative mb-0.5 z-10">
+                    <Flame size={38} className={`${flameStyle.iconClass}`} />
+                </div>
+                <div className="flex items-center justify-center gap-1 z-10">
+                    <span className={`text-[8px] font-bold uppercase tracking-widest opacity-80 ${flameStyle.color}`}>
+                        STREAK {stats?.streak || 0}
+                    </span>
+                </div>
+                <div className={`absolute inset-0 blur-md opacity-20 ${flameStyle.color.replace('text-', 'bg-')}`}></div>
             </div>
+          </div>
 
-            {/* 🔥 CONTADOR DE STREAK (LAYOUT: FOGO NO TOPO / BASE: TEXTO + NÚMERO) 🔥 */}
-            <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-2xl border transition-all duration-500 min-w-[90px] ${flameStyle.shadow}`}>
-                
-                {/* 1. FOGO (EM CIMA, CENTRALIZADO) */}
-                <div className="relative mb-0.5">
-                    <Flame size={40} className={`${flameStyle.iconClass}`} />
-                    <div className={`absolute inset-0 blur-md opacity-50 ${flameStyle.color.replace('text-', 'bg-')}`}></div>
-                </div>
-
-                {/* 2. BASE: NOME "STREAK" + NÚMERO (LADO A LADO) */}
-                <div className="flex items-center justify-center gap-1.5">
-                    <span className={`text-[8px] font-bold uppercase tracking-widest opacity-60 pt-0.5 ${flameStyle.color}`}>
-                        STREAK
-                    </span>
-                    <span className={`text-[10.5px] font-black leading-none ${flameStyle.color}`}>
-                        {stats?.streak || 0}
-                    </span>
-                </div>
-
+          {/* DIREITA: WIFI + MENU */}
+          <div className="flex items-center gap-3 z-10">
+            <div className={`hidden sm:flex flex-col justify-center text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
+               {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
             </div>
 
             <button 
               onClick={() => setIsMenuOpen(true)}
-              className="p-3 rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm"
             >
               <Menu size={24} />
             </button>

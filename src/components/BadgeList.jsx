@@ -51,12 +51,12 @@ const BadgeList = ({ history }) => {
               </div>
 
               {/* Título */}
-              <h4 className={`text-[9px] font-black uppercase leading-tight mb-1 ${badge.unlocked ? 'text-white' : 'text-muted'}`}>
+              <h4 className={`text-[11px] font-black uppercase leading-tight mb-1 ${badge.unlocked ? 'text-white' : 'text-muted'}`}>
                 {badge.title}
               </h4>
               
               {/* Descrição */}
-              <p className="text-[7px] text-muted font-bold leading-tight px-1">
+              <p className="text-[9px] text-muted font-bold leading-tight px-1">
                  {badge.desc}
               </p>
             </div>

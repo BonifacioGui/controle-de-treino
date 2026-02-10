@@ -1,49 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from 'recharts';
-import { ChevronLeft, Activity, Target, Award, Trophy } from 'lucide-react';
+import { ChevronLeft, Activity, Target, Award, Trophy, Search, X } from 'lucide-react';
 
 // --- HELPER: Unifica nomes (Lógica Blindada v5) ---
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
-  
-  // 1. Limpeza básica
   let clean = rawName.split('(')[0].trim();
-  const lower = clean.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, ""); 
+  const lower = clean.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
 
-  // 2. REGRAS DE PRIORIDADE
-  
-  // --- BRAÇOS (TRÍCEPS) ---
   if (lower.includes("triceps")) {
-      // Variações mecânicas muito distintas continuam separadas
       if (lower.includes("testa")) return "Tríceps Testa";
       if (lower.includes("frances")) return "Tríceps Francês";
       if (lower.includes("banco")) return "Tríceps Banco";
       if (lower.includes("coice")) return "Tríceps Coice";
-      
-      // 🔥 UNIFICAÇÃO DO PULLEY/CORDA 🔥
-      // Pulley, Corda, Polia -> Tudo vira "Tríceps Corda" conforme pedido
       return "Tríceps Corda"; 
   }
-
-  // --- DESENVOLVIMENTO ---
   if (lower.includes("desenv")) {
       if (lower.includes("maquina") || lower.includes("machine")) return "Desenvolvimento Máquina";
       if (lower.includes("barra") || lower.includes("militar") || lower.includes("frente")) return "Desenvolvimento Barra";
       if (lower.includes("arnold")) return "Desenvolvimento Arnold";
-      return "Desenvolvimento"; // Halter, Neutro, Livre -> Tudo aqui
+      return "Desenvolvimento"; 
   }
-
-  // --- SUPINO ---
   if (lower.includes("supino")) {
       if (lower.includes("inclinado")) return "Supino Inclinado";
       if (lower.includes("declinado")) return "Supino Declinado";
       if (lower.includes("vertical") || lower.includes("maquina")) return "Supino Máquina";
-      return "Supino Reto"; // Halter e Barra juntos
+      return "Supino Reto";
   }
-
-  // --- PERNAS ---
   if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
   if (lower.includes("leg") && lower.includes("horizontal")) return "Leg Press Horizontal";
   if (lower.includes("legpress") || lower.includes("leg")) return "Leg Press";
@@ -54,20 +37,16 @@ const getCanonicalName = (rawName) => {
       if (lower.includes("hack")) return "Agachamento Hack";
       return "Agachamento Livre";
   }
-  
   if (lower.includes("stiff")) return "Stiff";
   if (lower.includes("terra") && !lower.includes("unilateral")) return "Levantamento Terra";
   if (lower.includes("extensora")) return "Cadeira Extensora";
   if (lower.includes("flexora")) return "Mesa Flexora";
   if (lower.includes("pelvica") || lower.includes("elevacao de quadril")) return "Elevação Pélvica";
   if (lower.includes("panturrilha")) return "Panturrilha";
-
-  // --- COSTAS ---
   if (lower.includes("puxada")) {
       if (lower.includes("supinada")) return "Puxada Supinada";
       return "Puxada Frontal";
   }
-  
   if (lower.includes("remada")) {
       if (lower.includes("cavalinho")) return "Remada Cavalinho";
       if (lower.includes("curvada")) return "Remada Curvada";
@@ -75,40 +54,33 @@ const getCanonicalName = (rawName) => {
       if (lower.includes("maquina")) return "Remada Máquina";
       return "Remada Baixa";
   }
-  
   if (lower.includes("serrote")) return "Serrote";
   if (lower.includes("pulldown")) return "Pulldown";
-  
   if (lower.includes("rosca")) {
       if (lower.includes("martelo")) return "Rosca Martelo";
       if (lower.includes("scott")) return "Rosca Scott";
       if (lower.includes("inclinada") || lower.includes("45")) return "Rosca 45º";
       return "Rosca Direta";
   }
-
-  // --- OMBRO ---
   if (lower.includes("lateral")) return "Elevação Lateral";
   if (lower.includes("frontal")) return "Elevação Frontal";
   if (lower.includes("crucifixo") && lower.includes("inverso")) return "Crucifixo Inverso";
   if (lower.includes("face") && lower.includes("pull")) return "Face Pull";
   if (lower.includes("encolhimento")) return "Encolhimento";
-
-  // --- PEITO ---
   if (lower.includes("crossover")) return "Crossover";
   if (lower.includes("peck") || lower.includes("deck")) return "Peck Deck";
   if (lower.includes("crucifixo")) return "Crucifixo"; 
-
-  // --- OUTROS ---
   if (lower.includes("abducao") || lower.includes("abdutora")) return "Cadeira Abdutora";
   if (lower.includes("adutora")) return "Cadeira Adutora";
   if (lower.includes("vacuum")) return "Stomach Vacuum";
 
-  // Padrão
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
 const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
   const [selectedExercise, setSelectedExercise] = useState('');
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false); 
+  const [searchTerm, setSearchTerm] = useState(''); 
   const [currentTheme, setCurrentTheme] = useState('driver');
 
   const safeHistory = Array.isArray(history) ? history : [];
@@ -128,15 +100,11 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
   
   const colors = chartColors[currentTheme] || chartColors.driver;
 
-  // Lista Unificada
   const availableExercises = useMemo(() => {
     const uniqueSet = new Set();
-    
-    // Do Histórico
     safeHistory.forEach(session => {
         session.exercises.forEach(ex => uniqueSet.add(getCanonicalName(ex.name)));
     });
-    // Do Plano Atual
     if (workoutData) {
         Object.values(workoutData).forEach(day => {
             if (day.exercises) day.exercises.forEach(ex => uniqueSet.add(getCanonicalName(ex.name)));
@@ -144,6 +112,10 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
     }
     return Array.from(uniqueSet).sort();
   }, [safeHistory, workoutData]);
+
+  const filteredExercises = availableExercises.filter(ex => 
+      ex.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const biometryData = [...safeBodyHistory]
     .sort((a, b) => {
@@ -196,7 +168,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
   const personalRecord = loadData.length > 0 ? Math.max(...loadData.map(d => d.carga)) : 0;
 
   return (
-    <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24">      
+    <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">      
       {/* HEADER COMPACTO */}
       <div className="flex items-center gap-3 border-b border-primary/20 pb-3">
         <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary hover:bg-input transition-all">
@@ -266,20 +238,21 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
         </div>
       </section>
 
-      {/* PROGRESSÃO */}
+      {/* PROGRESSÃO - SELETOR MELHORADO */}
       <section className="space-y-3">
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-black text-muted uppercase tracking-widest flex items-center gap-2 truncate">
             <Target size={14} className="text-success" /> EVOLUÇÃO DE CARGA
           </h3>
-          <select 
-            value={selectedExercise}
-            onChange={(e) => setSelectedExercise(e.target.value)}
-            className="bg-card border border-success/30 text-success text-xs font-bold p-2.5 rounded-xl outline-none focus:border-success w-full"
+          
+          {/* BOTÃO QUE ABRE O MODAL */}
+          <button 
+            onClick={() => setIsSelectorOpen(true)}
+            className="bg-card border border-success/30 text-success text-xs font-black p-3 rounded-xl flex justify-between items-center active:scale-[0.98] transition-all"
           >
-            <option value="">-- SELECIONE UM EXERCÍCIO --</option>
-            {availableExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-          </select>
+            {selectedExercise || "-- SELECIONE UM EXERCÍCIO --"}
+            <Search size={14} />
+          </button>
         </div>
 
         <div className="bg-card border border-border p-3 rounded-2xl h-56 w-full min-w-0 backdrop-blur-sm relative shadow-sm overflow-hidden">
@@ -307,16 +280,65 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
             <div className="h-full flex flex-col items-center justify-center text-muted text-center px-6 opacity-60">
               <DumbbellIcon size={32} className="mb-2 opacity-30" />
               <p className="text-[10px] font-bold uppercase tracking-widest">
-                {selectedExercise ? "Sem dados suficientes." : "Selecione acima."}
+                {selectedExercise ? "Sem dados suficientes." : "Toque acima para selecionar."}
               </p>
             </div>
           )}
         </div>
       </section>
 
-      <button onClick={() => setView('workout')} className="w-full py-3 bg-card border border-border rounded-xl font-black text-xs tracking-widest text-muted hover:text-primary hover:border-primary/50 transition-all uppercase mt-4 shadow-sm active:scale-[0.98]">
-        VOLTAR
-      </button>
+      {/* --- BOTÃO VOLTAR (SÓ APARECE SE O SELETOR ESTIVER FECHADO) --- */}
+      {!isSelectorOpen && (
+        <button onClick={() => setView('workout')} className="w-full py-3 bg-card border border-border rounded-xl font-black text-xs tracking-widest text-muted hover:text-primary hover:border-primary/50 transition-all uppercase mt-4 shadow-sm active:scale-[0.98]">
+            VOLTAR
+        </button>
+      )}
+
+      {/* --- MODAL DE SELEÇÃO DE EXERCÍCIO --- */}
+      {/* 🔥 CORREÇÃO APLICADA AQUI 🔥
+          z-[9999] garante que o modal fique ACIMA do menu de navegação inferior 
+      */}
+      {isSelectorOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-card w-full max-w-sm rounded-2xl border border-primary/30 shadow-2xl flex flex-col max-h-[80vh]">
+                <div className="p-4 border-b border-border flex justify-between items-center">
+                    <h3 className="font-black text-primary uppercase tracking-widest">Selecionar</h3>
+                    <button onClick={() => setIsSelectorOpen(false)} className="text-muted hover:text-white"><X size={20}/></button>
+                </div>
+                
+                <div className="p-2 border-b border-border">
+                    <div className="flex items-center gap-2 bg-input/50 p-2 rounded-xl">
+                        <Search size={16} className="text-muted" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar..." 
+                            className="bg-transparent w-full text-sm outline-none text-main"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {filteredExercises.map(ex => (
+                        <button 
+                            key={ex} 
+                            onClick={() => { setSelectedExercise(ex); setIsSelectorOpen(false); }}
+                            className={`w-full text-left p-3 rounded-lg text-xs font-bold uppercase tracking-wide transition-all
+                                ${selectedExercise === ex ? 'bg-primary text-black' : 'hover:bg-primary/20 text-muted hover:text-white'}
+                            `}
+                        >
+                            {ex}
+                        </button>
+                    ))}
+                    {filteredExercises.length === 0 && (
+                        <div className="p-4 text-center text-muted text-xs">Nenhum exercício encontrado.</div>
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
 
     </main>
   );

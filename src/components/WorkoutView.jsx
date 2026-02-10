@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X } from 'lucide-react'; 
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X, Skull, Zap, Sword, Crown } from 'lucide-react'; 
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
-import BossBattle from './BossBattle'; 
 
 // --- FUNÇÕES AUXILIARES ---
 
@@ -84,8 +83,123 @@ const WorkoutView = ({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
 
+  // --- ESTADOS DA GAMIFICAÇÃO ---
+  const [bossStats, setBossStats] = useState({ hp: 5000, max: 5000, current: 5000, percent: 100, status: 'ALIVE' });
+  const [combo, setCombo] = useState(0);
+  const [lastCheckTime, setLastCheckTime] = useState(0);
+  const [shakingRow, setShakingRow] = useState(null);
+
   const days = Object.keys(workoutData || {}); 
   const currentDayIndex = days.indexOf(activeDay);
+  const currentWorkout = workoutData[activeDay];
+
+  // --- 🔥 CORREÇÃO DA TERÇA-FEIRA (AUTO-SELEÇÃO DE ABA) 🔥 ---
+  // Roda sempre que a data muda ou os dados carregam
+  useEffect(() => {
+    if (!workoutData) return;
+    const daysList = Object.keys(workoutData);
+    if (daysList.length === 0) return;
+
+    // 1. Pega o dia da semana da data atual/selecionada (0=Dom, 1=Seg, 2=Ter...)
+    const dateObj = new Date(selectedDate + 'T00:00:00');
+    const dayOfWeek = dateObj.getDay(); 
+
+    // 2. Converte para índice do array (Segunda=0, Terça=1, ... Domingo=6)
+    // O cálculo (dayOfWeek + 6) % 7 move o Domingo(0) para o final(6) e Segunda(1) para o início(0)
+    const adjustedIndex = (dayOfWeek + 6) % 7;
+
+    // 3. Garante que o índice exista na sua lista de treinos
+    // (Usa módulo para "girar" se tiver menos treinos que dias. Ex: Quinta cai no treino A de novo)
+    const finalIndex = adjustedIndex % daysList.length;
+
+    // 4. Manda o app mudar para esse dia automaticamente
+    setActiveDay(daysList[finalIndex]);
+    
+  }, [selectedDate, workoutData]); // Dependências: Data e Dados
+
+  // --- SORTEIO DO NOME DO BOSS (ROTAÇÃO GARANTIDA POR DATA + TREINO) ---
+  const bossName = useMemo(() => {
+     const names = [
+         "THAIS CARLA", "SERJÃO DOS FOGUETES", "GRACYANNE", "PETER GRIFFIN", 
+         "ACREANO", "GORDÃO DA XJ", "MATHEUS FDP", "XANDÃO", "PADRE MARCELO",
+         "PREGUIÇA", "98CM DE ABDOMEN", "TOGURO", "DAVY JONES", 
+         "AÇAÍ NO FINAL DE SEMANA", "OS ENZOS", "BARRIGUINHA MOLE", 
+         "A DIETA", "O ESPELHO", "A BALANÇA", "TREINO DE PERNA", "GORDO ALBERTO", "PERCY"
+     ];
+
+     if (!selectedDate) return names[0];
+
+     // Lógica Combinada: Data + Nome do Treino
+     // Isso garante que se mudar a data OU mudar o treino (A, B, C), o Boss muda.
+     const dateObj = new Date(selectedDate + 'T00:00:00');
+     const dayUniqueIndex = Math.floor(dateObj.getTime() / (24 * 60 * 60 * 1000));
+     
+     // Soma caracteres do nome do treino para diferenciar "Treino A" de "Treino B" no mesmo dia
+     let trainOffset = 0;
+     if (activeDay) {
+        for(let i=0; i<activeDay.length; i++) trainOffset += activeDay.charCodeAt(i);
+     }
+
+     const finalIndex = (dayUniqueIndex + trainOffset) % names.length;
+     return names[finalIndex];
+
+  }, [selectedDate, activeDay]); 
+
+  // --- LÓGICA DO BOSS: VOLUME DE CARGA ---
+  useEffect(() => {
+    if (!currentWorkout) return;
+    
+    let currentDamage = 0; 
+    let maxHp = 0;         
+
+    currentWorkout.exercises.forEach((ex, exIndex) => {
+        const keyBase = `${selectedDate}-${activeDay}-${exIndex}`;
+        const exProgress = progress[keyBase];
+        const numSets = exProgress?.actualSets || (typeof ex.sets === 'string' ? parseInt(ex.sets.split('x')[0]) || 3 : 3);
+        
+        for (let i = 0; i < numSets; i++) {
+            const setKey = `${keyBase}-${i}`;
+            const setData = progress[setKey];
+            if (setData?.completed) {
+                const w = safeParseFloat(setData.weight) || 10;
+                const r = safeParseFloat(setData.reps) || 0;
+                currentDamage += (w * r);
+            }
+        }
+    });
+
+    const previousSession = history
+        ?.filter(h => h.exercises.some(e => isSameExercise(e.name, currentWorkout.exercises[0].name))) 
+        ?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))[0];
+
+    if (previousSession) {
+        let prevVolume = 0;
+        previousSession.exercises.forEach(ex => {
+            if (ex.sets) {
+                ex.sets.forEach(s => {
+                    const w = safeParseFloat(s.weight) || 0;
+                    const r = safeParseFloat(s.reps) || 0;
+                    prevVolume += (w * r);
+                });
+            }
+        });
+        maxHp = Math.max(Math.round(prevVolume * 1.05), 2000); 
+    } else {
+        maxHp = 5000; 
+    }
+
+    const remainingHp = Math.max(0, maxHp - currentDamage);
+    const percent = (remainingHp / maxHp) * 100;
+    
+    setBossStats({
+        max: maxHp,
+        current: remainingHp, 
+        damageDone: currentDamage, 
+        percent: percent,
+        status: percent <= 0 ? 'DEFEATED' : 'ALIVE'
+    });
+
+  }, [progress, currentWorkout, selectedDate, activeDay, history]);
 
   const handlePrevDay = () => {
     const newIndex = currentDayIndex === 0 ? days.length - 1 : currentDayIndex - 1;
@@ -98,11 +212,9 @@ const WorkoutView = ({
   };
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
-  
   const isWeightSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.weight == weightInput && weightInput !== '');
   const isWaistSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.waist == waistInput && waistInput !== '');
   const hasStarted = workoutTimer?.elapsed > 0 || workoutTimer?.isRunning;
-  
   const currentEntry = bodyHistory?.find(h => h.date === selectedDate.split('-').reverse().join('/'));
   const hasPhoto = !!currentEntry?.photo;
 
@@ -120,28 +232,24 @@ const WorkoutView = ({
   };
 
   const toggleSetComplete = (id, setIndex) => {
+    const uniqueKey = `${id}-${setIndex}`;
+    setShakingRow(uniqueKey);
+    setTimeout(() => setShakingRow(null), 300);
+
     const currentStatus = progress[id]?.sets?.[setIndex]?.completed || false;
+    if (!currentStatus) { 
+         const now = Date.now();
+         if (now - lastCheckTime < 60000) { 
+             setCombo(prev => prev + 1);
+         } else {
+             setCombo(1);
+         }
+         setLastCheckTime(now);
+    }
+
     updateSetData(id, setIndex, 'completed', !currentStatus);
     if (!currentStatus) openRestTimer(60); 
   };
-
-  const currentSessionVolume = Object.keys(progress).reduce((total, key) => {
-     if (key.startsWith(`${selectedDate}-${activeDay}`)) {
-        const exerciseProgress = progress[key];
-        if (exerciseProgress?.sets) {
-           return total + exerciseProgress.sets.reduce((exTotal, set) => {
-              if (set.completed) {
-                 const w = safeParseFloat(set.weight);
-                 const r = safeParseFloat(set.reps);
-                 const effectiveWeight = w > 0 ? w : 50; 
-                 return exTotal + (effectiveWeight * r);
-              }
-              return exTotal;
-           }, 0);
-        }
-     }
-     return total;
-  }, 0);
 
   return (
     <>
@@ -166,7 +274,7 @@ const WorkoutView = ({
             
             <div className="h-[1px] w-full bg-border/30"></div>
             
-            {/* BOTÃO START / TIMER */}
+            {/* TIMER E STATUS */}
             {!hasStarted ? (
               <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm active:scale-95">
                  <Play size={18} className="fill-current" />
@@ -193,7 +301,7 @@ const WorkoutView = ({
               </div>
             )}
 
-            {/* INPUTS DE PESO E CINTURA (COMPACTOS) */}
+            {/* INPUTS DE PESO E CINTURA */}
             <div className="grid grid-cols-2 gap-2 mt-1">
               <div className="relative">
                 <span className={`absolute top-1.5 left-2 text-[6px] font-black uppercase tracking-widest z-10 ${isWeightSynced ? 'text-success' : 'text-muted'}`}>MASSA (KG)</span>
@@ -217,9 +325,40 @@ const WorkoutView = ({
           </div>
         </div>
 
-        {/* BOSS BATTLE */}
-        <div className="animate-in slide-in-from-top-4 duration-700 delay-100 z-0">
-           <BossBattle currentVolume={currentSessionVolume} />
+        {/* BOSS BATTLE (COM NOME ENGRAÇADO) */}
+        <div className={`rounded-xl overflow-hidden border transition-all duration-500 shadow-xl mt-4 ${bossStats.status === 'DEFEATED' ? 'bg-black border-green-500/50' : 'bg-card border-red-900/30'}`}>
+             <div className="p-3 flex justify-between items-end border-b border-white/5">
+                <div className="flex items-center gap-2">
+                   {bossStats.status === 'DEFEATED' ? <Trophy className="text-green-500 animate-bounce" size={24}/> : <Skull className="text-red-500 animate-pulse" size={24}/>}
+                   <div>
+                       <span className={`text-[9px] font-black uppercase tracking-[0.2em] block ${bossStats.status === 'DEFEATED' ? 'text-green-500' : 'text-red-500'}`}>
+                           {bossStats.status === 'DEFEATED' ? 'VITÓRIA' : 'ALVO ATUAL:'}
+                       </span>
+                       {/* NOME DO BOSS ALEATÓRIO */}
+                       <span className="text-lg font-black text-main uppercase italic leading-none truncate max-w-[200px] block drop-shadow-md">
+                           {bossName}
+                       </span>
+                   </div>
+                </div>
+                <div className="text-right">
+                    <span className="text-[9px] font-bold text-muted uppercase block mb-0.5">HP RESTANTE</span>
+                    <span className={`text-xl font-black leading-none block ${bossStats.status === 'DEFEATED' ? 'text-green-500' : 'text-red-500'}`}>
+                        {bossStats.current.toLocaleString()} <span className="text-[10px] opacity-60">kg</span>
+                    </span>
+                </div>
+             </div>
+             {/* Barra de Vida */}
+             <div className="h-5 bg-black relative">
+                 <div 
+                    className={`absolute top-0 left-0 h-full transition-all duration-500 ${bossStats.status === 'DEFEATED' ? 'bg-green-500' : 'bg-gradient-to-r from-red-900 via-red-600 to-red-500'}`} 
+                    style={{ width: `${bossStats.percent}%` }}
+                 >
+                    <div className="absolute top-0 right-0 h-full w-[1px] bg-white/50 blur-[2px]"></div>
+                 </div>
+                 <div className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white/40 tracking-widest mix-blend-overlay z-10">
+                     META: {bossStats.max.toLocaleString()} KG
+                 </div>
+             </div>
         </div>
 
         {/* NAVEGAÇÃO DE TREINOS */}
@@ -248,6 +387,7 @@ const WorkoutView = ({
             const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
             const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
+            // Busca Histórico para PR (Recordes)
             const exerciseHistory = (history || [])
               .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
               .filter(e => isSameExercise(ex.name, e.name));
@@ -265,26 +405,35 @@ const WorkoutView = ({
             const isBreakingPR = (progress[id]?.sets || []).some(s => safeParseFloat(s.weight) > exercisePR && exercisePR > 0);
 
             return (
-              <div key={id} className={`p-4 rounded-xl border transition-all duration-500 relative overflow-hidden ${isBreakingPR ? 'border-warning shadow-[0_0_15px_rgba(var(--warning),0.1)] bg-warning/5' : isDone ? 'border-primary shadow-[0_0_15px_rgba(var(--primary),0.1)] bg-black/40' : 'bg-card border-border hover:border-primary/30'}`}>
+              <div key={id} className={`p-4 rounded-xl border transition-all duration-500 relative overflow-hidden ${isBreakingPR ? 'border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] bg-yellow-400/5' : isDone ? 'border-primary shadow-[0_0_15px_rgba(var(--primary),0.1)] bg-black/40' : 'bg-card border-border hover:border-primary/30'}`}>
                 
                 {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-primary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none whitespace-nowrap z-0 select-none">OK</div>)}
                 
-                {exercisePR > 0 && (
-                  <div className={`absolute top-0 right-10 px-1.5 py-0.5 rounded-b flex items-center gap-1 z-20 border-x border-b ${isBreakingPR ? 'bg-warning border-warning text-black' : 'bg-input border-border text-muted'}`}>
-                    <Trophy size={8} className={isBreakingPR ? "fill-black" : ""} />
+                {/* 🔥 FAIXA DE RECORDE EXPLÍCITA 🔥 */}
+                {isBreakingPR && (
+                   <div className="absolute top-0 right-0 z-30 animate-pulse">
+                      <div className="bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
+                          <Crown size={12} fill="black" /> NOVO RECORDE
+                      </div>
+                   </div>
+                )}
+                
+                {exercisePR > 0 && !isBreakingPR && (
+                  <div className="absolute top-0 right-10 px-1.5 py-0.5 rounded-b flex items-center gap-1 z-20 border-x border-b bg-input border-border text-muted">
+                    <Trophy size={8} />
                     <span className="text-[7px] font-black uppercase tracking-widest">{exercisePR}KG</span>
                   </div>
                 )}
 
                 <div className="flex justify-between items-start mb-4 relative z-10">
                   <div className="flex-1">
-                    <h3 className={`font-black text-lg leading-tight transition-colors flex items-center gap-2 ${isBreakingPR ? 'text-warning' : isDone ? 'text-primary' : 'text-main'}`}>
+                    <h3 className={`font-black text-lg leading-tight transition-colors flex items-center gap-2 ${isBreakingPR ? 'text-yellow-400' : isDone ? 'text-primary' : 'text-main'}`}>
                       {ex.name}
-                      {isBreakingPR && <Star size={14} className="text-warning fill-warning animate-pulse" />}
+                      {/* {isBreakingPR && <Star size={14} className="text-yellow-400 fill-yellow-400 animate-spin-slow" />} */}
                     </h3>
                     <div className="flex gap-2 mt-0.5 flex-wrap">
-                       {lastWeight > 0 && (<span className="text-[9px] font-mono text-muted border border-border px-1 py-0 rounded bg-black/20">Último: {lastWeight}kg</span>)}
-                       <p className="text-xs text-muted font-bold uppercase tracking-tighter italic">{ex.note}</p>
+                        {lastWeight > 0 && (<span className="text-[9px] font-mono text-muted border border-border px-1 py-0 rounded bg-black/20">Último: {lastWeight}kg</span>)}
+                        <p className="text-xs text-muted font-bold uppercase tracking-tighter italic">{ex.note}</p>
                     </div>
                   </div>
                   <button onClick={() => toggleCheck(id)} className={`ml-3 p-1.5 rounded-full transition-all duration-500 border ${isDone ? 'border-primary text-primary shadow-[0_0_15px_var(--primary)] bg-transparent scale-110' : 'border-border text-muted hover:border-primary hover:text-white'}`}>
@@ -302,17 +451,20 @@ const WorkoutView = ({
                     <div className="grid gap-2">
                       {Array.from({ length: currentSetCount }).map((_, setIdx) => {
                         const isSetDone = progress[id]?.sets?.[setIdx]?.completed;
+                        const uniqueSetKey = `${id}-${setIdx}`;
+                        const isShaking = shakingRow === uniqueSetKey;
+                        
                         return (
-                        <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent border border-transparent'}`}>
+                        <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${isShaking ? 'translate-x-2 bg-red-500/20' : ''} ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent border border-transparent'}`}>
                           
                           <button onClick={() => toggleSetComplete(id, setIdx)} className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all active:scale-90 ${isSetDone ? 'bg-primary text-black border-primary shadow-[0_0_8px_var(--primary)]' : 'bg-input border-border text-muted hover:border-primary hover:text-primary'}`}>
-                              {isSetDone ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                              {isSetDone ? <Sword size={16} /> : <Circle size={16} />}
                           </button>
 
                           <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
                           <div className="flex-1 flex gap-1.5 items-center">
                               <input type="text" inputMode="decimal" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                                className={`w-full bg-input border rounded p-1.5 font-black text-lg outline-none transition-all text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-warning text-warning shadow-[0_0_10px_rgba(var(--warning),0.2)]' : 'border-border text-success focus:border-success/50'}`} 
+                                className={`w-full bg-input border rounded p-1.5 font-black text-lg outline-none transition-all text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]' : 'border-border text-success focus:border-success/50'}`} 
                               />
                               <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
                                 className="w-full bg-input border border-border rounded p-1.5 text-secondary font-black text-lg outline-none focus:border-secondary/50 transition-all text-center h-10" 
@@ -334,6 +486,19 @@ const WorkoutView = ({
           })}
         </div>
         
+        {/* COMBO METER */}
+        {combo > 1 && (
+            <div className="fixed bottom-24 right-4 z-50 pointer-events-none animate-in slide-in-from-right duration-300">
+                <div className="relative flex flex-col items-end">
+                    <Zap className="text-yellow-400 fill-yellow-400 absolute -top-4 -right-2 animate-bounce" size={24} />
+                    <div className="text-4xl font-black italic text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" style={{ transform: 'rotate(-5deg)' }}>
+                        {combo}x
+                    </div>
+                    <span className="text-[8px] font-black bg-black text-yellow-400 px-1 uppercase tracking-widest border border-yellow-400">COMBO</span>
+                </div>
+            </div>
+        )}
+
         {/* FOOTER */}
         <div className="space-y-4 pt-6 pb-4 z-0">
           <textarea placeholder="Relatório de danos..." className="w-full bg-card border border-border rounded-xl p-3 text-lg font-bold h-24 outline-none focus:border-primary/50 transition-all text-main placeholder-muted" value={sessionNote} onChange={(e) => setSessionNote(e.target.value)} />
