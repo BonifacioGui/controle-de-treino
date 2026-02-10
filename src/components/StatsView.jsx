@@ -2,32 +2,109 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from 'recharts';
 import { ChevronLeft, Activity, Target, Award, Trophy } from 'lucide-react';
 
-// --- HELPER: Unifica nomes ---
+// --- HELPER: Unifica nomes (Lógica Blindada v5) ---
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
+  
+  // 1. Limpeza básica
   let clean = rawName.split('(')[0].trim();
-  const lower = clean.toLowerCase();
+  const lower = clean.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, ""); 
 
-  if (lower.includes("crossover")) return "Crossover";
-  if (lower.includes("supino reto")) return "Supino Reto";
-  if (lower.includes("supino inclinado")) return "Supino Inclinado";
-  if (lower.includes("leg press")) return "Leg Press";
-  if (lower.includes("elevacao lateral")) return "Elevação Lateral";
-  if (lower.includes("crucifixo inverso")) return "Crucifixo Inverso";
-  if (lower.includes("puxada neutra")) return "Puxada Neutra";
-  if (lower.includes("remada baixa")) return "Remada Baixa";
-  if (lower.includes("serrote")) return "Serrote";
-  if (lower.includes("triceps pulley")) return "Tríceps Pulley";
-  if (lower.includes("triceps corda")) return "Tríceps Corda";
-  if (lower.includes("rosca direta")) return "Rosca Direta";
-  if (lower.includes("rosca martelo")) return "Rosca Martelo";
+  // 2. REGRAS DE PRIORIDADE
+  
+  // --- BRAÇOS (TRÍCEPS) ---
+  if (lower.includes("triceps")) {
+      // Variações mecânicas muito distintas continuam separadas
+      if (lower.includes("testa")) return "Tríceps Testa";
+      if (lower.includes("frances")) return "Tríceps Francês";
+      if (lower.includes("banco")) return "Tríceps Banco";
+      if (lower.includes("coice")) return "Tríceps Coice";
+      
+      // 🔥 UNIFICAÇÃO DO PULLEY/CORDA 🔥
+      // Pulley, Corda, Polia -> Tudo vira "Tríceps Corda" conforme pedido
+      return "Tríceps Corda"; 
+  }
+
+  // --- DESENVOLVIMENTO ---
+  if (lower.includes("desenv")) {
+      if (lower.includes("maquina") || lower.includes("machine")) return "Desenvolvimento Máquina";
+      if (lower.includes("barra") || lower.includes("militar") || lower.includes("frente")) return "Desenvolvimento Barra";
+      if (lower.includes("arnold")) return "Desenvolvimento Arnold";
+      return "Desenvolvimento"; // Halter, Neutro, Livre -> Tudo aqui
+  }
+
+  // --- SUPINO ---
+  if (lower.includes("supino")) {
+      if (lower.includes("inclinado")) return "Supino Inclinado";
+      if (lower.includes("declinado")) return "Supino Declinado";
+      if (lower.includes("vertical") || lower.includes("maquina")) return "Supino Máquina";
+      return "Supino Reto"; // Halter e Barra juntos
+  }
+
+  // --- PERNAS ---
+  if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
+  if (lower.includes("leg") && lower.includes("horizontal")) return "Leg Press Horizontal";
+  if (lower.includes("legpress") || lower.includes("leg")) return "Leg Press";
+  
+  if (lower.includes("agachamento")) {
+      if (lower.includes("bulgaro")) return "Agachamento Búlgaro";
+      if (lower.includes("smith") || lower.includes("guiado")) return "Agachamento Smith";
+      if (lower.includes("hack")) return "Agachamento Hack";
+      return "Agachamento Livre";
+  }
+  
   if (lower.includes("stiff")) return "Stiff";
-  if (lower.includes("abducao") || lower.includes("abdutora")) return "Cadeira Abdutora";
+  if (lower.includes("terra") && !lower.includes("unilateral")) return "Levantamento Terra";
   if (lower.includes("extensora")) return "Cadeira Extensora";
   if (lower.includes("flexora")) return "Mesa Flexora";
-  if (lower.includes("pelvica")) return "Elevação Pélvica";
+  if (lower.includes("pelvica") || lower.includes("elevacao de quadril")) return "Elevação Pélvica";
+  if (lower.includes("panturrilha")) return "Panturrilha";
 
-  return clean;
+  // --- COSTAS ---
+  if (lower.includes("puxada")) {
+      if (lower.includes("supinada")) return "Puxada Supinada";
+      return "Puxada Frontal";
+  }
+  
+  if (lower.includes("remada")) {
+      if (lower.includes("cavalinho")) return "Remada Cavalinho";
+      if (lower.includes("curvada")) return "Remada Curvada";
+      if (lower.includes("unilateral") || lower.includes("serrote")) return "Serrote";
+      if (lower.includes("maquina")) return "Remada Máquina";
+      return "Remada Baixa";
+  }
+  
+  if (lower.includes("serrote")) return "Serrote";
+  if (lower.includes("pulldown")) return "Pulldown";
+  
+  if (lower.includes("rosca")) {
+      if (lower.includes("martelo")) return "Rosca Martelo";
+      if (lower.includes("scott")) return "Rosca Scott";
+      if (lower.includes("inclinada") || lower.includes("45")) return "Rosca 45º";
+      return "Rosca Direta";
+  }
+
+  // --- OMBRO ---
+  if (lower.includes("lateral")) return "Elevação Lateral";
+  if (lower.includes("frontal")) return "Elevação Frontal";
+  if (lower.includes("crucifixo") && lower.includes("inverso")) return "Crucifixo Inverso";
+  if (lower.includes("face") && lower.includes("pull")) return "Face Pull";
+  if (lower.includes("encolhimento")) return "Encolhimento";
+
+  // --- PEITO ---
+  if (lower.includes("crossover")) return "Crossover";
+  if (lower.includes("peck") || lower.includes("deck")) return "Peck Deck";
+  if (lower.includes("crucifixo")) return "Crucifixo"; 
+
+  // --- OUTROS ---
+  if (lower.includes("abducao") || lower.includes("abdutora")) return "Cadeira Abdutora";
+  if (lower.includes("adutora")) return "Cadeira Adutora";
+  if (lower.includes("vacuum")) return "Stomach Vacuum";
+
+  // Padrão
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
 const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
@@ -59,7 +136,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData }) => {
     safeHistory.forEach(session => {
         session.exercises.forEach(ex => uniqueSet.add(getCanonicalName(ex.name)));
     });
-    // Do Plano Atual (para garantir que apareçam mesmo sem histórico)
+    // Do Plano Atual
     if (workoutData) {
         Object.values(workoutData).forEach(day => {
             if (day.exercises) day.exercises.forEach(ex => uniqueSet.add(getCanonicalName(ex.name)));
