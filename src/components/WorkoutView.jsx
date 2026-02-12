@@ -23,8 +23,10 @@ const isSameExercise = (currentName, historyName) => {
   if (historyKey.includes(currentKey)) return true;
   if (currentKey.includes(historyKey) && historyKey.length > 4) return true; 
 
+  // 🔥 LISTA DE SINÔNIMOS CORRIGIDA E COMPLETA (FIX RECORDES) 🔥
   const synonyms = {
     "rosca45": ["incline", "banco", "inclinada", "45"],
+    "roscadireta": ["barra", "w", "polia", "biceps", "stand", "direta", "alternada"], // ADICIONADO
     "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta", "cross"],
     "elevacaopelvica": ["quadril", "pelvica", "elevacao"],
     "cadeiraabdutora": ["abducao", "abdutora"],
@@ -38,7 +40,8 @@ const isSameExercise = (currentName, historyName) => {
     "abdominalinfra": ["abdominal"],
     "vacuum": ["stomachvacuum"],
     "supinoinclinado": ["supinoinclinado", "controlar", "halter"],
-    "crucifixoinverso": ["halter", "postural", "cifose", "substituto"] 
+    "crucifixoinverso": ["halter", "postural", "cifose", "substituto"],
+    "crucifixo": ["maquina", "peck", "deck", "fly", "reto", "inclinado", "peckdeck", "voador"] // ADICIONADO
   };
 
   if (synonyms[currentKey]) return synonyms[currentKey].some(syn => historyKey.includes(syn));
@@ -94,77 +97,66 @@ const WorkoutView = ({
   const currentWorkout = workoutData[activeDay];
 
   // --- 🔥 CORREÇÃO DA TERÇA-FEIRA (AUTO-SELEÇÃO DE ABA) 🔥 ---
-  // Roda sempre que a data muda ou os dados carregam
   useEffect(() => {
     if (!workoutData) return;
     const daysList = Object.keys(workoutData);
     if (daysList.length === 0) return;
 
-    // 1. Pega o dia da semana da data atual/selecionada (0=Dom, 1=Seg, 2=Ter...)
     const dateObj = new Date(selectedDate + 'T00:00:00');
     const dayOfWeek = dateObj.getDay(); 
-
-    // 2. Converte para índice do array (Segunda=0, Terça=1, ... Domingo=6)
-    // O cálculo (dayOfWeek + 6) % 7 move o Domingo(0) para o final(6) e Segunda(1) para o início(0)
     const adjustedIndex = (dayOfWeek + 6) % 7;
-
-    // 3. Garante que o índice exista na sua lista de treinos
-    // (Usa módulo para "girar" se tiver menos treinos que dias. Ex: Quinta cai no treino A de novo)
     const finalIndex = adjustedIndex % daysList.length;
 
-    // 4. Manda o app mudar para esse dia automaticamente
     setActiveDay(daysList[finalIndex]);
     
-  }, [selectedDate, workoutData]); // Dependências: Data e Dados
+  }, [selectedDate, workoutData]); 
 
-  // --- SORTEIO DO NOME DO BOSS (ROTAÇÃO GARANTIDA POR DATA + TREINO) ---
+  // --- SORTEIO DO NOME DO BOSS ---
   const bossName = useMemo(() => {
-     const names = [
-         "THAIS CARLA", "SERJÃO DOS FOGUETES", "GRACYANNE", "PETER GRIFFIN", 
-         "ACREANO", "GORDÃO DA XJ", "MATHEUS FDP", "XANDÃO", "PADRE MARCELO",
-         "PREGUIÇA", "98CM DE ABDOMEN", "TOGURO", "DAVY JONES", 
-         "AÇAÍ NO FINAL DE SEMANA", "OS ENZOS", "BARRIGUINHA MOLE", 
-         "A DIETA", "O ESPELHO", "A BALANÇA", "TREINO DE PERNA", "GORDO ALBERTO", "PERCY"
-     ];
+      const names = [
+          "THAIS CARLA", "SERJÃO DOS FOGUETES", "GRACYANNE", "PETER GRIFFIN", 
+          "ACREANO", "GORDÃO DA XJ", "MATHEUS FDP", "XANDÃO", "PADRE MARCELO",
+          "PREGUIÇA", "98CM DE ABDOMEN", "TOGURO", "DAVY JONES", 
+          "AÇAÍ NO FINAL DE SEMANA", "OS ENZOS", "BARRIGUINHA MOLE", 
+          "A DIETA", "O ESPELHO", "A BALANÇA", "TREINO DE PERNA", "GORDO ALBERTO", "PERCY"
+      ];
 
-     if (!selectedDate) return names[0];
+      if (!selectedDate) return names[0];
 
-     // Lógica Combinada: Data + Nome do Treino
-     // Isso garante que se mudar a data OU mudar o treino (A, B, C), o Boss muda.
-     const dateObj = new Date(selectedDate + 'T00:00:00');
-     const dayUniqueIndex = Math.floor(dateObj.getTime() / (24 * 60 * 60 * 1000));
-     
-     // Soma caracteres do nome do treino para diferenciar "Treino A" de "Treino B" no mesmo dia
-     let trainOffset = 0;
-     if (activeDay) {
-        for(let i=0; i<activeDay.length; i++) trainOffset += activeDay.charCodeAt(i);
-     }
+      const dateObj = new Date(selectedDate + 'T00:00:00');
+      const dayUniqueIndex = Math.floor(dateObj.getTime() / (24 * 60 * 60 * 1000));
+      
+      let trainOffset = 0;
+      if (activeDay) {
+         for(let i=0; i<activeDay.length; i++) trainOffset += activeDay.charCodeAt(i);
+      }
 
-     const finalIndex = (dayUniqueIndex + trainOffset) % names.length;
-     return names[finalIndex];
+      const finalIndex = (dayUniqueIndex + trainOffset) % names.length;
+      return names[finalIndex];
 
   }, [selectedDate, activeDay]); 
 
-  // --- LÓGICA DO BOSS: VOLUME DE CARGA ---
+  // --- LÓGICA DO BOSS: VOLUME DE CARGA (CORRIGIDO PARA LER OS DADOS CERTOS) ---
   useEffect(() => {
     if (!currentWorkout) return;
     
     let currentDamage = 0; 
-    let maxHp = 0;         
+    let maxHp = 0;          
 
+    // Loop de cálculo de dano
     currentWorkout.exercises.forEach((ex, exIndex) => {
         const keyBase = `${selectedDate}-${activeDay}-${exIndex}`;
-        const exProgress = progress[keyBase];
-        const numSets = exProgress?.actualSets || (typeof ex.sets === 'string' ? parseInt(ex.sets.split('x')[0]) || 3 : 3);
+        const exProgress = progress[keyBase]; // Pega o objeto do exercício
         
-        for (let i = 0; i < numSets; i++) {
-            const setKey = `${keyBase}-${i}`;
-            const setData = progress[setKey];
-            if (setData?.completed) {
-                const w = safeParseFloat(setData.weight) || 10;
-                const r = safeParseFloat(setData.reps) || 0;
-                currentDamage += (w * r);
-            }
+        // Verifica se tem séries salvas DENTRO do objeto (Estrutura Correta)
+        if (exProgress?.sets) {
+            exProgress.sets.forEach(setData => {
+                if (setData?.completed) { // Só conta se tiver CHECK
+                    const w = safeParseFloat(setData.weight) || 10;
+                    const r = safeParseFloat(setData.reps) || 0;
+                    currentDamage += (w * r);
+                }
+            });
         }
     });
 
@@ -248,7 +240,11 @@ const WorkoutView = ({
     }
 
     updateSetData(id, setIndex, 'completed', !currentStatus);
-    if (!currentStatus) openRestTimer(60); 
+    
+    // Timer fix: Só abre se completou a série E se o exercício não for por tempo
+    if (!currentStatus) {
+        openRestTimer(60); 
+    }
   };
 
   return (
@@ -263,9 +259,9 @@ const WorkoutView = ({
             {/* DATA e CALENDÁRIO */}
             <div onClick={() => setIsCalendarOpen(true)} className="flex items-center justify-between cursor-pointer group/calendar">
               <div className="flex items-baseline gap-2">
-                 <span className="text-xl font-black text-main italic leading-none">{selectedDate.split('-').reverse()[0]}</span>
-                 <span className="text-xs font-bold text-muted uppercase">{dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.','')}</span>
-                 <span className="text-[10px] font-black text-primary uppercase tracking-widest ml-2 opacity-50">DATA_DA_MISSÃO</span>
+                  <span className="text-xl font-black text-main italic leading-none">{selectedDate.split('-').reverse()[0]}</span>
+                  <span className="text-xs font-bold text-muted uppercase">{dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.','')}</span>
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest ml-2 opacity-50">DATA_DA_MISSÃO</span>
               </div>
               <div className={`p-1.5 rounded-lg border transition-all ${isCalendarOpen ? 'bg-primary text-black' : 'bg-input text-primary border-primary/30'}`}>
                 <Calendar size={16} />
@@ -277,27 +273,27 @@ const WorkoutView = ({
             {/* TIMER E STATUS */}
             {!hasStarted ? (
               <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm active:scale-95">
-                 <Play size={18} className="fill-current" />
-                 <span className="font-black italic text-sm tracking-widest">INICIAR TREINO</span>
+                  <Play size={18} className="fill-current" />
+                  <span className="font-black italic text-sm tracking-widest">INICIAR TREINO</span>
               </button>
             ) : (
               <div className="flex items-center justify-between bg-black/40 border border-primary/30 p-2 rounded-lg">
-                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded transition-colors ${workoutTimer.isRunning ? 'bg-primary text-black animate-pulse' : 'bg-gray-800 text-gray-400'}`}>
                        <TimerIcon size={16} className={workoutTimer.isRunning ? "animate-spin-slow" : ""} />
                     </div>
                     <span className={`text-xl font-mono font-black leading-none tracking-wider ${workoutTimer.isRunning ? 'text-white' : 'text-gray-400'}`}>
                        {formatTime(workoutTimer.elapsed)}
                     </span>
-                 </div>
-                 <div className="flex gap-2">
-                     <button onClick={toggleWorkoutTimer} className="p-1.5 rounded bg-gray-800 border border-gray-600 hover:border-primary hover:text-primary transition-all active:scale-95">
-                         {workoutTimer.isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                     </button>
-                     <button onClick={resetWorkoutTimer} className="p-1.5 rounded bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95">
-                         <Trash2 size={16} />
-                     </button>
-                 </div>
+                  </div>
+                  <div className="flex gap-2">
+                      <button onClick={toggleWorkoutTimer} className="p-1.5 rounded bg-gray-800 border border-gray-600 hover:border-primary hover:text-primary transition-all active:scale-95">
+                          {workoutTimer.isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                      </button>
+                      <button onClick={resetWorkoutTimer} className="p-1.5 rounded bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95">
+                          <Trash2 size={16} />
+                      </button>
+                  </div>
               </div>
             )}
 
@@ -429,7 +425,7 @@ const WorkoutView = ({
                   <div className="flex-1">
                     <h3 className={`font-black text-lg leading-tight transition-colors flex items-center gap-2 ${isBreakingPR ? 'text-yellow-400' : isDone ? 'text-primary' : 'text-main'}`}>
                       {ex.name}
-                      {/* {isBreakingPR && <Star size={14} className="text-yellow-400 fill-yellow-400 animate-spin-slow" />} */}
+                      {isBreakingPR && <Star size={16} className="text-warning fill-warning animate-pulse" />}
                     </h3>
                     <div className="flex gap-2 mt-0.5 flex-wrap">
                         {lastWeight > 0 && (<span className="text-[9px] font-mono text-muted border border-border px-1 py-0 rounded bg-black/20">Último: {lastWeight}kg</span>)}
@@ -457,13 +453,21 @@ const WorkoutView = ({
                         return (
                         <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${isShaking ? 'translate-x-2 bg-red-500/20' : ''} ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent border border-transparent'}`}>
                           
-                          <button onClick={() => toggleSetComplete(id, setIdx)} className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all active:scale-90 ${isSetDone ? 'bg-primary text-black border-primary shadow-[0_0_8px_var(--primary)]' : 'bg-input border-border text-muted hover:border-primary hover:text-primary'}`}>
+                          <button 
+                              onClick={() => toggleSetComplete(id, setIdx)}
+                              className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all active:scale-90 ${isSetDone ? 'bg-primary text-black border-primary shadow-[0_0_8px_var(--primary)]' : 'bg-input border-border text-muted hover:border-primary hover:text-primary'}`}
+                          >
                               {isSetDone ? <Sword size={16} /> : <Circle size={16} />}
                           </button>
 
                           <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
                           <div className="flex-1 flex gap-1.5 items-center">
-                              <input type="text" inputMode="decimal" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
+                              <input 
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="KG" 
+                                value={progress[id]?.sets?.[setIdx]?.weight || ""} 
+                                onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
                                 className={`w-full bg-input border rounded p-1.5 font-black text-lg outline-none transition-all text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]' : 'border-border text-success focus:border-success/50'}`} 
                               />
                               <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
