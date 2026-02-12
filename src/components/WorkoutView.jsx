@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X, Skull, Zap, Sword, Crown } from 'lucide-react'; 
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X, Skull, Zap, Sword, Crown, Scroll } from 'lucide-react'; 
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
+import { DAILY_QUESTS_POOL } from '../utils/rpgSystem';
+ 
 
 // --- FUNÇÕES AUXILIARES ---
-
 const cleanString = (str) => {
   if (!str) return "";
   return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
@@ -23,10 +24,9 @@ const isSameExercise = (currentName, historyName) => {
   if (historyKey.includes(currentKey)) return true;
   if (currentKey.includes(historyKey) && historyKey.length > 4) return true; 
 
-  // 🔥 LISTA DE SINÔNIMOS CORRIGIDA E COMPLETA (FIX RECORDES) 🔥
   const synonyms = {
     "rosca45": ["incline", "banco", "inclinada", "45"],
-    "roscadireta": ["barra", "w", "polia", "biceps", "stand", "direta", "alternada"], // ADICIONADO
+    "roscadireta": ["barra", "w", "polia", "biceps", "stand", "direta", "alternada"],
     "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta", "cross"],
     "elevacaopelvica": ["quadril", "pelvica", "elevacao"],
     "cadeiraabdutora": ["abducao", "abdutora"],
@@ -41,7 +41,7 @@ const isSameExercise = (currentName, historyName) => {
     "vacuum": ["stomachvacuum"],
     "supinoinclinado": ["supinoinclinado", "controlar", "halter"],
     "crucifixoinverso": ["halter", "postural", "cifose", "substituto"],
-    "crucifixo": ["maquina", "peck", "deck", "fly", "reto", "inclinado", "peckdeck", "voador"] // ADICIONADO
+    "crucifixo": ["maquina", "peck", "deck", "fly", "reto", "inclinado", "peckdeck", "voador"]
   };
 
   if (synonyms[currentKey]) return synonyms[currentKey].some(syn => historyKey.includes(syn));
@@ -74,6 +74,7 @@ const formatTime = (seconds) => {
   return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
+// --- COMPONENTE PRINCIPAL ---
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
   weightInput, setWeightInput, waistInput, setWaistInput, 
@@ -83,10 +84,13 @@ const WorkoutView = ({
   timerState, closeTimer,
   workoutTimer, toggleWorkoutTimer, resetWorkoutTimer
 }) => {
+
+  // Estados de Interface
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
+  const [questNotification, setQuestNotification] = useState(null); 
 
-  // --- ESTADOS DA GAMIFICAÇÃO ---
+  // Estados de Gamificação
   const [bossStats, setBossStats] = useState({ hp: 5000, max: 5000, current: 5000, percent: 100, status: 'ALIVE' });
   const [combo, setCombo] = useState(0);
   const [lastCheckTime, setLastCheckTime] = useState(0);
@@ -96,22 +100,64 @@ const WorkoutView = ({
   const currentDayIndex = days.indexOf(activeDay);
   const currentWorkout = workoutData[activeDay];
 
-  // --- 🔥 CORREÇÃO DA TERÇA-FEIRA (AUTO-SELEÇÃO DE ABA) 🔥 ---
+  // --- 🔥 AUTO CHECKER DE MISSÕES 🔥 ---
+  const checkQuests = useCallback(() => {
+    if (!currentWorkout) return;
+
+    const tempSession = {
+        exercises: currentWorkout.exercises.map((ex, i) => {
+            const id = `${selectedDate}-${activeDay}-${i}`;
+            const exData = progress[id];
+            const validSets = (exData?.sets || []).filter(s => s.completed);
+            
+            return {
+                name: ex.name,
+                done: exData?.done || false,
+                sets: validSets
+            };
+        }),
+        note: sessionNote
+    };
+
+    const storedQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+    let hasUpdates = false;
+    const updatedQuests = storedQuests.map(quest => {
+        if (quest.completed) return quest; 
+
+        const questRule = DAILY_QUESTS_POOL.find(q => q.id === quest.id);
+        if (questRule && questRule.check(tempSession)) {
+            hasUpdates = true;
+            setQuestNotification(quest.title); 
+            setTimeout(() => setQuestNotification(null), 3000);
+            return { ...quest, completed: true };
+        }
+        return quest;
+    });
+
+    if (hasUpdates) {
+        localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
+        window.dispatchEvent(new Event('storage'));
+    }
+  }, [currentWorkout, progress, selectedDate, activeDay, sessionNote]);
+
+  useEffect(() => {
+    const timer = setTimeout(checkQuests, 500);
+    return () => clearTimeout(timer);
+  }, [progress, checkQuests]);
+
+
+  // --- SELEÇÃO DE DIA E BOSS ---
   useEffect(() => {
     if (!workoutData) return;
     const daysList = Object.keys(workoutData);
     if (daysList.length === 0) return;
-
     const dateObj = new Date(selectedDate + 'T00:00:00');
     const dayOfWeek = dateObj.getDay(); 
     const adjustedIndex = (dayOfWeek + 6) % 7;
     const finalIndex = adjustedIndex % daysList.length;
-
     setActiveDay(daysList[finalIndex]);
-    
   }, [selectedDate, workoutData]); 
 
-  // --- SORTEIO DO NOME DO BOSS ---
   const bossName = useMemo(() => {
       const names = [
           "THAIS CARLA", "SERJÃO DOS FOGUETES", "GRACYANNE", "PETER GRIFFIN", 
@@ -120,38 +166,28 @@ const WorkoutView = ({
           "AÇAÍ NO FINAL DE SEMANA", "OS ENZOS", "BARRIGUINHA MOLE", 
           "A DIETA", "O ESPELHO", "A BALANÇA", "TREINO DE PERNA", "GORDO ALBERTO", "PERCY"
       ];
-
       if (!selectedDate) return names[0];
-
       const dateObj = new Date(selectedDate + 'T00:00:00');
       const dayUniqueIndex = Math.floor(dateObj.getTime() / (24 * 60 * 60 * 1000));
-      
       let trainOffset = 0;
       if (activeDay) {
          for(let i=0; i<activeDay.length; i++) trainOffset += activeDay.charCodeAt(i);
       }
-
       const finalIndex = (dayUniqueIndex + trainOffset) % names.length;
       return names[finalIndex];
-
   }, [selectedDate, activeDay]); 
 
-  // --- LÓGICA DO BOSS: VOLUME DE CARGA (CORRIGIDO PARA LER OS DADOS CERTOS) ---
+  // --- CÁLCULO DE DANO DO BOSS ---
   useEffect(() => {
     if (!currentWorkout) return;
-    
     let currentDamage = 0; 
     let maxHp = 0;          
-
-    // Loop de cálculo de dano
     currentWorkout.exercises.forEach((ex, exIndex) => {
         const keyBase = `${selectedDate}-${activeDay}-${exIndex}`;
-        const exProgress = progress[keyBase]; // Pega o objeto do exercício
-        
-        // Verifica se tem séries salvas DENTRO do objeto (Estrutura Correta)
+        const exProgress = progress[keyBase];
         if (exProgress?.sets) {
             exProgress.sets.forEach(setData => {
-                if (setData?.completed) { // Só conta se tiver CHECK
+                if (setData?.completed) {
                     const w = safeParseFloat(setData.weight) || 10;
                     const r = safeParseFloat(setData.reps) || 0;
                     currentDamage += (w * r);
@@ -159,7 +195,8 @@ const WorkoutView = ({
             });
         }
     });
-
+    
+    
     const previousSession = history
         ?.filter(h => h.exercises.some(e => isSameExercise(e.name, currentWorkout.exercises[0].name))) 
         ?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))[0];
@@ -179,30 +216,17 @@ const WorkoutView = ({
     } else {
         maxHp = 5000; 
     }
-
     const remainingHp = Math.max(0, maxHp - currentDamage);
     const percent = (remainingHp / maxHp) * 100;
-    
     setBossStats({
-        max: maxHp,
-        current: remainingHp, 
-        damageDone: currentDamage, 
-        percent: percent,
+        max: maxHp, current: remainingHp, damageDone: currentDamage, percent: percent,
         status: percent <= 0 ? 'DEFEATED' : 'ALIVE'
     });
-
   }, [progress, currentWorkout, selectedDate, activeDay, history]);
 
-  const handlePrevDay = () => {
-    const newIndex = currentDayIndex === 0 ? days.length - 1 : currentDayIndex - 1;
-    setActiveDay(days[newIndex]);
-  };
-
-  const handleNextDay = () => {
-    const newIndex = currentDayIndex === days.length - 1 ? 0 : currentDayIndex + 1;
-    setActiveDay(days[newIndex]);
-  };
-
+  // --- HANDLERS ---
+  const handlePrevDay = () => { setActiveDay(days[currentDayIndex === 0 ? days.length - 1 : currentDayIndex - 1]); };
+  const handleNextDay = () => { setActiveDay(days[currentDayIndex === days.length - 1 ? 0 : currentDayIndex + 1]); };
   const dateObj = new Date(selectedDate + 'T00:00:00');
   const isWeightSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.weight == weightInput && weightInput !== '');
   const isWaistSynced = bodyHistory?.some(h => h.date === selectedDate.split('-').reverse().join('/') && h.waist == waistInput && waistInput !== '');
@@ -219,9 +243,7 @@ const WorkoutView = ({
     }
   };
 
-  const openRestTimer = (seconds = 60) => {
-    setRestTimerConfig({ isOpen: true, duration: seconds });
-  };
+  const openRestTimer = (seconds = 60) => { setRestTimerConfig({ isOpen: true, duration: seconds }); };
 
   const toggleSetComplete = (id, setIndex) => {
     const uniqueKey = `${id}-${setIndex}`;
@@ -230,33 +252,23 @@ const WorkoutView = ({
 
     const currentStatus = progress[id]?.sets?.[setIndex]?.completed || false;
     if (!currentStatus) { 
-         const now = Date.now();
-         if (now - lastCheckTime < 60000) { 
-             setCombo(prev => prev + 1);
-         } else {
-             setCombo(1);
-         }
-         setLastCheckTime(now);
+          const now = Date.now();
+          if (now - lastCheckTime < 60000) setCombo(prev => prev + 1);
+          else setCombo(1);
+          setLastCheckTime(now);
     }
-
     updateSetData(id, setIndex, 'completed', !currentStatus);
-    
-    // Timer fix: Só abre se completou a série E se o exercício não for por tempo
-    if (!currentStatus) {
-        openRestTimer(60); 
-    }
+    if (!currentStatus) openRestTimer(60); 
   };
 
   return (
     <>
-      <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative w-full">
+      <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative w-full z-0">
         
-        {/* PAINEL SUPERIOR COMPACTO */}
+        {/* HEADER / CALENDÁRIO */}
         <div className="bg-card border border-border p-3 rounded-2xl relative overflow-hidden group shadow-sm z-10">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
           <div className="flex flex-col gap-3 relative z-10">
-            
-            {/* DATA e CALENDÁRIO */}
             <div onClick={() => setIsCalendarOpen(true)} className="flex items-center justify-between cursor-pointer group/calendar">
               <div className="flex items-baseline gap-2">
                   <span className="text-xl font-black text-main italic leading-none">{selectedDate.split('-').reverse()[0]}</span>
@@ -267,10 +279,8 @@ const WorkoutView = ({
                 <Calendar size={16} />
               </div>
             </div>
-            
             <div className="h-[1px] w-full bg-border/30"></div>
             
-            {/* TIMER E STATUS */}
             {!hasStarted ? (
               <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm active:scale-95">
                   <Play size={18} className="fill-current" />
@@ -297,7 +307,6 @@ const WorkoutView = ({
               </div>
             )}
 
-            {/* INPUTS DE PESO E CINTURA */}
             <div className="grid grid-cols-2 gap-2 mt-1">
               <div className="relative">
                 <span className={`absolute top-1.5 left-2 text-[6px] font-black uppercase tracking-widest z-10 ${isWeightSynced ? 'text-success' : 'text-muted'}`}>MASSA (KG)</span>
@@ -321,8 +330,8 @@ const WorkoutView = ({
           </div>
         </div>
 
-        {/* BOSS BATTLE (COM NOME ENGRAÇADO) */}
-        <div className={`rounded-xl overflow-hidden border transition-all duration-500 shadow-xl mt-4 ${bossStats.status === 'DEFEATED' ? 'bg-black border-green-500/50' : 'bg-card border-red-900/30'}`}>
+        {/* BOSS BATTLE */}
+        <div className={`rounded-xl overflow-hidden border transition-all duration-500 shadow-xl mt-4 z-10 ${bossStats.status === 'DEFEATED' ? 'bg-black border-green-500/50' : 'bg-card border-red-900/30'}`}>
              <div className="p-3 flex justify-between items-end border-b border-white/5">
                 <div className="flex items-center gap-2">
                    {bossStats.status === 'DEFEATED' ? <Trophy className="text-green-500 animate-bounce" size={24}/> : <Skull className="text-red-500 animate-pulse" size={24}/>}
@@ -330,10 +339,11 @@ const WorkoutView = ({
                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] block ${bossStats.status === 'DEFEATED' ? 'text-green-500' : 'text-red-500'}`}>
                            {bossStats.status === 'DEFEATED' ? 'VITÓRIA' : 'ALVO ATUAL:'}
                        </span>
-                       {/* NOME DO BOSS ALEATÓRIO */}
-                       <span className="text-lg font-black text-main uppercase italic leading-none truncate max-w-[200px] block drop-shadow-md">
-                           {bossName}
-                       </span>
+                       {/* 🔥 NOME DO BOSS COM EFEITO GLITCH QUANDO DERROTADO 🔥 */}
+                       <span className={`text-lg font-black text-main uppercase italic leading-none truncate max-w-[200px] block drop-shadow-md 
+                        ${bossStats.status === 'DEFEATED' ? 'animate-glitch text-green-400' : ''}`}>
+                          {bossName}
+                      </span>
                    </div>
                 </div>
                 <div className="text-right">
@@ -343,12 +353,8 @@ const WorkoutView = ({
                     </span>
                 </div>
              </div>
-             {/* Barra de Vida */}
              <div className="h-5 bg-black relative">
-                 <div 
-                    className={`absolute top-0 left-0 h-full transition-all duration-500 ${bossStats.status === 'DEFEATED' ? 'bg-green-500' : 'bg-gradient-to-r from-red-900 via-red-600 to-red-500'}`} 
-                    style={{ width: `${bossStats.percent}%` }}
-                 >
+                 <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${bossStats.status === 'DEFEATED' ? 'bg-green-500' : 'bg-gradient-to-r from-red-900 via-red-600 to-red-500'}`} style={{ width: `${bossStats.percent}%` }}>
                     <div className="absolute top-0 right-0 h-full w-[1px] bg-white/50 blur-[2px]"></div>
                  </div>
                  <div className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white/40 tracking-widest mix-blend-overlay z-10">
@@ -357,7 +363,7 @@ const WorkoutView = ({
              </div>
         </div>
 
-        {/* NAVEGAÇÃO DE TREINOS */}
+        {/* NAV TREINOS */}
         <div className="relative py-1 z-0">
           <div className="flex items-center justify-between gap-2">
             <button onClick={handlePrevDay} className="p-2 rounded-lg bg-card border border-border text-muted hover:text-primary hover:border-primary active:scale-95 transition-all shadow-sm"><ChevronLeft size={20} /></button>
@@ -375,7 +381,7 @@ const WorkoutView = ({
           </div>
         </div>
 
-        {/* LISTAGEM DE EXERCÍCIOS */}
+        {/* LISTAGEM EXERCÍCIOS */}
         <div className="space-y-4 z-0">
           {workoutData?.[activeDay]?.exercises?.map((ex, i) => {
             const id = `${selectedDate}-${activeDay}-${i}`;
@@ -383,7 +389,6 @@ const WorkoutView = ({
             const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
             const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
-            // Busca Histórico para PR (Recordes)
             const exerciseHistory = (history || [])
               .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
               .filter(e => isSameExercise(ex.name, e.name));
@@ -402,18 +407,14 @@ const WorkoutView = ({
 
             return (
               <div key={id} className={`p-4 rounded-xl border transition-all duration-500 relative overflow-hidden ${isBreakingPR ? 'border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] bg-yellow-400/5' : isDone ? 'border-primary shadow-[0_0_15px_rgba(var(--primary),0.1)] bg-black/40' : 'bg-card border-border hover:border-primary/30'}`}>
-                
                 {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-primary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none whitespace-nowrap z-0 select-none">OK</div>)}
-                
-                {/* 🔥 FAIXA DE RECORDE EXPLÍCITA 🔥 */}
                 {isBreakingPR && (
-                   <div className="absolute top-0 right-0 z-30 animate-pulse">
-                      <div className="bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
-                          <Crown size={12} fill="black" /> NOVO RECORDE
-                      </div>
-                   </div>
+                    <div className="absolute top-0 right-0 z-30 animate-pulse">
+                       <div className="bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
+                           <Crown size={12} fill="black" /> NOVO RECORDE
+                       </div>
+                    </div>
                 )}
-                
                 {exercisePR > 0 && !isBreakingPR && (
                   <div className="absolute top-0 right-10 px-1.5 py-0.5 rounded-b flex items-center gap-1 z-20 border-x border-b bg-input border-border text-muted">
                     <Trophy size={8} />
@@ -449,17 +450,14 @@ const WorkoutView = ({
                         const isSetDone = progress[id]?.sets?.[setIdx]?.completed;
                         const uniqueSetKey = `${id}-${setIdx}`;
                         const isShaking = shakingRow === uniqueSetKey;
-                        
                         return (
                         <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${isShaking ? 'translate-x-2 bg-red-500/20' : ''} ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent border border-transparent'}`}>
-                          
                           <button 
                               onClick={() => toggleSetComplete(id, setIdx)}
                               className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all active:scale-90 ${isSetDone ? 'bg-primary text-black border-primary shadow-[0_0_8px_var(--primary)]' : 'bg-input border-border text-muted hover:border-primary hover:text-primary'}`}
                           >
                               {isSetDone ? <Sword size={16} /> : <Circle size={16} />}
                           </button>
-
                           <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
                           <div className="flex-1 flex gap-1.5 items-center">
                               <input 
@@ -503,12 +501,31 @@ const WorkoutView = ({
             </div>
         )}
 
+        {/* NOTIFICAÇÃO DE MISSÃO COMPLETADA */}
+        {questNotification && (
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500">
+             <div className="bg-yellow-500 text-black px-6 py-3 rounded-full font-black border-4 border-black shadow-[0_0_20px_rgba(234,179,8,0.6)] flex items-center gap-3">
+                <Scroll size={20} className="animate-bounce" />
+                <div className="flex flex-col">
+                   <span className="text-[8px] uppercase tracking-widest leading-none">Missão Cumprida</span>
+                   <span className="text-sm italic uppercase leading-none">{questNotification}</span>
+                </div>
+             </div>
+          </div>
+        )}
+
         {/* FOOTER */}
         <div className="space-y-4 pt-6 pb-4 z-0">
           <textarea placeholder="Relatório de danos..." className="w-full bg-card border border-border rounded-xl p-3 text-lg font-bold h-24 outline-none focus:border-primary/50 transition-all text-main placeholder-muted" value={sessionNote} onChange={(e) => setSessionNote(e.target.value)} />
-          <button onClick={finishWorkout} className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary to-secondary py-4 font-black text-white shadow-[0_5px_20px_rgba(var(--primary),0.3)] active:scale-[0.97] transition-all hover:shadow-[0_0_30px_rgba(var(--primary),0.5)]">
-            <span className="relative z-10 uppercase tracking-[0.3em] text-xs italic flex items-center justify-center gap-2"><Star size={14} fill="white" /> EFETIVAR ALTERAÇÕES</span>
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+          
+          <button 
+             onClick={finishWorkout} 
+             className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary to-secondary py-4 font-black text-white shadow-[0_5px_20px_rgba(var(--primary),0.3)] active:scale-[0.97] transition-all hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] z-10"
+          >
+             <span className="relative z-10 uppercase tracking-[0.3em] text-xs italic flex items-center justify-center gap-2">
+               <Star size={14} fill="white" /> FINALIZAR MISSÃO
+             </span>
+             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
           </button>
         </div>
 
@@ -522,10 +539,11 @@ const WorkoutView = ({
         )}
       </main>
 
-      {/* --- TIMERS FORA DA TAG MAIN --- */}
-      {timerState && timerState.active && <RestTimer initialSeconds={timerState.seconds} onClose={closeTimer} />}
-      {restTimerConfig.isOpen && <RestTimer initialSeconds={restTimerConfig.duration} onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} />}
-      
+      {/* TIMERS E MODAIS - ALTO Z-INDEX PARA NÃO SOBREPOR */}
+      <div className="relative z-[300]">
+        {timerState && timerState.active && <RestTimer initialSeconds={timerState.seconds} onClose={closeTimer} />}
+        {restTimerConfig.isOpen && <RestTimer initialSeconds={restTimerConfig.duration} onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} />}
+      </div>
     </>
   );
 };
