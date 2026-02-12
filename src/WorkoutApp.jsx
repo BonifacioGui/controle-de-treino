@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react';
 import { useWorkout } from './hooks/useWorkout'; 
 import { initialWorkoutData } from './workoutData'; 
@@ -13,16 +13,61 @@ import MatrixRain from './components/MatrixRain';
 import Importer from './components/Importer';
 import UserLevel from './components/UserLevel';
 import BadgeList from './components/BadgeList'; 
+import CharacterSheet from './components/CharacterSheet';
+import QuestBoard from './components/QuestBoard';
+
+
+// No topo do WorkoutApp.jsx
+import Cr7Celebration from './components/Cr7Celebration'; // O nome aqui deve ser igual à tag
+import LevelUpModal from './components/LevelUpModal';
+import { getDailyQuests } from './utils/rpgSystem';
 
 const WorkoutApp = () => { 
   const { state, setters, actions, stats } = useWorkout();
+  
+  // Estados de Interface
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false); // 🔥 Lógica para esconder o menu
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
+
+  // Estados de Celebração e Level Up
+  const [showCr7, setShowCr7] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [pendingLevelUp, setPendingLevelUp] = useState(false);
+  
+  // Referência para guardar o nível anterior e comparar
+  const prevLevelRef = useRef(stats?.level || 1);
 
   const hasSavedData = !!localStorage.getItem('workout_plan');
 
+  // Dentro do WorkoutApp, junto com os outros useEffects
+useEffect(() => {
+  const checkAndGenerateQuests = () => {
+    const today = new Date().toLocaleDateString('pt-BR');
+    const lastQuestDate = localStorage.getItem('quest_date');
+    const currentQuests = localStorage.getItem('daily_quests');
+
+    // Se mudou o dia OU se não tem nenhuma missão salva
+    if (today !== lastQuestDate || !currentQuests) {
+      console.log("🔄 Gerando novas missões diárias...");
+
+      // 1. Sorteia 3 novas missões do seu RPG System
+      const newQuests = getDailyQuests(); 
+
+      // 2. Salva no LocalStorage para o WorkoutView ler
+      localStorage.setItem('daily_quests', JSON.stringify(newQuests));
+      localStorage.setItem('quest_date', today);
+
+      // 3. Avisa o sistema que mudou
+      window.dispatchEvent(new Event('storage'));
+    }
+  };
+
+  checkAndGenerateQuests();
+}, []);
+
+  // --- EFEITOS DE TEMA E REDE ---
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -37,7 +82,7 @@ const WorkoutApp = () => {
     };
   }, []);
 
-  // AUTO-INICIALIZAÇÃO
+  // --- AUTO-INICIALIZAÇÃO ---
   useEffect(() => {
     if (state.view === 'import' || !state.workoutData || Object.keys(state.workoutData).length === 0) {
        const saved = localStorage.getItem('workout_plan');
@@ -49,12 +94,59 @@ const WorkoutApp = () => {
     }
   }, [state.view, state.workoutData, setters]);
 
+  // --- MONITORAMENTO DE LEVEL UP ---
+  // Toda vez que o stats.level mudar, verificamos se subiu
+  useEffect(() => {
+    const currentLevel = stats?.level || 1;
+    
+    if (currentLevel > prevLevelRef.current) {
+      // OPA! Subiu de nível!
+      if (showCr7) {
+        // Se o vídeo do CR7 estiver passando, deixa pendente para mostrar depois
+        setPendingLevelUp(true);
+      } else {
+        // Se não tiver vídeo, mostra direto (raro, mas possível)
+        setShowLevelUp(true);
+      }
+      // Atualiza a referência
+      prevLevelRef.current = currentLevel;
+    }
+  }, [stats?.level, showCr7]);
+
+  // Atualiza estado global de modal se alguma celebração estiver ativa
+  useEffect(() => {
+    setIsAnyModalOpen(showCr7 || showLevelUp);
+  }, [showCr7, showLevelUp]);
+
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
   }, [actions, setters]);
 
-  // 🔥 LÓGICA DO FOGO EVOLUTIVO 🔥
+  // --- WRAPPERS DE AÇÃO (Lógica da Sequência CR7 -> Level Up) ---
+  
+  // Função que substitui o "finishWorkout" original no botão
+  const handleFinishWorkoutWrapper = () => {
+    // 1. Dispara o vídeo imediatamente (Visual)
+    setShowCr7(true);
+    
+    setPendingLevelUp(true);
+    // 2. Chama a função real que salva os dados e calcula XP (Lógica)
+    actions.finishWorkout();
+  };
+
+  // Função chamada quando o vídeo do CR7 termina
+  const handleVideoComplete = () => {
+    setShowCr7(false);
+    
+    // Se durante o vídeo detectamos que subiu de nível, mostra agora
+    if (pendingLevelUp) {
+      setShowLevelUp(true);
+      setPendingLevelUp(false);
+    }
+  };
+
+  // --- LÓGICA DO FOGO EVOLUTIVO ---
   const getFlameStyle = (streak) => {
     if (streak >= 30) return {
         color: "text-cyan-400",
@@ -84,21 +176,6 @@ const WorkoutApp = () => {
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
       {theme === 'matrix' && <MatrixRain />}
-
-      {/* --- MEME DO CR7 --- */}
-      {state.showMeme && (
-        <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-black animate-in zoom-in duration-300 p-4">
-          <video 
-            src="https://i.imgur.com/1kSZ05R.mp4" 
-            className="w-full md:w-auto max-h-[55vh] object-contain rounded-3xl border-4 border-cyan-500 shadow-[0_0_50px_rgba(0,243,255,0.8)]" 
-            autoPlay loop muted playsInline
-          />
-          <h2 className="text-6xl md:text-9xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)] animate-pulse pb-10">
-            SIIIIIIIIIIIU!
-          </h2>
-        </div>
-      )}
-
       {/* HEADER CORRIGIDO (CENTRALIZADO) */}
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
@@ -147,8 +224,10 @@ const WorkoutApp = () => {
 
       {/* ÁREA DE GAMIFICAÇÃO */}
       {state.view === 'workout' && !state.showMeme && (
-        <div className="mb-6 space-y-2">
+        <div className="mb-6 space-y-4 animate-in slide-in-from-bottom-5 duration-700">
           <UserLevel history={state.history} />
+          <QuestBoard />
+          <CharacterSheet history={state.history} />
           <BadgeList history={state.history} />
         </div>
       )}
@@ -193,12 +272,13 @@ const WorkoutApp = () => {
               updateSessionSets={actions.updateSessionSets} 
               sessionNote={state.sessionNote} 
               setSessionNote={setters.setSessionNote} 
-              finishWorkout={actions.finishWorkout}
-              saveBiometrics={actions.saveBiometrics}
               
+              // 🔥 AQUI: Passamos o Wrapper em vez da action direta
+              finishWorkout={handleFinishWorkoutWrapper}
+              
+              saveBiometrics={actions.saveBiometrics}
               bodyHistory={state.bodyHistory} 
               history={state.history}
-              
               timerState={state.timerState}
               closeTimer={actions.closeTimer}
               workoutTimer={state.workoutTimer}
@@ -241,7 +321,7 @@ const WorkoutApp = () => {
               history={state.history} 
               workoutData={state.workoutData} 
               setView={setters.setView}
-              setIsModalOpen={setIsAnyModalOpen} // 🔥 Passa a função
+              setIsModalOpen={setIsAnyModalOpen}
             />
         )}
         
@@ -250,9 +330,21 @@ const WorkoutApp = () => {
         )}
       </div>
       
-      {/* NAVEGAÇÃO INFERIOR 🔥 Sumir se modal estiver aberto */}
+      {/* NAVEGAÇÃO INFERIOR */}
       {!state.showMeme && !isAnyModalOpen && (
         <CyberNav currentView={state.view} setView={setters.setView} />
+      )}
+      
+      {/* COMPONENTES DE CELEBRAÇÃO */}
+      {showCr7 && (
+        <Cr7Celebration onClose={handleVideoComplete} /> 
+      )}
+      
+      {showLevelUp && (
+        <LevelUpModal 
+          level={stats?.level || 1}   // <--- ADICIONE ESTA LINHA
+          onClose={() => setShowLevelUp(false)} 
+        />
       )}
       
       {/* MENU LATERAL */}
