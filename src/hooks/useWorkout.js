@@ -3,6 +3,24 @@ import { supabase } from '../supabaseClient';
 import { initialWorkoutData } from '../workoutData';
 
 export const useWorkout = () => {
+  // --- ESTADO DE AUTENTICAÇÃO ---
+  const [userId, setUserId] = useState(null);
+
+  // Monitora a sessão para garantir que temos o UID correto
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUserId(session?.user?.id || null);
+    };
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // --- ESTADOS BÁSICOS ---
   const [activeDay, setActiveDay] = useState(() => Object.keys(initialWorkoutData)[0]);
   const [sessionNote, setSessionNote] = useState('');
@@ -12,10 +30,8 @@ export const useWorkout = () => {
   const [showMeme, setShowMeme] = useState(false);
   const [view, setView] = useState('import');
   
-  // Estado do Timer de Descanso (RestTimer)
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
 
-  // Cronômetro de Treino (Stopwatch)
   const [workoutTimer, setWorkoutTimer] = useState(() => {
     try {
       const saved = localStorage.getItem('workout_stopwatch');
@@ -32,7 +48,6 @@ export const useWorkout = () => {
     } catch { return { isRunning: false, startTime: null, elapsed: 0 }; }
   });
 
-  // Estados de Dados (Cache)
   const [workoutData, setWorkoutData] = useState(() => {
     try {
       const saved = localStorage.getItem('workout_plan');
@@ -61,7 +76,6 @@ export const useWorkout = () => {
     } catch { return []; }
   });
 
-  // --- CÁLCULO DE STREAK ---
   const streak = useMemo(() => {
     if (!history || history.length === 0) return 0;
     const uniqueDates = [...new Set(history.map(h => {
@@ -93,7 +107,6 @@ export const useWorkout = () => {
     return currentStreak;
   }, [history]);
 
-  // --- GERENCIADOR DE SONS ---
   const playSound = useCallback((type) => {
     let url = '';
     let volume = 0.5;
@@ -108,7 +121,6 @@ export const useWorkout = () => {
     audio.play().catch(() => {});
   }, []);
 
-  // --- PERSISTÊNCIA LOCAL ---
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
@@ -117,7 +129,6 @@ export const useWorkout = () => {
     localStorage.setItem('workout_stopwatch', JSON.stringify(workoutTimer)); 
   }, [workoutData, progress, history, bodyHistory, workoutTimer]);
 
-  // --- EFEITO DO CRONÔMETRO ---
   useEffect(() => {
     let interval = null;
     if (workoutTimer.isRunning && workoutTimer.startTime) {
@@ -131,22 +142,22 @@ export const useWorkout = () => {
     return () => clearInterval(interval);
   }, [workoutTimer.isRunning, workoutTimer.startTime]);
 
-  // --- 🔥 NOVA FUNÇÃO: SINCRONIZAR PLANO COM A NUVEM 🔥 ---
+  // --- 🔥 SINCRONIZAÇÃO COM UID REAL 🔥 ---
   const savePlanToCloud = useCallback(async (newData) => {
+    if (!userId) return; // Segurança ADS: Só tenta salvar se estiver logado
     try {
       await supabase
         .from('workout_plans')
         .upsert({ 
-          user_id: 'user_default', 
+          user_id: userId, // 🔥 Agora usa o UID real
           plan_data: newData,
           updated_at: new Date()
         }, { onConflict: 'user_id' });
     } catch (err) {
       console.error("Erro ao sincronizar plano:", err);
     }
-  }, []);
+  }, [userId]);
 
-  // --- HELPERS E FETCH ---
   const formatDateSecure = useCallback((dateString) => {
     if (!dateString) return '';
     const cleanDate = dateString.split('T')[0];
@@ -158,27 +169,37 @@ export const useWorkout = () => {
     return dateString;
   }, []);
 
+  // --- BUSCA DE DADOS POR USUÁRIO ---
   const fetchCloudData = useCallback(async () => {
+    if (!userId) return; // Não busca se não houver usuário logado
     try {
-      // 1. Busca Biometria
-      const { data: bodyData } = await supabase.from('body_stats').select('*').order('date', { ascending: false });
+      const { data: bodyData } = await supabase
+        .from('body_stats')
+        .select('*')
+        .eq('user_id', userId) // 🔥 Filtro de usuário
+        .order('date', { ascending: false });
       if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: formatDateSecure(b.date) })));
       
-      // 2. Busca Histórico
-      const { data: trainData } = await supabase.from('workout_history').select('*').order('workout_date', { ascending: false });
+      const { data: trainData } = await supabase
+        .from('workout_history')
+        .select('*')
+        .eq('user_id', userId) // 🔥 Filtro de usuário
+        .order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: formatDateSecure(t.workout_date), dayName: t.workout_name })));
 
-      // 3. 🔥 NOVO: Busca Plano de Treino 🔥
-      const { data: planData } = await supabase.from('workout_plans').select('plan_data').eq('user_id', 'user_default').single();
+      const { data: planData } = await supabase
+        .from('workout_plans')
+        .select('plan_data')
+        .eq('user_id', userId) // 🔥 Agora busca o plano do usuário certo
+        .single();
       if (planData) {
         setWorkoutData(planData.plan_data);
       }
     } catch (err) { console.error("Offline:", err); }
-  }, [formatDateSecure]);
+  }, [formatDateSecure, userId]);
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
 
-  // --- ACTIONS ---
   const handleDateChange = useCallback((newDate) => {
     setSelectedDate(newDate);
     const formattedDate = newDate.split('-').reverse().join('/');
@@ -188,10 +209,15 @@ export const useWorkout = () => {
   }, [bodyHistory]);
 
   const saveBiometrics = useCallback(async (photoBase64 = null) => {
-    if (!weightInput && !waistInput && !photoBase64) return;
-    const newEntry = { date: selectedDate, weight: weightInput ? parseFloat(weightInput) : null, waist: waistInput ? parseFloat(waistInput) : null };
+    if (!userId || (!weightInput && !waistInput && !photoBase64)) return;
+    const newEntry = { 
+        user_id: userId, // 🔥 Carimba o UID
+        date: selectedDate, 
+        weight: weightInput ? parseFloat(weightInput) : null, 
+        waist: waistInput ? parseFloat(waistInput) : null 
+    };
     if (photoBase64) newEntry.photo = photoBase64;
-    try { await supabase.from('body_stats').upsert(newEntry, { onConflict: 'date' }); } catch (err) { console.error(err); }
+    try { await supabase.from('body_stats').upsert(newEntry, { onConflict: 'user_id, date' }); } catch (err) { console.error(err); }
     setBodyHistory(prev => {
         const dateStr = formatDateSecure(selectedDate);
         const existsIndex = prev.findIndex(p => p.date === dateStr);
@@ -203,9 +229,10 @@ export const useWorkout = () => {
         }
         return [formattedEntry, ...prev];
     });
-  }, [selectedDate, weightInput, waistInput, formatDateSecure]);
+  }, [selectedDate, weightInput, waistInput, formatDateSecure, userId]);
 
   const finishWorkout = useCallback(async () => {
+    if (!userId) return; // Segurança
     await saveBiometrics();
     playSound('success');
     
@@ -216,6 +243,7 @@ export const useWorkout = () => {
     const durationString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
     const sessionBase = {
+      user_id: userId, // 🔥 Identifica o dono do treino
       workout_date: selectedDate,
       workout_name: safeActiveDay,
       note: sessionNote + (finalDurationSeconds > 0 ? ` | Duração: ${durationString}` : ''), 
@@ -245,9 +273,8 @@ export const useWorkout = () => {
     setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
     setShowMeme(true);
     setTimeout(() => { setShowMeme(false); setView('history'); }, 3500);
-  }, [saveBiometrics, workoutData, activeDay, selectedDate, sessionNote, progress, formatDateSecure, fetchCloudData, workoutTimer, playSound]);
+  }, [saveBiometrics, workoutData, activeDay, selectedDate, sessionNote, progress, formatDateSecure, fetchCloudData, workoutTimer, playSound, userId]);
 
-  // --- FUNCTIONS MEMORIZADAS ---
   const functions = useMemo(() => ({
     updateSessionSets: (id, val) => setProgress(p => ({ ...p, [id]: { ...p[id], actualSets: val } })),
     
@@ -285,20 +312,20 @@ export const useWorkout = () => {
     },
 
     deleteEntry: async (id, type) => {
-        if (!window.confirm("Eliminar?")) return;
+        if (!userId || !window.confirm("Eliminar?")) return;
         const table = type === 'body' ? 'body_stats' : 'workout_history';
         if (type === 'body') setBodyHistory(p => p.filter(i => i.id !== id));
         else setHistory(p => p.filter(i => i.id !== id));
-        const { error } = await supabase.from(table).delete().eq('id', id);
+        const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', userId); // Segurança extra
         if (error) fetchCloudData();
     },
 
     updateHistoryEntry: async (id, data) => {
+        if (!userId) return;
         setHistory(h => h.map(x => x.id === id ? { ...x, ...data } : x));
-        await supabase.from('workout_history').update({ note: data.note, exercises: data.exercises }).eq('id', id);
+        await supabase.from('workout_history').update({ note: data.note, exercises: data.exercises }).eq('id', id).eq('user_id', userId);
     },
 
-    // 🔥 MANAGE DATA ATUALIZADO COM SINCRONIZAÇÃO 🔥
     manageData: {
         add: async (day) => {
           setWorkoutData(d => {
@@ -325,15 +352,15 @@ export const useWorkout = () => {
           });
         }
     }
-  }), [fetchCloudData, playSound, savePlanToCloud]);
+  }), [fetchCloudData, playSound, savePlanToCloud, userId]);
 
   return useMemo(() => ({
-    state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer },
+    state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },
     setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setShowMeme, setView, setWorkoutData },
     actions: { handleDateChange, saveBiometrics, finishWorkout, fetchCloudData, ...functions, closeTimer: functions.closeTimer, toggleWorkoutTimer: functions.toggleWorkoutTimer, resetWorkoutTimer: functions.resetWorkoutTimer },
     stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak }
   }), [
-    activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, streak,
+    activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, streak, userId,
     handleDateChange, saveBiometrics, finishWorkout, fetchCloudData, functions
   ]);
 };

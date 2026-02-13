@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from 'recharts';
-import { ChevronLeft, Activity, Target, Award, Trophy, Search, X, Flame, Shield } from 'lucide-react';
+// 🔥 ADICIONADO: Componentes de Radar no Recharts
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { ChevronLeft, Activity, Target, Award, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
+// 🔥 ADICIONADO: Import do calculador de stats
+import { calculateStats } from '../utils/rpgSystem';
 
-// --- REFATORAÇÃO: Unificação de Nomes via Mapeamento ---
+// --- HELPER: Unificação de Nomes via Mapeamento ---
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
   let name = rawName.split('(')[0].trim();
@@ -52,10 +55,23 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     spiderman: { p: '#ef4444', s: '#facc15', g: '#000', t: '#000' }
   }[theme] || { p: '#22d3ee', s: '#ec4899', g: '#1e293b', t: '#94a3b8' };
 
-  const { biometry, volume, heatmap, hallOfFame, exercises } = useMemo(() => {
+  // --- DATA PROCESSING (MEMOIZED) ---
+  const { biometry, volume, heatmap, hallOfFame, exercises, radarData } = useMemo(() => {
     const h = Array.isArray(history) ? history : [];
     const b = Array.isArray(bodyHistory) ? bodyHistory : [];
+    
+    // 1. Radar de Atributos (RPG Stats)
+    const rpgStats = calculateStats(h);
+    const radarData = Object.keys(rpgStats).map(key => ({
+        subject: rpgStats[key].label,
+        value: rpgStats[key].level,
+        fullMark: 100 // Teto visual para o gráfico
+    }));
+
+    // 2. Biometria
     const biometry = b.map(e => ({ date: e.date.split('/').slice(0, 2).join('/'), peso: parseFloat(e.weight) || 0, cintura: parseFloat(e.waist) || 0 }));
+
+    // 3. Heatmap & Volume
     const muscleCounts = { PEITO: 0, COSTAS: 0, PERNAS: 0, BRAÇOS: 0, OMBROS: 0, CORE: 0 };
     const limit = new Date(); limit.setDate(limit.getDate() - 30);
 
@@ -73,6 +89,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       return { date: s.date.split('/').slice(0, 2).join('/'), volume: Math.round(vol), full: s.date };
     }).filter(v => v.volume > 0);
 
+    // 4. Hall of Fame
     const prs = {};
     h.forEach(s => s.exercises.forEach(ex => {
       const n = getCanonicalName(ex.name), max = Math.max(...(ex.sets?.map(st => parseFloat(st.weight) || 0) || [0]));
@@ -80,7 +97,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     }));
 
     return {
-      biometry, volume,
+      biometry, volume, radarData,
       heatmap: Object.entries(muscleCounts).map(([name, sets]) => ({ name, sets, intensity: Math.min(Math.round((sets / 25) * 100), 100) })),
       hallOfFame: Object.entries(prs).sort((a, b) => b[1] - a[1]).slice(0, 6),
       exercises: Array.from(new Set([...h.flatMap(s => s.exercises.map(e => getCanonicalName(e.name))), ...Object.values(workoutData || {}).flatMap(d => d.exercises?.map(e => getCanonicalName(e.name)) || [])])).sort()
@@ -97,11 +114,28 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   return (
     <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
-        <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary"><ChevronLeft size={20}/></button>
+        <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95"><ChevronLeft size={20}/></button>
         <h2 className="text-lg font-black italic uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
-      {/* MATRIX MUSCULAR (EFEITO AGRESSIVO ATIVADO) */}
+      {/* 🔥 NOVO: RADAR DE PERFIL (RPG) 🔥 */}
+      <Section title="PERFIL DE COMBATE (ATRIBUTOS)" icon={User} h="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+            <PolarGrid stroke={colors.g} />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: colors.t, fontSize: 10, fontWeight: 'bold' }} />
+            <Radar
+              name="Atributos"
+              dataKey="value"
+              stroke={colors.p}
+              fill={colors.p}
+              fillOpacity={0.6}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </Section>
+
+      {/* MATRIX MUSCULAR */}
       <Section title="SISTEMA MUSCULAR (30D)" icon={Shield} h="auto">
         <div className="grid grid-cols-3 gap-2">
           {heatmap.map(m => {
@@ -112,12 +146,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
                 className={`bg-input/30 border p-2 rounded-xl relative overflow-hidden transition-all duration-500 
                   ${isHot ? 'border-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-border'}`}
               >
-                {/* Preenchimento de fundo */}
-                <div 
-                  className={`absolute bottom-0 left-0 w-full transition-all duration-1000 
-                    ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} 
-                  style={{ height: `${m.intensity}%` }} 
-                />
+                <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} style={{ height: `${m.intensity}%` }} />
                 <div className="relative z-10">
                     <span className={`text-[7px] font-black block uppercase ${isHot ? 'text-red-400' : 'text-muted'}`}>{m.name}</span>
                     <span className={`text-sm font-black italic ${isHot ? 'text-white' : 'text-main'}`}>{m.intensity}%</span>
@@ -153,7 +182,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <div className="grid grid-cols-2 gap-2">
           {hallOfFame.map(([n, w]) => (
             <div key={n} className="bg-card/80 p-2 rounded-xl border border-warning/30 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-warning/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
               <h4 className="text-[9px] font-bold text-main truncate uppercase relative z-10">{n}</h4>
               <p className="text-lg font-black italic relative z-10">{w}<span className="text-[8px] ml-0.5 text-warning">KG</span></p>
             </div>
@@ -180,7 +208,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       </section>
 
       {isSelectorOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/95 animate-in fade-in duration-200" onClick={() => setIsSelectorOpen(false)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 animate-in fade-in duration-200" onClick={() => setIsSelectorOpen(false)}>
           <div className="bg-card w-full max-w-sm rounded-2xl border border-primary/30 flex flex-col max-h-[75vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-border flex justify-between items-center bg-input/10">
               <h3 className="font-black text-primary uppercase text-sm tracking-widest">SISTEMA DE BUSCA</h3>
@@ -201,7 +229,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   );
 };
 
-// --- SUB-COMPONENTE: ESTRUTURA DE SEÇÃO ---
 const Section = ({ title, icon: Icon, children, h = "h-48" }) => (
   <section className="space-y-2">
     <div className="flex items-center justify-between px-1">
