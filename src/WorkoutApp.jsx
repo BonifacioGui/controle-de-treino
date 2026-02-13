@@ -16,9 +16,8 @@ import BadgeList from './components/BadgeList';
 import CharacterSheet from './components/CharacterSheet';
 import QuestBoard from './components/QuestBoard';
 
-
-// No topo do WorkoutApp.jsx
-import Cr7Celebration from './components/Cr7Celebration'; // O nome aqui deve ser igual à tag
+// Celebrações
+import Cr7Celebration from './components/Cr7Celebration'; 
 import LevelUpModal from './components/LevelUpModal';
 import { getDailyQuests } from './utils/rpgSystem';
 
@@ -41,31 +40,23 @@ const WorkoutApp = () => {
 
   const hasSavedData = !!localStorage.getItem('workout_plan');
 
-  // Dentro do WorkoutApp, junto com os outros useEffects
-useEffect(() => {
-  const checkAndGenerateQuests = () => {
-    const today = new Date().toLocaleDateString('pt-BR');
-    const lastQuestDate = localStorage.getItem('quest_date');
-    const currentQuests = localStorage.getItem('daily_quests');
+  // --- GERAÇÃO DE MISSÕES ---
+  useEffect(() => {
+    const checkAndGenerateQuests = () => {
+      const today = new Date().toLocaleDateString('pt-BR');
+      const lastQuestDate = localStorage.getItem('quest_date');
+      const currentQuests = localStorage.getItem('daily_quests');
 
-    // Se mudou o dia OU se não tem nenhuma missão salva
-    if (today !== lastQuestDate || !currentQuests) {
-      console.log("🔄 Gerando novas missões diárias...");
-
-      // 1. Sorteia 3 novas missões do seu RPG System
-      const newQuests = getDailyQuests(); 
-
-      // 2. Salva no LocalStorage para o WorkoutView ler
-      localStorage.setItem('daily_quests', JSON.stringify(newQuests));
-      localStorage.setItem('quest_date', today);
-
-      // 3. Avisa o sistema que mudou
-      window.dispatchEvent(new Event('storage'));
-    }
-  };
-
-  checkAndGenerateQuests();
-}, []);
+      if (today !== lastQuestDate || !currentQuests) {
+        console.log("🔄 Gerando novas missões diárias...");
+        const newQuests = getDailyQuests(); 
+        localStorage.setItem('daily_quests', JSON.stringify(newQuests));
+        localStorage.setItem('quest_date', today);
+        window.dispatchEvent(new Event('storage'));
+      }
+    };
+    checkAndGenerateQuests();
+  }, []);
 
   // --- EFEITOS DE TEMA E REDE ---
   useEffect(() => {
@@ -94,52 +85,41 @@ useEffect(() => {
     }
   }, [state.view, state.workoutData, setters]);
 
-  // --- MONITORAMENTO DE LEVEL UP ---
-  // Toda vez que o stats.level mudar, verificamos se subiu
+  // --- MONITORAMENTO DE LEVEL UP (CORRIGIDO) ---
   useEffect(() => {
     const currentLevel = stats?.level || 1;
     
     if (currentLevel > prevLevelRef.current) {
-      // OPA! Subiu de nível!
       if (showCr7) {
-        // Se o vídeo do CR7 estiver passando, deixa pendente para mostrar depois
-        setPendingLevelUp(true);
+        setPendingLevelUp(true); // Se o vídeo está a passar, guarda para depois
       } else {
-        // Se não tiver vídeo, mostra direto (raro, mas possível)
-        setShowLevelUp(true);
+        setShowLevelUp(true); // Se não há vídeo, mostra logo
       }
-      // Atualiza a referência
       prevLevelRef.current = currentLevel;
     }
   }, [stats?.level, showCr7]);
 
-  // Atualiza estado global de modal se alguma celebração estiver ativa
+  // Atualiza estado global de modal se alguma celebração ou menu estiver ativo
   useEffect(() => {
-    setIsAnyModalOpen(showCr7 || showLevelUp);
-  }, [showCr7, showLevelUp]);
+    setIsAnyModalOpen(showCr7 || showLevelUp || isMenuOpen);
+  }, [showCr7, showLevelUp, isMenuOpen]);
 
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
   }, [actions, setters]);
 
-  // --- WRAPPERS DE AÇÃO (Lógica da Sequência CR7 -> Level Up) ---
+  // --- WRAPPERS DE AÇÃO ---
   
-  // Função que substitui o "finishWorkout" original no botão
   const handleFinishWorkoutWrapper = () => {
-    // 1. Dispara o vídeo imediatamente (Visual)
+    // 🔥 CORREÇÃO: Removido o setPendingLevelUp(true) daqui. 
+    // O useEffect acima é que decide se houve level up baseado no XP real.
     setShowCr7(true);
-    
-    setPendingLevelUp(true);
-    // 2. Chama a função real que salva os dados e calcula XP (Lógica)
     actions.finishWorkout();
   };
 
-  // Função chamada quando o vídeo do CR7 termina
   const handleVideoComplete = () => {
     setShowCr7(false);
-    
-    // Se durante o vídeo detectamos que subiu de nível, mostra agora
     if (pendingLevelUp) {
       setShowLevelUp(true);
       setPendingLevelUp(false);
@@ -176,7 +156,7 @@ useEffect(() => {
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
       {theme === 'matrix' && <MatrixRain />}
-      {/* HEADER CORRIGIDO (CENTRALIZADO) */}
+
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
           
@@ -191,7 +171,7 @@ useEffect(() => {
               </h1>
           </div>
 
-          {/* CENTRO: STREAK (FOGO) - ABSOLUTO PARA CENTRALIZAR */}
+          {/* CENTRO: STREAK */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
             <div className={`flex flex-col items-center justify-center px-4 h-14 rounded-2xl border transition-all duration-500 min-w-[80px] ${flameStyle.shadow} relative overflow-hidden group`}>
                 <div className="relative mb-0.5 z-10">
@@ -206,7 +186,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* DIREITA: WIFI + MENU */}
+          {/* DIREITA: STATUS E MENU */}
           <div className="flex items-center gap-3 z-10">
             <div className={`hidden sm:flex flex-col justify-center text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
                {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
@@ -261,21 +241,18 @@ useEffect(() => {
               workoutData={state.workoutData} 
               selectedDate={state.selectedDate} 
               setSelectedDate={actions.handleDateChange}
-              
-              weightInput={state.weightInput} setWeightInput={setters.setWeightInput} 
-              waistInput={state.waistInput} setWaistInput={setters.setWaistInput} 
+              weightInput={state.weightInput} 
+              setWeightInput={setters.setWeightInput} 
+              waistInput={state.waistInput} 
+              setWaistInput={setters.setWaistInput} 
               latestStats={stats.latest} 
-              
               progress={state.progress} 
               toggleCheck={actions.toggleCheck} 
               updateSetData={actions.updateSetData} 
               updateSessionSets={actions.updateSessionSets} 
               sessionNote={state.sessionNote} 
               setSessionNote={setters.setSessionNote} 
-              
-              // 🔥 AQUI: Passamos o Wrapper em vez da action direta
               finishWorkout={handleFinishWorkoutWrapper}
-              
               saveBiometrics={actions.saveBiometrics}
               bodyHistory={state.bodyHistory} 
               history={state.history}
@@ -330,19 +307,17 @@ useEffect(() => {
         )}
       </div>
       
-      {/* NAVEGAÇÃO INFERIOR */}
+      {/* NAVEGAÇÃO INFERIOR - CORREÇÃO: Some em qualquer modal/celebração */}
       {!state.showMeme && !isAnyModalOpen && (
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       
-      {/* COMPONENTES DE CELEBRAÇÃO */}
-      {showCr7 && (
-        <Cr7Celebration onClose={handleVideoComplete} /> 
-      )}
+      {/* CELEBRAÇÕES */}
+      {showCr7 && <Cr7Celebration onClose={handleVideoComplete} />}
       
       {showLevelUp && (
         <LevelUpModal 
-          level={stats?.level || 1}   // <--- ADICIONE ESTA LINHA
+          level={stats?.level || 1}
           onClose={() => setShowLevelUp(false)} 
         />
       )}
@@ -376,11 +351,8 @@ useEffect(() => {
               </button>
             </div>
             
-            <div className="mt-auto space-y-4 border-t border-border pt-4">
-                <div className="text-center text-xs text-muted opacity-30">
-                  Projeto Bomba v2.3<br/>
-                  System Online
-                </div>
+            <div className="mt-auto text-center text-xs text-muted opacity-30">
+              Projeto Bomba v2.4<br/>System Online
             </div>
           </div>
         </div>
