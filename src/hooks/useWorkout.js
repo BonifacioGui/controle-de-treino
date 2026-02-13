@@ -15,7 +15,7 @@ export const useWorkout = () => {
   // Estado do Timer de Descanso (RestTimer)
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
 
-  // 🔥 NOVO: Estado do Cronômetro de Treino (Stopwatch)
+  // Cronômetro de Treino (Stopwatch)
   const [workoutTimer, setWorkoutTimer] = useState(() => {
     try {
       const saved = localStorage.getItem('workout_stopwatch');
@@ -61,65 +61,39 @@ export const useWorkout = () => {
     } catch { return []; }
   });
 
-  // --- 🔥 CÁLCULO DE STREAK (COM PROTEÇÃO DE DOMINGO) ---
+  // --- CÁLCULO DE STREAK ---
   const streak = useMemo(() => {
     if (!history || history.length === 0) return 0;
-    
-    // 1. Normaliza datas para YYYY-MM-DD e remove duplicatas
     const uniqueDates = [...new Set(history.map(h => {
         if (h.date.includes('/')) return h.date.split('/').reverse().join('-');
         return h.date.split('T')[0]; 
-    }))].sort().reverse(); // Do mais recente para o mais antigo
-    
+    }))].sort().reverse();
     if (uniqueDates.length === 0) return 0;
-
-    // Helper para criar data local (evita bugs de fuso horário do toISOString)
     const createDate = (str) => {
         const [y, m, d] = str.split('-').map(Number);
         return new Date(y, m - 1, d);
     };
-
     const today = new Date();
     today.setHours(0,0,0,0);
     const lastWorkoutDate = createDate(uniqueDates[0]);
-
-    // Diferença em dias entre HOJE e o ÚLTIMO TREINO
     const diffTime = today - lastWorkoutDate;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    // Regra de Sobrevivência do Streak:
-    // 0 = Treinou hoje
-    // 1 = Treinou ontem
-    // 2 = Treinou anteontem (SÓ ACEITA SE HOJE FOR SEGUNDA E O TREINO FOI SÁBADO)
     const isMonday = today.getDay() === 1;
     const isStreakAlive = diffDays === 0 || diffDays === 1 || (isMonday && diffDays <= 2);
-
     if (!isStreakAlive) return 0;
-
     let currentStreak = 1;
-
-    // Loop para contar para trás
     for (let i = 0; i < uniqueDates.length - 1; i++) {
         const current = createDate(uniqueDates[i]);
         const next = createDate(uniqueDates[i+1]);
-        
         const gap = Math.floor((current - next) / (1000 * 60 * 60 * 24));
-
-        if (gap === 1) {
-            // Dias consecutivos normais
-            currentStreak++; 
-        } else if (gap === 2 && current.getDay() === 1) {
-            // Gap de 2 dias permitido se for de Segunda para Sábado (pula Domingo)
-            currentStreak++;
-        } else {
-            // Gap muito grande, quebrou a sequência
-            break; 
-        }
+        if (gap === 1) currentStreak++; 
+        else if (gap === 2 && current.getDay() === 1) currentStreak++;
+        else break; 
     }
     return currentStreak;
   }, [history]);
 
-  // --- 🔥 NOVO: GERENCIADOR DE SONS ---
+  // --- GERENCIADOR DE SONS ---
   const playSound = useCallback((type) => {
     let url = '';
     let volume = 0.5;
@@ -134,7 +108,7 @@ export const useWorkout = () => {
     audio.play().catch(() => {});
   }, []);
 
-  // --- PERSISTÊNCIA ---
+  // --- PERSISTÊNCIA LOCAL ---
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
@@ -157,6 +131,21 @@ export const useWorkout = () => {
     return () => clearInterval(interval);
   }, [workoutTimer.isRunning, workoutTimer.startTime]);
 
+  // --- 🔥 NOVA FUNÇÃO: SINCRONIZAR PLANO COM A NUVEM 🔥 ---
+  const savePlanToCloud = useCallback(async (newData) => {
+    try {
+      await supabase
+        .from('workout_plans')
+        .upsert({ 
+          user_id: 'user_default', 
+          plan_data: newData,
+          updated_at: new Date()
+        }, { onConflict: 'user_id' });
+    } catch (err) {
+      console.error("Erro ao sincronizar plano:", err);
+    }
+  }, []);
+
   // --- HELPERS E FETCH ---
   const formatDateSecure = useCallback((dateString) => {
     if (!dateString) return '';
@@ -171,10 +160,19 @@ export const useWorkout = () => {
 
   const fetchCloudData = useCallback(async () => {
     try {
+      // 1. Busca Biometria
       const { data: bodyData } = await supabase.from('body_stats').select('*').order('date', { ascending: false });
       if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: formatDateSecure(b.date) })));
+      
+      // 2. Busca Histórico
       const { data: trainData } = await supabase.from('workout_history').select('*').order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: formatDateSecure(t.workout_date), dayName: t.workout_name })));
+
+      // 3. 🔥 NOVO: Busca Plano de Treino 🔥
+      const { data: planData } = await supabase.from('workout_plans').select('plan_data').eq('user_id', 'user_default').single();
+      if (planData) {
+        setWorkoutData(planData.plan_data);
+      }
     } catch (err) { console.error("Offline:", err); }
   }, [formatDateSecure]);
 
@@ -192,11 +190,8 @@ export const useWorkout = () => {
   const saveBiometrics = useCallback(async (photoBase64 = null) => {
     if (!weightInput && !waistInput && !photoBase64) return;
     const newEntry = { date: selectedDate, weight: weightInput ? parseFloat(weightInput) : null, waist: waistInput ? parseFloat(waistInput) : null };
-    if (photoBase64) newEntry.photo = photoBase64; // Suporte a foto (requer coluna no banco ou lógica local)
-    
+    if (photoBase64) newEntry.photo = photoBase64;
     try { await supabase.from('body_stats').upsert(newEntry, { onConflict: 'date' }); } catch (err) { console.error(err); }
-    
-    // Atualização otimista
     setBodyHistory(prev => {
         const dateStr = formatDateSecure(selectedDate);
         const existsIndex = prev.findIndex(p => p.date === dateStr);
@@ -242,13 +237,12 @@ export const useWorkout = () => {
       } else { throw new Error(error?.message); }
     } catch (err) {
       console.warn("Salvo localmente:", err);
-      alert("⚠️ Salvo localmente.");
     }
 
     setHistory(prev => [finalSession, ...prev]); 
     setProgress({});
     setSessionNote('');
-    setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }); // Reseta Timer
+    setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
     setShowMeme(true);
     setTimeout(() => { setShowMeme(false); setView('history'); }, 3500);
   }, [saveBiometrics, workoutData, activeDay, selectedDate, sessionNote, progress, formatDateSecure, fetchCloudData, workoutTimer, playSound]);
@@ -269,23 +263,18 @@ export const useWorkout = () => {
         playSound('click'); 
         setProgress(currentProgress => {
             const isNowDone = !currentProgress[id]?.done;
-            if (isNowDone) setTimerState({ active: true, seconds: 90 }); // Dispara descanso
+            if (isNowDone) setTimerState({ active: true, seconds: 90 });
             return { ...currentProgress, [id]: { ...currentProgress[id], done: isNowDone } };
         });
     },
 
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
 
-    // 🔥 NOVO: Controles do Cronômetro
     toggleWorkoutTimer: () => {
       playSound('start'); 
       setWorkoutTimer(prev => {
-        if (prev.isRunning) {
-          return { ...prev, isRunning: false }; // Pausa
-        } else {
-          // Retoma ou Inicia
-          return { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed };
-        }
+        if (prev.isRunning) return { ...prev, isRunning: false };
+        return { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed };
       });
     },
     
@@ -309,21 +298,40 @@ export const useWorkout = () => {
         await supabase.from('workout_history').update({ note: data.note, exercises: data.exercises }).eq('id', id);
     },
 
+    // 🔥 MANAGE DATA ATUALIZADO COM SINCRONIZAÇÃO 🔥
     manageData: {
-        add: (day) => setWorkoutData(d => ({ ...d, [day]: { ...d[day], exercises: [...d[day].exercises, { name: "Novo", sets: "3x12", note: "" }] } })),
-        remove: (day, i) => setWorkoutData(d => ({ ...d, [day]: { ...d[day], exercises: d[day].exercises.filter((_, idx) => idx !== i) } })),
-        edit: (day, i, f, v) => setWorkoutData(d => {
-            const n = [...d[day].exercises]; n[i][f] = v;
-            return { ...d, [day]: { ...d[day], exercises: n } };
-        })
+        add: async (day) => {
+          setWorkoutData(d => {
+            const n = { ...d, [day]: { ...d[day], exercises: [...d[day].exercises, { name: "Novo", sets: "3x12", note: "" }] } };
+            savePlanToCloud(n);
+            return n;
+          });
+        },
+        remove: async (day, i) => {
+          setWorkoutData(d => {
+            const n = { ...d, [day]: { ...d[day], exercises: d[day].exercises.filter((_, idx) => idx !== i) } };
+            savePlanToCloud(n);
+            return n;
+          });
+        },
+        edit: async (day, i, f, v) => {
+          setWorkoutData(d => {
+            const n = { ...d };
+            const exercises = [...d[day].exercises];
+            exercises[i] = { ...exercises[i], [f]: v };
+            n[day] = { ...n[day], exercises };
+            savePlanToCloud(n);
+            return n;
+          });
+        }
     }
-  }), [fetchCloudData, playSound]);
+  }), [fetchCloudData, playSound, savePlanToCloud]);
 
   return useMemo(() => ({
     state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer },
     setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setShowMeme, setView, setWorkoutData },
     actions: { handleDateChange, saveBiometrics, finishWorkout, fetchCloudData, ...functions, closeTimer: functions.closeTimer, toggleWorkoutTimer: functions.toggleWorkoutTimer, resetWorkoutTimer: functions.resetWorkoutTimer },
-    stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak } // 🔥 Streak Exportado
+    stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak }
   }), [
     activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, streak,
     handleDateChange, saveBiometrics, finishWorkout, fetchCloudData, functions
