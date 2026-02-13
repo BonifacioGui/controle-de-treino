@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X } from 'lucide-react';
+import { createPortal } from 'react-dom'; // 🔥 O TELETRANSPORTADOR
+import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap } from 'lucide-react';
 
 // --- HELPERS ---
 const normalizeName = (name) => name ? name.toLowerCase().trim() : "";
@@ -41,6 +42,21 @@ const groupHistoryByDate = (history) => {
     });
   });
   return groups;
+};
+
+// Calcula o volume total (Peso x Repetições) do treino
+const calculateVolume = (exercises) => {
+  let total = 0;
+  exercises.forEach(ex => {
+    if (ex.sets) {
+      ex.sets.forEach(set => {
+        const weight = parseFloat(set.weight) || 0;
+        const reps = parseInt(set.reps) || 0;
+        total += (weight * reps);
+      });
+    }
+  });
+  return total;
 };
 
 // --- COMPONENTES VISUAIS COMPACTOS ---
@@ -105,7 +121,8 @@ const ExerciseItemEdit = ({ exercise, index, updateExercise }) => {
   );
 };
 
-const DayAccordion = ({ session, deleteEntry, updateEntry }) => {
+// --- 🔥 ATUALIZADO: DayAccordion agora recebe openReport 🔥 ---
+const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedSession, setEditedSession] = useState(session);
@@ -163,6 +180,15 @@ const DayAccordion = ({ session, deleteEntry, updateEntry }) => {
             </>
           ) : (
             <>
+              {/* 🔥 NOVO BOTÃO DE RELATÓRIO 🔥 */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); openReport(session); }} 
+                className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-black rounded transition-colors flex items-center gap-1"
+                title="Relatório"
+              >
+                <FileText size={14} />
+              </button>
+
               <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="p-1.5 text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Pencil size={14} /></button>
               <button onClick={(e) => { e.stopPropagation(); deleteEntry(session.id, 'workout'); }} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /></button>
             </>
@@ -189,7 +215,7 @@ const DayAccordion = ({ session, deleteEntry, updateEntry }) => {
   );
 };
 
-const WeekAccordion = ({ weekTitle, sessions, deleteEntry, updateEntry }) => {
+const WeekAccordion = ({ weekTitle, sessions, deleteEntry, updateEntry, openReport }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div className="ml-1 mb-2">
@@ -199,12 +225,12 @@ const WeekAccordion = ({ weekTitle, sessions, deleteEntry, updateEntry }) => {
           {weekTitle} <span className="text-[9px] opacity-50 ml-1">({sessions.length})</span>
         </span>
       </div>
-      {isOpen && <div className="pl-1 mt-1 animate-in slide-in-from-left-1 fade-in">{sessions.map(session => <DayAccordion key={session.id} session={session} deleteEntry={deleteEntry} updateEntry={updateEntry} />)}</div>}
+      {isOpen && <div className="pl-1 mt-1 animate-in slide-in-from-left-1 fade-in">{sessions.map(session => <DayAccordion key={session.id} session={session} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={openReport} />)}</div>}
     </div>
   );
 };
 
-const MonthAccordion = ({ monthTitle, weeksData, deleteEntry, updateEntry }) => {
+const MonthAccordion = ({ monthTitle, weeksData, deleteEntry, updateEntry, openReport }) => {
   const [isOpen, setIsOpen] = useState(true);
   const sortedWeekKeys = Object.keys(weeksData).sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)).reverse();
 
@@ -215,7 +241,7 @@ const MonthAccordion = ({ monthTitle, weeksData, deleteEntry, updateEntry }) => 
         <h3 className="text-xs font-black text-primary uppercase tracking-widest flex-1">{monthTitle}</h3>
         <ChevronDown size={16} className={`text-primary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </div>
-      {isOpen && <div className="mt-2 pl-1 border-l border-primary/10 ml-1 space-y-1">{sortedWeekKeys.map(weekKey => <WeekAccordion key={weekKey} weekTitle={weekKey} sessions={weeksData[weekKey]} deleteEntry={deleteEntry} updateEntry={updateEntry} />)}</div>}
+      {isOpen && <div className="mt-2 pl-1 border-l border-primary/10 ml-1 space-y-1">{sortedWeekKeys.map(weekKey => <WeekAccordion key={weekKey} weekTitle={weekKey} sessions={weeksData[weekKey]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={openReport} />)}</div>}
     </div>
   );
 };
@@ -225,63 +251,125 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
   const groupedHistory = groupHistoryByDate(history);
   const monthKeys = Object.keys(groupedHistory).reverse(); 
 
+  // 🔥 ESTADO DO RELATÓRIO 🔥
+  const [reportData, setReportData] = useState(null);
+
   return (
-    <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
-      <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
-        <h2 className="text-lg font-black flex items-center gap-2 italic text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
-          <Database size={20} className="text-primary" /> Log de Operações
-        </h2>
-        <span className="text-[8px] font-black text-muted tracking-[0.2em]">RECOVERY.SYS</span>
-      </div>
+    <>
+      <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
+        <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
+          <h2 className="text-lg font-black flex items-center gap-2 italic text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+            <Database size={20} className="text-primary" /> Log de Operações
+          </h2>
+          <span className="text-[8px] font-black text-muted tracking-[0.2em]">RECOVERY.SYS</span>
+        </div>
 
-      <div className="flex-1 min-h-0 flex flex-col gap-3">
-        <div className="flex items-center justify-between px-1 shrink-0">
-          <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
-            <Activity size={14} /> Histórico
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1 shrink-0">
+            <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
+              <Activity size={14} /> Histórico
+            </h3>
+            <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
+          </div>
+
+          <div className="overflow-y-auto pr-1 pb-8 max-h-[50vh]">
+            {history.length === 0 && (
+              <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
+                <p className="text-muted text-xs font-black uppercase tracking-widest italic">Buffer Vazio.</p>
+              </div>
+            )}
+            {/* 🔥 Passando a função openReport para baixo 🔥 */}
+            {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={setReportData} />)}
+          </div>
+        </div>
+
+        <div className="shrink-0 space-y-3 pt-3 border-t border-border">
+          <h3 className="text-xs font-black text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <Scale size={14} /> Biometria
           </h3>
-          <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
-        </div>
-
-        <div className="overflow-y-auto pr-1 pb-8 max-h-[50vh]">
-          {history.length === 0 && (
-            <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
-              <p className="text-muted text-xs font-black uppercase tracking-widest italic">Buffer Vazio.</p>
-            </div>
-          )}
-          {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} />)}
-        </div>
-      </div>
-
-      <div className="shrink-0 space-y-3 pt-3 border-t border-border">
-        <h3 className="text-xs font-black text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
-          <Scale size={14} /> Biometria
-        </h3>
-        <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
-          {sortedBody.map((b) => (
-            <div key={b.id} className="min-w-[120px] bg-card border border-secondary/30 p-3 rounded-lg shadow-sm relative group hover:border-secondary/60 transition-all shrink-0 flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-2 border-b border-secondary/10 pb-1">
-                <span className="font-black text-secondary text-[10px]">{b.date}</span>
-                <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500"><Trash2 size={12} /></button>
-              </div>
-              <div className="flex justify-between items-end gap-2">
-                <div>
-                  <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Peso</p>
-                  <p className="text-base font-black text-success leading-none">{b.weight}<span className="text-[8px] ml-0.5 text-muted">KG</span></p>
+          <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
+            {sortedBody.map((b) => (
+              <div key={b.id} className="min-w-[120px] bg-card border border-secondary/30 p-3 rounded-lg shadow-sm relative group hover:border-secondary/60 transition-all shrink-0 flex flex-col justify-between">
+                <div className="flex justify-between items-center mb-2 border-b border-secondary/10 pb-1">
+                  <span className="font-black text-secondary text-[10px]">{b.date}</span>
+                  <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500"><Trash2 size={12} /></button>
                 </div>
-                <div className="text-right">
-                  <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Cintura</p>
-                  <p className="text-base font-black text-primary leading-none">{b.waist}<span className="text-[8px] ml-0.5 text-muted">CM</span></p>
+                <div className="flex justify-between items-end gap-2">
+                  <div>
+                    <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Peso</p>
+                    <p className="text-base font-black text-success leading-none">{b.weight}<span className="text-[8px] ml-0.5 text-muted">KG</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Cintura</p>
+                    <p className="text-base font-black text-primary leading-none">{b.waist}<span className="text-[8px] ml-0.5 text-muted">CM</span></p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-      
-      <button onClick={() => setView('workout')} className="w-full py-3 bg-card hover:bg-input border border-border hover:border-primary rounded-lg font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0">
-        Voltar ao Combate
-      </button>
-    </main>
+        
+        <button onClick={() => setView('workout')} className="w-full py-3 bg-card hover:bg-input border border-border hover:border-primary rounded-lg font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0">
+          Voltar ao Combate
+        </button>
+      </main>
+
+      {/* ========================================== */}
+      {/* 🔥 MODAL DE RELATÓRIO DO TREINO (PORTAL) 🔥 */}
+      {/* ========================================== */}
+      {reportData && createPortal(
+        <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReportData(null)}></div>
+          
+          <div className="bg-card border-2 border-primary w-full max-w-sm rounded-3xl shadow-[0_0_40px_rgba(var(--primary),0.3)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+            
+            <div className="bg-primary text-black p-6 text-center relative">
+              <button onClick={() => setReportData(null)} className="absolute right-4 top-4 text-black/50 hover:text-black transition-colors">
+                <X size={24} />
+              </button>
+              <Zap size={40} className="mx-auto mb-2 opacity-80" />
+              <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">Relatório de<br/>Combate</h3>
+              <p className="font-bold text-xs mt-2 opacity-80 uppercase tracking-widest">{reportData.date}</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="text-center">
+                <p className="text-primary font-black text-xl uppercase tracking-widest">{reportData.dayName || 'Treino Extra'}</p>
+                <p className="text-muted text-xs uppercase tracking-widest mt-1">Status: Concluído</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-input border border-border p-4 rounded-2xl text-center">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Exercícios</p>
+                  <p className="text-2xl font-black text-white">
+                    {reportData.exercises?.filter(e => e.done).length || 0}
+                    <span className="text-sm text-muted">/{reportData.exercises?.length || 0}</span>
+                  </p>
+                </div>
+                <div className="bg-input border border-border p-4 rounded-2xl text-center">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Carga Movida</p>
+                  <p className="text-2xl font-black text-primary">{calculateVolume(reportData.exercises || [])} <span className="text-sm">kg</span></p>
+                </div>
+              </div>
+
+              {reportData.note && (
+                <div className="bg-black/30 p-4 rounded-2xl border border-border text-center text-sm italic text-muted">
+                  "{reportData.note.split('|')[0].trim()}"
+                </div>
+              )}
+
+              <button 
+                onClick={() => alert("Função de screenshot/compartilhamento em desenvolvimento!")}
+                className="w-full bg-primary/10 border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all"
+              >
+                <Share2 size={20} /> Compartilhar Feito
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body // 🔥 O destino do teletransporte
+      )}
+    </>
   );
 };
 
