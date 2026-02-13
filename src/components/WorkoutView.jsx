@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X, Skull, Zap, Sword, Crown, Scroll } from 'lucide-react'; 
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// 🔥 ADICIONADO: Ghost e Share2 aos imports
+import { Calendar, CheckCircle2, Circle, Trophy, Star, ChevronLeft, ChevronRight, Play, Pause, Trash2, Timer as TimerIcon, Camera, X, Skull, Zap, Sword, Crown, Scroll, Ghost, Share2 } from 'lucide-react'; 
 import CyberCalendar from './CyberCalendar';
 import RestTimer from './RestTimer'; 
 import { DAILY_QUESTS_POOL } from '../utils/rpgSystem';
- 
+import { toPng } from 'html-to-image'; 
+import ShareCard from './ShareCard'; 
 
 // --- FUNÇÕES AUXILIARES ---
 const cleanString = (str) => {
@@ -89,6 +91,7 @@ const WorkoutView = ({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
   const [questNotification, setQuestNotification] = useState(null); 
+  const [isSharing, setIsSharing] = useState(false);
 
   // Estados de Gamificação
   const [bossStats, setBossStats] = useState({ hp: 5000, max: 5000, current: 5000, percent: 100, status: 'ALIVE' });
@@ -99,6 +102,31 @@ const WorkoutView = ({
   const days = Object.keys(workoutData || {}); 
   const currentDayIndex = days.indexOf(activeDay);
   const currentWorkout = workoutData[activeDay];
+
+  // 🔥 REF E ESTADOS PARA O SHARE CARD 🔥
+  const cardRef = useRef(null);
+
+  const todayStats = useMemo(() => {
+    let vol = 0;
+    let prs = 0;
+    if (!currentWorkout) return { volume: 0, prs: 0, duration: '00:00' };
+
+    currentWorkout.exercises.forEach((ex, idx) => {
+        const id = `${selectedDate}-${activeDay}-${idx}`;
+        const exProgress = progress[id];
+        if (exProgress?.sets) {
+            exProgress.sets.forEach(s => {
+                if (s.completed) vol += (safeParseFloat(s.weight) * safeParseFloat(s.reps));
+            });
+            // Lógica de PRs do dia
+            const exerciseHistory = history?.flatMap(s => s.exercises).filter(e => isSameExercise(ex.name, e.name)) || [];
+            const best = Math.max(...exerciseHistory.flatMap(e => e.sets?.map(s => safeParseFloat(s.weight)) || [0]), 0);
+            if (exProgress.sets.some(s => safeParseFloat(s.weight) > best && best > 0)) prs++;
+        }
+    });
+
+    return { volume: Math.round(vol), prs, duration: formatTime(workoutTimer.elapsed) };
+  }, [currentWorkout, progress, selectedDate, activeDay, history, workoutTimer.elapsed]);
 
   // --- 🔥 AUTO CHECKER DE MISSÕES 🔥 ---
   const checkQuests = useCallback(() => {
@@ -180,22 +208,8 @@ const WorkoutView = ({
   // --- CÁLCULO DE DANO DO BOSS ---
   useEffect(() => {
     if (!currentWorkout) return;
-    let currentDamage = 0; 
+    let currentDamage = todayStats.volume; 
     let maxHp = 0;          
-    currentWorkout.exercises.forEach((ex, exIndex) => {
-        const keyBase = `${selectedDate}-${activeDay}-${exIndex}`;
-        const exProgress = progress[keyBase];
-        if (exProgress?.sets) {
-            exProgress.sets.forEach(setData => {
-                if (setData?.completed) {
-                    const w = safeParseFloat(setData.weight) || 10;
-                    const r = safeParseFloat(setData.reps) || 0;
-                    currentDamage += (w * r);
-                }
-            });
-        }
-    });
-    
     
     const previousSession = history
         ?.filter(h => h.exercises.some(e => isSameExercise(e.name, currentWorkout.exercises[0].name))) 
@@ -204,13 +218,7 @@ const WorkoutView = ({
     if (previousSession) {
         let prevVolume = 0;
         previousSession.exercises.forEach(ex => {
-            if (ex.sets) {
-                ex.sets.forEach(s => {
-                    const w = safeParseFloat(s.weight) || 0;
-                    const r = safeParseFloat(s.reps) || 0;
-                    prevVolume += (w * r);
-                });
-            }
+            ex.sets?.forEach(s => prevVolume += (safeParseFloat(s.weight) * safeParseFloat(s.reps)));
         });
         maxHp = Math.max(Math.round(prevVolume * 1.05), 2000); 
     } else {
@@ -218,11 +226,8 @@ const WorkoutView = ({
     }
     const remainingHp = Math.max(0, maxHp - currentDamage);
     const percent = (remainingHp / maxHp) * 100;
-    setBossStats({
-        max: maxHp, current: remainingHp, damageDone: currentDamage, percent: percent,
-        status: percent <= 0 ? 'DEFEATED' : 'ALIVE'
-    });
-  }, [progress, currentWorkout, selectedDate, activeDay, history]);
+    setBossStats({ max: maxHp, current: remainingHp, percent: percent, status: percent <= 0 ? 'DEFEATED' : 'ALIVE' });
+  }, [todayStats.volume, currentWorkout, history]);
 
   // --- HANDLERS ---
   const handlePrevDay = () => { setActiveDay(days[currentDayIndex === 0 ? days.length - 1 : currentDayIndex - 1]); };
@@ -261,8 +266,45 @@ const WorkoutView = ({
     if (!currentStatus) openRestTimer(60); 
   };
 
+  // 🔥 FUNÇÃO DE SHARE CORRIGIDA 🔥
+  const handleShare = async () => {
+    if (cardRef.current === null) return;
+    setIsSharing(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'meu-treino.png', { type: 'image/png' });
+
+      if (navigator.share) {
+        await navigator.share({
+          files: [file],
+          title: 'Missão Cumprida no Projeto Bomba',
+          text: 'Mais um dia de progresso!',
+        });
+      } else {
+        const link = document.createElement('a');
+        link.download = 'projeto-bomba-stats.png';
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (err) {
+      console.error('Erro ao gerar card:', err);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <>
+      {/* 🔥 SHARE CARD RENDERIZADO (ESCONDIDO) 🔥 */}
+      <ShareCard 
+        cardRef={cardRef} 
+        stats={todayStats} 
+        bossName={bossName} 
+        streak={0} 
+        theme={document.documentElement.getAttribute('data-theme')} 
+      />
+
       <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-28 relative w-full z-0">
         
         {/* HEADER / CALENDÁRIO */}
@@ -339,7 +381,6 @@ const WorkoutView = ({
                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] block ${bossStats.status === 'DEFEATED' ? 'text-green-500' : 'text-red-500'}`}>
                            {bossStats.status === 'DEFEATED' ? 'VITÓRIA' : 'ALVO ATUAL:'}
                        </span>
-                       {/* 🔥 NOME DO BOSS COM EFEITO GLITCH QUANDO DERROTADO 🔥 */}
                        <span className={`text-lg font-black text-main uppercase italic leading-none truncate max-w-[200px] block drop-shadow-md 
                         ${bossStats.status === 'DEFEATED' ? 'animate-glitch text-green-400' : ''}`}>
                           {bossName}
@@ -410,9 +451,9 @@ const WorkoutView = ({
                 {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-primary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none whitespace-nowrap z-0 select-none">OK</div>)}
                 {isBreakingPR && (
                     <div className="absolute top-0 right-0 z-30 animate-pulse">
-                       <div className="bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
-                           <Crown size={12} fill="black" /> NOVO RECORDE
-                       </div>
+                        <div className="bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
+                            <Crown size={12} fill="black" /> NOVO RECORDE
+                        </div>
                     </div>
                 )}
                 {exercisePR > 0 && !isBreakingPR && (
@@ -428,8 +469,30 @@ const WorkoutView = ({
                       {ex.name}
                       {isBreakingPR && <Star size={16} className="text-warning fill-warning animate-pulse" />}
                     </h3>
-                    <div className="flex gap-2 mt-0.5 flex-wrap">
-                        {lastWeight > 0 && (<span className="text-[9px] font-mono text-muted border border-border px-1 py-0 rounded bg-black/20">Último: {lastWeight}kg</span>)}
+                    
+                    <div className="flex gap-2 mt-1.5 flex-wrap items-center">
+                        {lastWeight > 0 && (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[9px] font-mono text-blue-400 shadow-[0_0_5px_rgba(59,130,246,0.2)]">
+                            <Ghost size={10} className="opacity-70" />
+                            <span className="uppercase tracking-tighter">FANTASMA: {lastWeight}kg</span>
+                          </div>
+                        )}
+
+                        {exercisePR > 0 && (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[9px] font-mono text-purple-400 shadow-[0_0_5px_rgba(168,85,247,0.2)]">
+                            <Zap size={10} className="opacity-70" />
+                            <span className="uppercase tracking-tighter">EST. 1RM: {Math.round(exercisePR * 1.33)}kg</span>
+                          </div>
+                        )}
+
+                        {lastWeight > 0 && !isBreakingPR && !isDone && (
+                           <span className="text-[8px] font-black text-primary/40 uppercase tracking-widest animate-pulse">
+                             SUGESTÃO: {lastWeight + 2}kg
+                           </span>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2 mt-2 flex-wrap">
                         <p className="text-xs text-muted font-bold uppercase tracking-tighter italic">{ex.note}</p>
                     </div>
                   </div>
@@ -504,29 +567,40 @@ const WorkoutView = ({
         {/* NOTIFICAÇÃO DE MISSÃO COMPLETADA */}
         {questNotification && (
           <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500">
-             <div className="bg-yellow-500 text-black px-6 py-3 rounded-full font-black border-4 border-black shadow-[0_0_20px_rgba(234,179,8,0.6)] flex items-center gap-3">
+              <div className="bg-yellow-500 text-black px-6 py-3 rounded-full font-black border-4 border-black shadow-[0_0_20px_rgba(234,179,8,0.6)] flex items-center gap-3">
                 <Scroll size={20} className="animate-bounce" />
                 <div className="flex flex-col">
-                   <span className="text-[8px] uppercase tracking-widest leading-none">Missão Cumprida</span>
-                   <span className="text-sm italic uppercase leading-none">{questNotification}</span>
+                    <span className="text-[8px] uppercase tracking-widest leading-none">Missão Cumprida</span>
+                    <span className="text-sm italic uppercase leading-none">{questNotification}</span>
                 </div>
-             </div>
+              </div>
           </div>
         )}
 
-        {/* FOOTER */}
+        {/* FOOTER - AGORA COM SHARE BUTTON 🔥 */}
         <div className="space-y-4 pt-6 pb-4 z-0">
           <textarea placeholder="Relatório de danos..." className="w-full bg-card border border-border rounded-xl p-3 text-lg font-bold h-24 outline-none focus:border-primary/50 transition-all text-main placeholder-muted" value={sessionNote} onChange={(e) => setSessionNote(e.target.value)} />
           
-          <button 
-             onClick={finishWorkout} 
-             className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary to-secondary py-4 font-black text-white shadow-[0_5px_20px_rgba(var(--primary),0.3)] active:scale-[0.97] transition-all hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] z-10"
-          >
-             <span className="relative z-10 uppercase tracking-[0.3em] text-xs italic flex items-center justify-center gap-2">
-               <Star size={14} fill="white" /> FINALIZAR MISSÃO
-             </span>
-             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-          </button>
+          <div className="flex gap-2">
+            <button 
+                onClick={handleShare}
+                disabled={isSharing}
+                className="flex-1 rounded-xl bg-card border-2 border-primary text-primary py-4 font-black flex items-center justify-center gap-2 hover:bg-primary/10 transition-all active:scale-95 disabled:opacity-50"
+            >
+                {isSharing ? <div className="w-5 h-5 border-2 border-primary border-t-transparent animate-spin rounded-full"/> : <Share2 size={18} />}
+                <span className="uppercase text-[10px] italic tracking-widest">RELATÓRIO</span>
+            </button>
+
+            <button 
+                onClick={finishWorkout} 
+                className="flex-[2] group relative overflow-hidden rounded-xl bg-gradient-to-r from-primary to-secondary py-4 font-black text-white shadow-lg active:scale-[0.97] transition-all"
+            >
+                <span className="relative z-10 uppercase tracking-[0.3em] text-xs italic flex items-center justify-center gap-2">
+                    <Star size={14} fill="white" /> FINALIZAR MISSÃO
+                </span>
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+            </button>
+          </div>
         </div>
 
         {isCalendarOpen && (
@@ -539,7 +613,6 @@ const WorkoutView = ({
         )}
       </main>
 
-      {/* TIMERS E MODAIS - ALTO Z-INDEX PARA NÃO SOBREPOR */}
       <div className="relative z-[300]">
         {timerState && timerState.active && <RestTimer initialSeconds={timerState.seconds} onClose={closeTimer} />}
         {restTimerConfig.isOpen && <RestTimer initialSeconds={restTimerConfig.duration} onClose={() => setRestTimerConfig({ ...restTimerConfig, isOpen: false })} />}
