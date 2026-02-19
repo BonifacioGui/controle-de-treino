@@ -250,7 +250,8 @@ const WorkoutApp = () => {
             addExercise={actions.manageData.add} 
             removeExercise={actions.manageData.remove} 
             editExerciseBase={actions.manageData.edit} 
-            setView={setters.setView} 
+            setView={setters.setView}
+            addFromCatalog={actions.manageData.addFromCatalog} // <-- INCLUIR ESTA LINHA
           />
         )}
 

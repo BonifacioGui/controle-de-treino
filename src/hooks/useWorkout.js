@@ -149,7 +149,7 @@ export const useWorkout = () => {
       await supabase
         .from('workout_plans')
         .upsert({ 
-          user_id: userId, // 🔥 Agora usa o UID real
+          user_id: userId, 
           plan_data: newData,
           updated_at: new Date()
         }, { onConflict: 'user_id' });
@@ -176,21 +176,21 @@ export const useWorkout = () => {
       const { data: bodyData } = await supabase
         .from('body_stats')
         .select('*')
-        .eq('user_id', userId) // 🔥 Filtro de usuário
+        .eq('user_id', userId)
         .order('date', { ascending: false });
       if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: formatDateSecure(b.date) })));
       
       const { data: trainData } = await supabase
         .from('workout_history')
         .select('*')
-        .eq('user_id', userId) // 🔥 Filtro de usuário
+        .eq('user_id', userId)
         .order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: formatDateSecure(t.workout_date), dayName: t.workout_name })));
 
       const { data: planData } = await supabase
         .from('workout_plans')
         .select('plan_data')
-        .eq('user_id', userId) // 🔥 Agora busca o plano do usuário certo
+        .eq('user_id', userId)
         .single();
       if (planData) {
         setWorkoutData(planData.plan_data);
@@ -211,7 +211,7 @@ export const useWorkout = () => {
   const saveBiometrics = useCallback(async (photoBase64 = null) => {
     if (!userId || (!weightInput && !waistInput && !photoBase64)) return;
     const newEntry = { 
-        user_id: userId, // 🔥 Carimba o UID
+        user_id: userId,
         date: selectedDate, 
         weight: weightInput ? parseFloat(weightInput) : null, 
         waist: waistInput ? parseFloat(waistInput) : null 
@@ -243,7 +243,7 @@ export const useWorkout = () => {
     const durationString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
     const sessionBase = {
-      user_id: userId, // 🔥 Identifica o dono do treino
+      user_id: userId,
       workout_date: selectedDate,
       workout_name: safeActiveDay,
       note: sessionNote + (finalDurationSeconds > 0 ? ` | Duração: ${durationString}` : ''), 
@@ -316,7 +316,7 @@ export const useWorkout = () => {
         const table = type === 'body' ? 'body_stats' : 'workout_history';
         if (type === 'body') setBodyHistory(p => p.filter(i => i.id !== id));
         else setHistory(p => p.filter(i => i.id !== id));
-        const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', userId); // Segurança extra
+        const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', userId); 
         if (error) fetchCloudData();
     },
 
@@ -348,6 +348,25 @@ export const useWorkout = () => {
             exercises[i] = { ...exercises[i], [f]: v };
             n[day] = { ...n[day], exercises };
             savePlanToCloud(n);
+            return n;
+          });
+        },
+        // 🔥 AGORA SIM, DENTRO DO manageData 🔥
+        addFromCatalog: async (day, selectedList) => {
+          setWorkoutData(d => {
+            const newExercises = selectedList.map(name => ({ 
+              name: name, 
+              sets: "3x12", 
+              note: "" 
+            }));
+            const n = { 
+              ...d, 
+              [day]: { 
+                ...d[day], 
+                exercises: [...d[day].exercises, ...newExercises] 
+              } 
+            };
+            savePlanToCloud(n); 
             return n;
           });
         }
