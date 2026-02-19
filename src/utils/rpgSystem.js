@@ -56,8 +56,21 @@ export const DAILY_QUESTS_POOL = [
 
   { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, check: (s) => s.exercises.length > 0 && s.exercises.every(ex => ex.done === true) },
   { id: 'meta_insane', title: 'God Mode', desc: '20ton + 150 Reps.', reward: 1500, check: (s) => calculateSessionVolume(s) >= 20000 && calculateTotalReps(s) >= 150 },
-  { id: 'time_early', title: 'Clube das 5', desc: 'Treine antes das 12h.', reward: 300, check: (s) => new Date().getHours() < 12 },
-  { id: 'time_night', title: 'Morcego', desc: 'Treine após as 19h.', reward: 300, check: (s) => new Date().getHours() >= 19 }
+  // 🔥 CORREÇÃO: Agora exige que o volume do treino seja maior que ZERO antes de olhar a hora 🔥
+  { 
+    id: 'time_early', 
+    title: 'Clube das 5', 
+    desc: 'Treine antes das 12h.', 
+    reward: 300, 
+    check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() < 12 
+  },
+  { 
+    id: 'time_night', 
+    title: 'Morcego', 
+    desc: 'Treine após as 19h.', 
+    reward: 300, 
+    check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() >= 19 
+  }
 ];
 
 // --- 3. LÓGICA DE SORTEIO COM SEMENTE (LOCAL TIME FIX) ---

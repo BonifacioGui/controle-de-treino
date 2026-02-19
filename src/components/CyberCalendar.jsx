@@ -2,30 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
-  // Inicialização segura
   const [viewDate, setViewDate] = useState(() => {
     if (!selectedDate) return new Date();
     const [y, m, d] = selectedDate.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    return new Date(y, m - 1, d || 1);
   });
 
-  // 🔥 Sincroniza o calendário COM SEGURANÇA
   useEffect(() => {
     if (selectedDate && selectedDate.length === 10) {
       const [year, month, day] = selectedDate.split('-').map(Number);
-      
-      // GUARD CLAUSE: Só dá setState se o mês/ano mudou de fato
       if (viewDate.getMonth() !== month - 1 || viewDate.getFullYear() !== year) {
         setViewDate(new Date(year, month - 1, day));
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
   
   const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
   
   const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  
+  // Gera os últimos 100 anos para o Fast Travel
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
   const handlePrevMonth = (e) => {
     e.stopPropagation();
@@ -45,10 +44,31 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
         <button onClick={handlePrevMonth} className="p-1 text-primary hover:bg-input rounded-full transition-all">
           <ChevronLeft size={20} />
         </button>
-        <div className="text-center">
-          <div className="text-[8px] text-primary font-black uppercase tracking-[0.4em] opacity-70">Log_Year: {viewDate.getFullYear()}</div>
-          <div className="text-main font-black italic uppercase text-xs tracking-widest">{months[viewDate.getMonth()]}</div>
+        
+        {/* 🔥 CONTROLES DE VIAGEM RÁPIDA (FAST TRAVEL) 🔥 */}
+        <div className="text-center flex flex-col items-center">
+          
+          <div className="flex items-center gap-1 text-[8px] text-primary font-black uppercase tracking-[0.2em] opacity-70">
+            LOG_YEAR: 
+            <select 
+              value={viewDate.getFullYear()} 
+              onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
+              className="bg-transparent border-none outline-none appearance-none cursor-pointer text-primary text-center hover:bg-primary/20 rounded px-1 transition-colors"
+            >
+              {years.map(y => <option key={y} value={y} className="bg-card text-white">{y}</option>)}
+            </select>
+          </div>
+          
+          <select 
+            value={viewDate.getMonth()}
+            onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
+            className="bg-transparent border-none text-main font-black italic uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
+          >
+            {months.map((m, i) => <option key={i} value={i} className="bg-card text-white">{m}</option>)}
+          </select>
+
         </div>
+
         <button onClick={handleNextMonth} className="p-1 text-primary hover:bg-input rounded-full transition-all">
           <ChevronRight size={20} />
         </button>
@@ -79,7 +99,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
               }}
               className={`h-8 w-8 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center justify-center
                 ${isSelected 
-                  ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,0,0,0.5)] scale-110 rotate-3' 
+                  ? 'bg-primary text-black shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-110 rotate-3' 
                   : 'text-muted hover:bg-input hover:text-primary hover:border border-primary/30'}`}
             >
               {day}

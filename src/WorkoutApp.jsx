@@ -145,6 +145,7 @@ const WorkoutApp = () => {
     return <AuthView />;
   }
 
+  const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
   // 🔥 2. Extrai os dados do usuário para passar para o ProfileView
   const userMetadata = session?.user?.user_metadata || null;
 
@@ -193,15 +194,6 @@ const WorkoutApp = () => {
             </button>
           </div>
         </header>
-      )}
-
-      {state.view === 'workout' && !state.showMeme && (
-        <div className="mb-6 space-y-4 animate-in slide-in-from-bottom-5 duration-700">
-          <UserLevel history={state.history} />
-          <QuestBoard />
-          <CharacterSheet history={state.history} />
-          <BadgeList history={state.history} />
-        </div>
       )}
 
       {state.view === 'workout' && state.workoutData && !state.showMeme && (
@@ -279,14 +271,15 @@ const WorkoutApp = () => {
             />
         )}
 
-        {/* 🔥 3. INJETANDO A ABA DE PERFIL AQUI 🔥 */}
+        {/* ABA DE PERFIL (Apenas o componente unificado) */}
         {state.view === 'profile' && (
-            <ProfileView 
-              userMetadata={userMetadata} 
-              setView={setters.setView}
-              stats={stats}               // 🔥 O peso vivo e streak
-              history={state.history}     // 🔥 O histórico para calcular o Nível
-            />
+          <ProfileView 
+            userMetadata={userMetadata} 
+            setView={setters.setView} 
+            stats={stats} 
+            history={state.history}
+            quests={dailyQuests}
+          />
         )}
         
         {state.view === 'import' && !hasSavedData && (
