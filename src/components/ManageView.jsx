@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom'; // 🔥 ADICIONE ISTO AQUI
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square } from 'lucide-react';
 
 // 🔥 O CATÁLOGO MESTRE (O "Supermercado" de Exercícios)
@@ -128,10 +129,10 @@ const ManageView = ({ activeDay, workoutData, addExercise, removeExercise, editE
       </div>
 
       {/* ========================================== */}
-      {/* 🔥 MODAL DO CATÁLOGO DE EXERCÍCIOS 🔥 */}
+      {/* 🔥 MODAL DO CATÁLOGO DE EXERCÍCIOS (PORTAL) 🔥 */}
       {/* ========================================== */}
-      {isCatalogOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end p-2 sm:p-4">
+      {isCatalogOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex flex-col justify-end p-2 sm:p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsCatalogOpen(false)}></div>
           
           <div className="bg-card border-t-2 sm:border-2 border-primary w-full max-w-lg mx-auto rounded-t-3xl sm:rounded-3xl shadow-[0_-10px_40px_rgba(var(--primary),0.2)] relative z-10 overflow-hidden animate-in slide-in-from-bottom-full duration-300 flex flex-col max-h-[85vh]">
@@ -207,9 +208,9 @@ const ManageView = ({ activeDay, workoutData, addExercise, removeExercise, editE
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body // 🔥 Destino do teletransporte
       )}
-
     </main>
   );
 };

@@ -16,6 +16,7 @@ import BadgeList from './components/BadgeList';
 import CharacterSheet from './components/CharacterSheet';
 import QuestBoard from './components/QuestBoard';
 import AuthView from './components/AuthView';
+import ProfileView from './components/ProfileView'; // 🔥 1. Import do Novo Componente
 import { supabase } from './supabaseClient';
 
 // Celebrações
@@ -24,7 +25,7 @@ import LevelUpModal from './components/LevelUpModal';
 import { getDailyQuests } from './utils/rpgSystem';
 
 const WorkoutApp = () => { 
-  // --- 1. ESTADOS E HOOKS (Sempre no topo, sem interrupções) ---
+  // --- 1. ESTADOS E HOOKS ---
   const [session, setSession] = useState(null);
   const { state, setters, actions, stats } = useWorkout();
   
@@ -53,7 +54,7 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- 3. TODA A SUA LÓGICA ORIGINAL (Geração de missões, temas, rede, etc) ---
+  // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
     const checkAndGenerateQuests = () => {
       const today = new Date().toLocaleDateString('pt-BR');
@@ -139,10 +140,13 @@ const WorkoutApp = () => {
 
   const flameStyle = getFlameStyle(stats?.streak || 0);
 
-  // --- 4. VERIFICAÇÃO DE SESSÃO (Apenas no final dos Hooks) ---
+  // --- 4. VERIFICAÇÃO DE SESSÃO ---
   if (!session) {
     return <AuthView />;
   }
+
+  // 🔥 2. Extrai os dados do usuário para passar para o ProfileView
+  const userMetadata = session?.user?.user_metadata || null;
 
   // --- 5. RENDERIZAÇÃO DO JSX ---
   return (
@@ -251,7 +255,7 @@ const WorkoutApp = () => {
             removeExercise={actions.manageData.remove} 
             editExerciseBase={actions.manageData.edit} 
             setView={setters.setView}
-            addFromCatalog={actions.manageData.addFromCatalog} // <-- INCLUIR ESTA LINHA
+            addFromCatalog={actions.manageData.addFromCatalog}
           />
         )}
 
@@ -272,6 +276,16 @@ const WorkoutApp = () => {
               workoutData={state.workoutData} 
               setView={setters.setView}
               setIsModalOpen={setIsAnyModalOpen}
+            />
+        )}
+
+        {/* 🔥 3. INJETANDO A ABA DE PERFIL AQUI 🔥 */}
+        {state.view === 'profile' && (
+            <ProfileView 
+              userMetadata={userMetadata} 
+              setView={setters.setView}
+              stats={stats}               // 🔥 O peso vivo e streak
+              history={state.history}     // 🔥 O histórico para calcular o Nível
             />
         )}
         
