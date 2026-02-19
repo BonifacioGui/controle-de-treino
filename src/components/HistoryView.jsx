@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
 import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap, Plus, CalendarDays } from 'lucide-react';
-import { supabase } from '../supabaseClient'; // 🔥 IMPORTANTE PARA SALVAR DIRETO AQUI
+import { supabase } from '../supabaseClient'; 
 
 // --- HELPERS ---
 const normalizeName = (name) => name ? name.toLowerCase().trim() : "";
@@ -249,28 +249,75 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
 
   const [reportData, setReportData] = useState(null);
 
-  // 🔥 ESTADOS DO NOVO FORMULÁRIO DE BIOMETRIA 🔥
+  // 🔥 ESTADOS DO NOVO FORMULÁRIO DE BIOMETRIA (COMPLETO) 🔥
   const [showBioForm, setShowBioForm] = useState(false);
-  const [bioWeight, setBioWeight] = useState('');
-  const [bioWaist, setBioWaist] = useState('');
   const [bioDate, setBioDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bioWeight, setBioWeight] = useState('');
+  const [bioBf, setBioBf] = useState('');
+  const [bioWaist, setBioWaist] = useState('');
+  const [bioChest, setBioChest] = useState('');
+  const [bioArm, setBioArm] = useState('');
+  const [bioShoulder, setBioShoulder] = useState('');
+  const [bioLeg, setBioLeg] = useState('');
   const [isSavingBio, setIsSavingBio] = useState(false);
 
-  // Função independente para salvar biometria (Não precisa mexer no App.jsx)
+  // Zera o formulário ao fechar
+  const handleToggleForm = () => {
+    if (showBioForm) {
+      // Se está fechando, limpa os campos para a data de hoje
+      setBioDate(new Date().toISOString().split('T')[0]);
+      setBioWeight(''); setBioBf(''); setBioWaist('');
+      setBioChest(''); setBioArm(''); setBioShoulder(''); setBioLeg('');
+    }
+    setShowBioForm(!showBioForm);
+  };
+
+  // 🔥 FUNÇÃO PARA EDITAR UM LOG EXISTENTE 🔥
+  const handleEditBio = (b) => {
+    // b.date vem no formato "DD/MM/YYYY". O input precisa de "YYYY-MM-DD".
+    if (b.date) {
+      const [day, month, year] = b.date.split('/');
+      setBioDate(`${year}-${month}-${day}`);
+    }
+    
+    setBioWeight(b.weight || '');
+    setBioBf(b.bf || '');
+    setBioWaist(b.waist || '');
+    setBioChest(b.chest || '');
+    setBioShoulder(b.shoulder || '');
+    setBioArm(b.arm || '');
+    setBioLeg(b.leg || '');
+    
+    setShowBioForm(true); // Abre o formulário
+    
+    // Rola a tela suavemente para o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Função para salvar (Cria novo se não existir, Atualiza se existir)
   const handleSaveBiometrics = async () => {
-    if (!bioWeight && !bioWaist) return;
+    if (!bioWeight) {
+      alert("Comandante, insira ao menos o Peso para registrar o Log.");
+      return;
+    }
+    
     setIsSavingBio(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
+        // O upsert usa a data. Se a data já existe, ele edita o antigo. Se não, cria um novo.
         await supabase.from('body_stats').upsert({
           user_id: session.user.id,
           date: bioDate,
           weight: parseFloat(bioWeight) || null,
-          waist: parseFloat(bioWaist) || null
+          bf: parseFloat(bioBf) || null,
+          waist: parseFloat(bioWaist) || null,
+          chest: parseFloat(bioChest) || null,
+          arm: parseFloat(bioArm) || null,
+          shoulder: parseFloat(bioShoulder) || null,
+          leg: parseFloat(bioLeg) || null
         }, { onConflict: 'user_id, date' });
         
-        // Atualiza a página para puxar os dados frescos no formato correto
         window.location.reload(); 
       }
     } catch (err) {
@@ -292,12 +339,12 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
         <div className="flex-1 min-h-0 flex flex-col gap-3">
           <div className="flex items-center justify-between px-1 shrink-0">
             <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
-              <Activity size={14} /> Histórico
+              <Activity size={14} /> Histórico de Combate
             </h3>
             <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
           </div>
 
-          <div className="overflow-y-auto pr-1 pb-8 max-h-[45vh]">
+          <div className="overflow-y-auto pr-1 pb-8 max-h-[35vh]">
             {history.length === 0 && (
               <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
                 <p className="text-muted text-xs font-black uppercase tracking-widest italic">Buffer Vazio.</p>
@@ -307,26 +354,28 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           </div>
         </div>
 
-        {/* 🔥 SEÇÃO DE BIOMETRIA ATUALIZADA COM FORMULÁRIO 🔥 */}
-        <div className="shrink-0 space-y-3 pt-3 border-t border-border">
+        {/* ========================================================= */}
+        {/* 🔥 SCANNER CORPORAL (CHARACTER SHEET BIOMÉTRICO) 🔥       */}
+        {/* ========================================================= */}
+        <div className="shrink-0 space-y-3 pt-4 border-t border-border">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-black text-secondary uppercase tracking-widest flex items-center gap-2">
-              <Scale size={14} /> Biometria
+              <Scale size={14} /> Scanner Corporal
             </h3>
             <button 
-              onClick={() => setShowBioForm(!showBioForm)} 
-              className={`flex items-center gap-1 px-2 py-1 rounded border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
+              onClick={handleToggleForm} 
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary shadow-[0_0_10px_rgba(var(--secondary),0.4)]' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
             >
               {showBioForm ? <X size={12}/> : <Plus size={12}/>} 
-              {showBioForm ? 'Cancelar' : 'Registrar'}
+              {showBioForm ? 'Cancelar' : 'Escanear'}
             </button>
           </div>
 
-          {/* O FORMULÁRIO EXPANSÍVEL */}
+          {/* FORMULÁRIO DE ENTRADA / EDIÇÃO */}
           {showBioForm && (
-            <div className="bg-input/50 border border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200">
-              <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-2 mb-3">
-                <CalendarDays size={16} className="text-muted" />
+            <div className="bg-card border-2 border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200 shadow-lg">
+              <div className="flex items-center gap-2 bg-input/50 border border-border rounded-lg p-2 mb-4">
+                <CalendarDays size={16} className="text-secondary" />
                 <input 
                   type="date" 
                   value={bioDate}
@@ -335,64 +384,111 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                 />
               </div>
 
+              {/* Status Primários */}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG)</label>
-                  <input 
-                    type="number" inputMode="decimal" placeholder="00.0"
-                    value={bioWeight} onChange={(e) => setBioWeight(e.target.value)}
-                    className="w-full bg-card border border-border rounded-lg p-3 text-center text-sm font-black text-success outline-none focus:border-success transition-colors"
-                  />
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG) *</label>
+                  <input type="number" inputMode="decimal" placeholder="Ex: 80.5" value={bioWeight} onChange={(e) => setBioWeight(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-success outline-none focus:border-success transition-colors" />
                 </div>
                 <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">BF (%)</label>
+                  <input type="number" inputMode="decimal" placeholder="Ex: 15.0" value={bioBf} onChange={(e) => setBioBf(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-warning outline-none focus:border-warning transition-colors" />
+                </div>
+              </div>
+
+              {/* Medidas Secundárias */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
                   <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Cintura (CM)</label>
-                  <input 
-                    type="number" inputMode="decimal" placeholder="00.0"
-                    value={bioWaist} onChange={(e) => setBioWaist(e.target.value)}
-                    className="w-full bg-card border border-border rounded-lg p-3 text-center text-sm font-black text-primary outline-none focus:border-primary transition-colors"
-                  />
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioWaist} onChange={(e) => setBioWaist(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peito (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioChest} onChange={(e) => setBioChest(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Ombro (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioShoulder} onChange={(e) => setBioShoulder(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Braço (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioArm} onChange={(e) => setBioArm(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Perna (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioLeg} onChange={(e) => setBioLeg(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
                 </div>
               </div>
 
               <button 
                 onClick={handleSaveBiometrics}
-                disabled={isSavingBio || (!bioWeight && !bioWaist)}
+                disabled={isSavingBio || !bioWeight}
                 className="w-full bg-secondary text-black font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
               >
                 {isSavingBio ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
-                Salvar Medidas
+                Registrar Status
               </button>
             </div>
           )}
 
-          {/* LISTA DE CARDS DE BIOMETRIA */}
+          {/* LISTA DE CARDS (CHARACTER SHEETS) */}
           <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
             {sortedBody.length === 0 && !showBioForm && (
-              <div className="text-[10px] text-muted italic p-2">Nenhum registro biométrico encontrado.</div>
+              <div className="text-[10px] text-muted italic p-2 w-full text-center border border-dashed border-border rounded-lg">
+                Nenhum scan corporal registrado.
+              </div>
             )}
             {sortedBody.map((b) => (
-              <div key={b.id} className="min-w-[120px] bg-card border border-secondary/30 p-3 rounded-lg shadow-sm relative group hover:border-secondary/60 transition-all shrink-0 flex flex-col justify-between">
-                <div className="flex justify-between items-center mb-2 border-b border-secondary/10 pb-1">
-                  <span className="font-black text-secondary text-[10px]">{b.date}</span>
-                  <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500"><Trash2 size={12} /></button>
-                </div>
-                <div className="flex justify-between items-end gap-2">
-                  <div>
-                    <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Peso</p>
-                    <p className="text-base font-black text-success leading-none">{b.weight || '--'}<span className="text-[8px] ml-0.5 text-muted">KG</span></p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Cintura</p>
-                    <p className="text-base font-black text-primary leading-none">{b.waist || '--'}<span className="text-[8px] ml-0.5 text-muted">CM</span></p>
+              <div key={b.id} className="min-w-[220px] max-w-[260px] bg-card border border-secondary/30 p-3 rounded-xl shadow-md relative group hover:border-secondary transition-all shrink-0 flex flex-col">
+                
+                <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
+                  <span className="font-black text-secondary text-[10px] tracking-widest">{b.date}</span>
+                  <div className="flex gap-3">
+                    {/* 🔥 BOTÃO DE EDITAR ADICIONADO AQUI 🔥 */}
+                    <button onClick={() => handleEditBio(b)} className="text-muted hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
+                    <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500 transition-colors" title="Apagar"><Trash2 size={14} /></button>
                   </div>
                 </div>
+                
+                {/* GRID DE STATUS COMPACTO */}
+                <div className="grid grid-cols-3 gap-1.5 flex-1">
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Peso</span>
+                     <span className="text-xs font-black text-success">{b.weight || '--'}</span>
+                   </div>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">BF</span>
+                     <span className="text-xs font-black text-warning">{b.bf ? `${b.bf}%` : '--'}</span>
+                   </div>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Cintura</span>
+                     <span className="text-xs font-black text-primary">{b.waist || '--'}</span>
+                   </div>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Peito</span>
+                     <span className="text-xs font-black text-primary">{b.chest || '--'}</span>
+                   </div>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Ombro</span>
+                     <span className="text-xs font-black text-primary">{b.shoulder || '--'}</span>
+                   </div>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Braço</span>
+                     <span className="text-xs font-black text-primary">{b.arm || '--'}</span>
+                   </div>
+                   <div className="col-span-3 flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50 mt-0.5">
+                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Perna</span>
+                     <span className="text-xs font-black text-primary">{b.leg || '--'} <span className="text-[8px] text-muted font-normal ml-0.5">CM</span></span>
+                   </div>
+                </div>
+
               </div>
             ))}
           </div>
         </div>
         
-        <button onClick={() => setView('workout')} className="w-full py-3 bg-card hover:bg-input border border-border hover:border-primary rounded-lg font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0">
-          Voltar ao Combate
+        <button onClick={() => setView('workout')} className="w-full py-4 bg-card hover:bg-input border border-border hover:border-primary rounded-xl font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0 mt-2 shadow-sm">
+          Retornar à Base
         </button>
       </main>
 
