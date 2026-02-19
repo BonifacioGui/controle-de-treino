@@ -54,6 +54,8 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  
+
   // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
     const checkAndGenerateQuests = () => {

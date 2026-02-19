@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom'; // 🔥 O TELETRANSPORTADOR
-import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap } from 'lucide-react';
+import { createPortal } from 'react-dom'; 
+import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap, Plus, CalendarDays } from 'lucide-react';
+import { supabase } from '../supabaseClient'; // 🔥 IMPORTANTE PARA SALVAR DIRETO AQUI
 
 // --- HELPERS ---
 const normalizeName = (name) => name ? name.toLowerCase().trim() : "";
@@ -44,7 +45,6 @@ const groupHistoryByDate = (history) => {
   return groups;
 };
 
-// Calcula o volume total (Peso x Repetições) do treino
 const calculateVolume = (exercises) => {
   let total = 0;
   exercises.forEach(ex => {
@@ -67,7 +67,6 @@ const ExerciseItemView = ({ exercise }) => {
       <span className="text-xs font-bold uppercase truncate text-main flex-1 mr-2">
         {exercise.name}
       </span>
-      
       <div className="flex gap-1 shrink-0">
         {Array.isArray(exercise.sets) && exercise.sets.length > 0 ? (
           <div className="flex gap-1 flex-wrap justify-end">
@@ -121,7 +120,6 @@ const ExerciseItemEdit = ({ exercise, index, updateExercise }) => {
   );
 };
 
-// --- 🔥 ATUALIZADO: DayAccordion agora recebe openReport 🔥 ---
 const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -180,7 +178,6 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
             </>
           ) : (
             <>
-              {/* 🔥 NOVO BOTÃO DE RELATÓRIO 🔥 */}
               <button 
                 onClick={(e) => { e.stopPropagation(); openReport(session); }} 
                 className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-black rounded transition-colors flex items-center gap-1"
@@ -188,7 +185,6 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
               >
                 <FileText size={14} />
               </button>
-
               <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="p-1.5 text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Pencil size={14} /></button>
               <button onClick={(e) => { e.stopPropagation(); deleteEntry(session.id, 'workout'); }} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /></button>
             </>
@@ -251,8 +247,37 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
   const groupedHistory = groupHistoryByDate(history);
   const monthKeys = Object.keys(groupedHistory).reverse(); 
 
-  // 🔥 ESTADO DO RELATÓRIO 🔥
   const [reportData, setReportData] = useState(null);
+
+  // 🔥 ESTADOS DO NOVO FORMULÁRIO DE BIOMETRIA 🔥
+  const [showBioForm, setShowBioForm] = useState(false);
+  const [bioWeight, setBioWeight] = useState('');
+  const [bioWaist, setBioWaist] = useState('');
+  const [bioDate, setBioDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isSavingBio, setIsSavingBio] = useState(false);
+
+  // Função independente para salvar biometria (Não precisa mexer no App.jsx)
+  const handleSaveBiometrics = async () => {
+    if (!bioWeight && !bioWaist) return;
+    setIsSavingBio(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        await supabase.from('body_stats').upsert({
+          user_id: session.user.id,
+          date: bioDate,
+          weight: parseFloat(bioWeight) || null,
+          waist: parseFloat(bioWaist) || null
+        }, { onConflict: 'user_id, date' });
+        
+        // Atualiza a página para puxar os dados frescos no formato correto
+        window.location.reload(); 
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setIsSavingBio(false);
+  };
 
   return (
     <>
@@ -272,22 +297,79 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
           </div>
 
-          <div className="overflow-y-auto pr-1 pb-8 max-h-[50vh]">
+          <div className="overflow-y-auto pr-1 pb-8 max-h-[45vh]">
             {history.length === 0 && (
               <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
                 <p className="text-muted text-xs font-black uppercase tracking-widest italic">Buffer Vazio.</p>
               </div>
             )}
-            {/* 🔥 Passando a função openReport para baixo 🔥 */}
             {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={setReportData} />)}
           </div>
         </div>
 
+        {/* 🔥 SEÇÃO DE BIOMETRIA ATUALIZADA COM FORMULÁRIO 🔥 */}
         <div className="shrink-0 space-y-3 pt-3 border-t border-border">
-          <h3 className="text-xs font-black text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
-            <Scale size={14} /> Biometria
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black text-secondary uppercase tracking-widest flex items-center gap-2">
+              <Scale size={14} /> Biometria
+            </h3>
+            <button 
+              onClick={() => setShowBioForm(!showBioForm)} 
+              className={`flex items-center gap-1 px-2 py-1 rounded border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
+            >
+              {showBioForm ? <X size={12}/> : <Plus size={12}/>} 
+              {showBioForm ? 'Cancelar' : 'Registrar'}
+            </button>
+          </div>
+
+          {/* O FORMULÁRIO EXPANSÍVEL */}
+          {showBioForm && (
+            <div className="bg-input/50 border border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200">
+              <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-2 mb-3">
+                <CalendarDays size={16} className="text-muted" />
+                <input 
+                  type="date" 
+                  value={bioDate}
+                  onChange={(e) => setBioDate(e.target.value)}
+                  className="bg-transparent text-main text-xs font-bold w-full outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG)</label>
+                  <input 
+                    type="number" inputMode="decimal" placeholder="00.0"
+                    value={bioWeight} onChange={(e) => setBioWeight(e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg p-3 text-center text-sm font-black text-success outline-none focus:border-success transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Cintura (CM)</label>
+                  <input 
+                    type="number" inputMode="decimal" placeholder="00.0"
+                    value={bioWaist} onChange={(e) => setBioWaist(e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg p-3 text-center text-sm font-black text-primary outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveBiometrics}
+                disabled={isSavingBio || (!bioWeight && !bioWaist)}
+                className="w-full bg-secondary text-black font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                {isSavingBio ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
+                Salvar Medidas
+              </button>
+            </div>
+          )}
+
+          {/* LISTA DE CARDS DE BIOMETRIA */}
           <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
+            {sortedBody.length === 0 && !showBioForm && (
+              <div className="text-[10px] text-muted italic p-2">Nenhum registro biométrico encontrado.</div>
+            )}
             {sortedBody.map((b) => (
               <div key={b.id} className="min-w-[120px] bg-card border border-secondary/30 p-3 rounded-lg shadow-sm relative group hover:border-secondary/60 transition-all shrink-0 flex flex-col justify-between">
                 <div className="flex justify-between items-center mb-2 border-b border-secondary/10 pb-1">
@@ -297,11 +379,11 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                 <div className="flex justify-between items-end gap-2">
                   <div>
                     <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Peso</p>
-                    <p className="text-base font-black text-success leading-none">{b.weight}<span className="text-[8px] ml-0.5 text-muted">KG</span></p>
+                    <p className="text-base font-black text-success leading-none">{b.weight || '--'}<span className="text-[8px] ml-0.5 text-muted">KG</span></p>
                   </div>
                   <div className="text-right">
                     <p className="text-[8px] text-muted uppercase font-bold mb-0.5">Cintura</p>
-                    <p className="text-base font-black text-primary leading-none">{b.waist}<span className="text-[8px] ml-0.5 text-muted">CM</span></p>
+                    <p className="text-base font-black text-primary leading-none">{b.waist || '--'}<span className="text-[8px] ml-0.5 text-muted">CM</span></p>
                   </div>
                 </div>
               </div>
@@ -367,7 +449,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             </div>
           </div>
         </div>,
-        document.body // 🔥 O destino do teletransporte
+        document.body
       )}
     </>
   );
