@@ -8,15 +8,18 @@ import { calculateStats } from '../utils/rpgSystem';
 import UserLevel from './UserLevel';
 import QuestBoard from './QuestBoard';
 import BadgeList from './BadgeList';
-import CyberCalendar from './CyberCalendar'; // 🔥 O seu novo Calendário Cyberpunk
+import CyberCalendar from './CyberCalendar'; 
 
 const ProfileView = ({ userMetadata, setView, stats, history }) => {
   
-  const [avatarUrl, setAvatarUrl] = useState(() => localStorage.getItem('soldier_avatar') || null);
+  // 🔥 NOVIDADE: Puxa primeiro da nuvem, se não tiver, olha o cache local
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || localStorage.getItem('soldier_avatar') || null;
+  });
   
   // ESTADOS DO MODAL
   const [isEditing, setIsEditing] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false); // Controle do Calendário
+  const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
     username: userMetadata?.username || '',
     birthdate: userMetadata?.birthdate || '',
@@ -32,7 +35,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
       reader.onloadend = () => {
         const base64String = reader.result;
         setAvatarUrl(base64String);
-        localStorage.setItem('soldier_avatar', base64String);
+        localStorage.setItem('soldier_avatar', base64String); // Mantém backup local
       };
       reader.readAsDataURL(file);
     }
@@ -46,7 +49,8 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
           username: editForm.username,
           birthdate: editForm.birthdate,
           height: editForm.height,
-          goal: editForm.goal
+          goal: editForm.goal,
+          avatar_url: avatarUrl // 🔥 NOVIDADE: Envia a foto oficial para a nuvem!
         }
       });
       if (error) throw error;
