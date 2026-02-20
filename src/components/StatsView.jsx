@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
 import { ChevronLeft, Activity, Target, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
 import { calculateStats } from '../utils/rpgSystem';
-
+import MuscleHeatmap from './MuscleHeatmap';
 // --- HELPER: Unificação de Nomes via Mapeamento ---
 // --- HELPER: O Pente Fino Universal de Nomes ---
 // --- HELPER: Unifica nomes (Lógica Blindada Universal) ---
@@ -182,7 +182,8 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
           })}
         </div>
       </Section>
-
+       {/* Renderiza o mapa de calor usando o histórico */}
+      <MuscleHeatmap history={history} />
       <Section title="BIOMETRIA" icon={Activity}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={biometry} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
