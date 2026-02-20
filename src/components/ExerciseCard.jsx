@@ -34,15 +34,21 @@ const ExerciseCard = ({
       <div className="flex justify-between items-start mb-4 relative z-10">
         <div className="flex-1">
           <h3 className={`font-black text-lg leading-tight flex items-center gap-2 ${isBreakingPR ? 'text-yellow-400' : isDone ? 'text-primary' : 'text-main'}`}>
-            {ex.name}
-            {isBreakingPR && <Star size={16} className="text-warning fill-warning animate-pulse" />}
-          </h3>
+          {ex.name}
+          {/* 🔥 TROFÉU RESTAURADO AQUI 🔥 */}
+          {isBreakingPR && (
+            <div className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/50 px-1.5 py-0.5 rounded-md animate-bounce shadow-[0_0_10px_rgba(250,204,21,0.4)]">
+              <Trophy size={14} className="text-yellow-400 fill-yellow-400" />
+              <span className="text-[8px] font-black text-yellow-400 uppercase tracking-tighter">NEW PR</span>
+            </div>
+          )}
+        </h3>
           
           <div className="flex gap-2 mt-1.5 flex-wrap items-center">
             {lastWeight > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[9px] font-mono text-blue-400">
                 <Ghost size={10} />
-                <span>FANTASMA: {lastWeight}kg</span>
+                <span>ÚLTIMA CARGA: {lastWeight}kg</span>
               </div>
             )}
             {lastWeight > 0 && !isDone && (
@@ -84,7 +90,7 @@ const ExerciseCard = ({
                 <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
                 <div className="flex-1 flex gap-1.5 items-center">
                     <input type="text" inputMode="decimal" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                      className={`w-full bg-input border rounded p-1.5 font-black text-lg text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400' : 'border-border text-success'}`} 
+                      className={`w-full bg-input border rounded p-1.5 font-black text-lg text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]' : 'border-border text-success'}`} 
                     />
                     <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
                       className="w-full bg-input border border-border rounded p-1.5 text-secondary font-black text-lg text-center h-10" 

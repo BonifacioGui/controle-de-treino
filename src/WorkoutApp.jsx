@@ -199,22 +199,43 @@ const WorkoutApp = () => {
       )}
 
       {state.view === 'workout' && state.workoutData && !state.showMeme && (
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
-          {Object.keys(state.workoutData).map((day) => (
+      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-1">
+        {Object.keys(state.workoutData).map((day) => {
+          const wData = state.workoutData[day];
+          const isActive = state.activeDay === day;
+          
+          return (
             <button
               key={day}
               onClick={() => setters.setActiveDay(day)}
-              className={`px-8 py-4 rounded-2xl font-black text-lm transition-all duration-300 uppercase tracking-widest border shrink-0
-                ${state.activeDay === day 
-                  ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgb(var(--primary))] scale-105' 
-                  : 'bg-card text-muted border-border hover:border-primary/50 hover:text-primary'
+              className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
+                ${isActive 
+                  ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] scale-[1.02]' 
+                  : 'bg-card text-muted border-border hover:border-primary/40 hover:bg-input/50'
                 }`}
             >
-              {day.replace('TREINO ', '').replace('-FEIRA', '')}
+              {/* Efeito de luz sutil no fundo do card ativo */}
+              {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
+              
+              {/* A Letra Gigante em Itálico */}
+              <span className={`text-3xl font-black italic tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
+                {day}
+              </span>
+              
+              {/* Divisória Vertical e Dados (HUD) */}
+              <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border/50 group-hover:border-primary/30'}`}>
+                <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">
+                  {wData?.title || "TREINO"}
+                </span>
+                <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive ? 'text-black/70' : 'text-muted'}`}>
+                  {wData?.focus || "SISTEMA"}
+                </span>
+              </div>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
+    )}
 
       <div className="relative z-10 min-h-[50vh]">
         {state.view === 'workout' && state.workoutData && (

@@ -37,34 +37,44 @@ export const isSameExercise = (currentName, historyName) => {
   const historyKey = cleanString(historyName);
   
   if (currentKey === historyKey) return true;
-  if (historyKey.includes(currentKey)) return true;
-  if (currentKey.includes(historyKey) && historyKey.length > 4) return true; 
 
-  // Dicionário de Sinônimos e Variações
   const synonyms = {
-    "rosca45": ["incline", "banco", "inclinada", "45"],
-    "roscadireta": ["barra", "w", "polia", "biceps", "stand", "direta", "alternada"],
-    "crossover": ["poliaalta", "napoliaalta", "alta", "escapulas", "crossoverpoliaalta", "crossovernapoliaalta", "cross"],
-    "elevacaopelvica": ["quadril", "pelvica", "elevacao"],
-    "cadeiraabdutora": ["abducao", "abdutora"],
-    "mesaflexora": ["flexora"],
-    "cadeiraextensora": ["extensora"],
-    "serrote": ["remadaunilateral", "unilateral"],
-    "tricepspulley": ["tricepsnapolia", "tricepscorda", "barrareta", "volume", "polia"],
-    "tricepscorda": ["tricepsnapolia", "tricepspulley"],
-    "agachamentolivre": ["agachamento"],
-    "legpress": ["legpress45", "pesafastados"],
-    "abdominalinfra": ["abdominal"],
-    "vacuum": ["stomachvacuum"],
-    "supinoinclinado": ["supinoinclinado", "controlar", "halter"],
-    "crucifixoinverso": ["halter", "postural", "cifose", "substituto"],
-    "crucifixo": ["maquina", "peck", "deck", "fly", "reto", "inclinado", "peckdeck", "voador"]
+    "desenvolvimento": ["desenv", "arnold", "militar", "ompro"],
+    "supinoreto": ["supino", "plano", "barrapreto"],
+    "supinoinclinado": ["inclinado"],
+    "elevacaolateral": ["lateral"],
+    "tricepscorda": ["corda", "triceppolia"],
+    "tricepsfrances": ["frances"],
+    "tricepstesta": ["testa"],
+    "roscadireta": ["barraw", "direta"],
+    "roscamartelo": ["martelo"],
+    "rosca45": ["rosca45", "inclinada"],
+    "remadabaixa": ["triangulo", "polia", "baixa"],
+    "serrote": ["unilateral", "serrote"],
+    "puxada": ["puxada", "pulldown", "frontal"],
+    "crucifixoinverso": ["voadorinverso", "crucifixoinv"],
+    "crossover": ["cross", "polia"],
+    "legpress": ["leg", "leg45", "press"],
+    "agachamentohack": ["hack"],
+    "elevacaopelvica": ["pelvica", "quadril"],
+    "extensora": ["extensora"],
+    "flexora": ["flexora"],
+    "stiff": ["stiff", "rdl"],
+    "abdutora": ["abdu"],
+    "adutora": ["adut"],
+    "panturrilha": ["panturrilha", "gemeos"],
+    "vacuum": ["vacuo", "vacuum"]
   };
 
-  if (synonyms[currentKey]) return synonyms[currentKey].some(syn => historyKey.includes(syn));
-  if (synonyms[historyKey]) return synonyms[historyKey].some(syn => currentKey.includes(syn));
-  
-  return false;
+  // Verifica se o nome atual ou o nome do histórico pertence a algum grupo de sinônimos
+  for (const group in synonyms) {
+    const isCurrentInGroup = currentKey.includes(group) || synonyms[group].some(s => currentKey.includes(s));
+    const isHistoryInGroup = historyKey.includes(group) || synonyms[group].some(s => historyKey.includes(s));
+    
+    if (isCurrentInGroup && isHistoryInGroup) return true;
+  }
+
+  return historyKey.includes(currentKey) || currentKey.includes(historyKey);
 };
 
 // --- UTILITÁRIOS GERAIS DE TEMPO E DATA (Para o WorkoutView não quebrar) ---

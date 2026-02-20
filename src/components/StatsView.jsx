@@ -1,41 +1,69 @@
 import React, { useState, useEffect, useMemo } from 'react';
-// 🔥 ADICIONADO: Componentes de Radar no Recharts
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { ChevronLeft, Activity, Target, Award, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
-// 🔥 ADICIONADO: Import do calculador de stats
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
+import { ChevronLeft, Activity, Target, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
 import { calculateStats } from '../utils/rpgSystem';
 
 // --- HELPER: Unificação de Nomes via Mapeamento ---
+// --- HELPER: O Pente Fino Universal de Nomes ---
+// --- HELPER: Unifica nomes (Lógica Blindada Universal) ---
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
-  let name = rawName.split('(')[0].trim();
-  const clean = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  let clean = rawName.split('(')[0].trim();
+  // Remove acentos e caracteres especiais para facilitar a busca
+  const lower = clean.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
 
-  const rules = [
-    { k: /triceps/i, sub: ['testa', 'frances', 'banco', 'coice'], def: "Tríceps Corda" },
-    { k: /supino/i, sub: ['inclinado', 'declinado', 'vertical', 'maquina'], def: "Supino Reto" },
-    { k: /agachamento/i, sub: ['bulgaro', 'smith', 'hack'], def: "Agachamento Livre" },
-    { k: /leg/i, sub: ['45', 'horizontal'], def: "Leg Press" },
-    { k: /puxada/i, sub: ['supinada'], def: "Puxada Frontal" },
-    { k: /remada/i, sub: ['cavalinho', 'curvada', 'maquina'], def: "Remada Baixa" },
-    { k: /rosca/i, sub: ['martelo', 'scott', '45'], def: "Rosca Direta" },
-    { k: /lateral|frontal|crucifixoinverso|facepull/i, res: name }
-  ];
+  // 🔥 UNIFICAÇÃO DE OMBROS (O seu bug do Desenvolvimento)
+  if (lower.includes("desenv")) return "Desenvolvimento";
+  if (lower.includes("lateral")) return "Elevação Lateral";
+  if (lower.includes("frontal")) return "Elevação Frontal";
+  if (lower.includes("facepull") || (lower.includes("face") && lower.includes("pull"))) return "Face Pull";
 
-  for (const r of rules) {
-    if (r.k.test(clean)) {
-      const found = r.sub?.find(s => clean.includes(s));
-      return found ? `${r.def.split(' ')[0]} ${found.charAt(0).toUpperCase() + found.slice(1)}` : (r.res || r.def);
-    }
+  // 🔥 UNIFICAÇÃO DE PERNAS (O bug da Abdutora/Adutora)
+  if (lower.includes("abdu")) return "Cadeira Abdutora";
+  if (lower.includes("adut")) return "Cadeira Adutora";
+  if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
+  if (lower.includes("leg")) return "Leg Press";
+  if (lower.includes("hack")) return "Agachamento Hack";
+  if (lower.includes("extensora")) return "Cadeira Extensora";
+  if (lower.includes("flexora")) return "Mesa Flexora";
+  if (lower.includes("panturrilha") || lower.includes("gemeos")) return "Panturrilha";
+
+  // 🔥 UNIFICAÇÃO DE BRAÇOS
+  if (lower.includes("triceps")) {
+      if (lower.includes("testa")) return "Tríceps Testa";
+      if (lower.includes("frances")) return "Tríceps Francês";
+      return "Tríceps Corda"; 
   }
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  if (lower.includes("rosca")) {
+      if (lower.includes("martelo")) return "Rosca Martelo";
+      if (lower.includes("45") || lower.includes("inclinada")) return "Rosca 45º";
+      return "Rosca Direta";
+  }
+
+  // 🔥 UNIFICAÇÃO DE PEITO
+  if (lower.includes("supino")) {
+      if (lower.includes("inclinado")) return "Supino Inclinado";
+      return "Supino Reto";
+  }
+  if (lower.includes("crossover") || (lower.includes("cross") && lower.includes("over"))) return "Crossover";
+
+  // 🔥 UNIFICAÇÃO DE COSTAS
+  if (lower.includes("puxada")) return "Puxada Frontal";
+  if (lower.includes("remada")) {
+      if (lower.includes("baixa") || lower.includes("triangulo")) return "Remada Baixa";
+      if (lower.includes("unilateral") || lower.includes("serrote")) return "Serrote";
+      return "Remada";
+  }
+
+  // Mantém o nome original formatado se não cair em nenhuma regra
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
 const getMuscleGroup = (n) => {
   const c = n.toLowerCase();
   if (/supino|crucifixo|peck|deck|cross/i.test(c)) return 'PEITO';
   if (/remada|puxada|serrote|pull|terra/i.test(c)) return 'COSTAS';
-  if (/leg|agacha|exten|flexo|stiff|pelvi|pantu/i.test(c)) return 'PERNAS';
+  if (/leg|agacha|exten|flexo|stiff|pelvi|pantu|abdu|adut/i.test(c)) return 'PERNAS';
   if (/rosca|trice/i.test(c)) return 'BRAÇOS';
   if (/desenv|lateral|frontal|face|encolhi/i.test(c)) return 'OMBROS';
   return /abdom|prancha|vacuum|core/i.test(c) ? 'CORE' : 'OUTROS';
@@ -65,7 +93,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     const radarData = Object.keys(rpgStats).map(key => ({
         subject: rpgStats[key].label,
         value: rpgStats[key].level,
-        fullMark: 100 // Teto visual para o gráfico
+        fullMark: 100
     }));
 
     // 2. Biometria
@@ -107,7 +135,11 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   const loadData = useMemo(() => {
     if (!selectedExercise) return [];
     return history.filter(s => s.exercises.some(ex => getCanonicalName(ex.name) === selectedExercise))
-      .map(s => ({ date: s.date.split('/').slice(0, 2).join('/'), carga: Math.max(...s.exercises.find(e => getCanonicalName(e.name) === selectedExercise).sets.map(st => parseFloat(st.weight) || 0)), full: s.date }))
+      .map(s => ({ 
+        date: s.date.split('/').slice(0, 2).join('/'), 
+        carga: Math.max(...s.exercises.find(e => getCanonicalName(e.name) === selectedExercise).sets.map(st => parseFloat(st.weight) || 0)), 
+        full: s.date 
+      }))
       .sort((a, b) => new Date(a.full.split('/').reverse().join('-')) - new Date(b.full.split('/').reverse().join('-')));
   }, [history, selectedExercise]);
 
@@ -118,19 +150,13 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <h2 className="text-lg font-black italic uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
-      {/* 🔥 NOVO: RADAR DE PERFIL (RPG) 🔥 */}
+      {/* RADAR DE PERFIL (RPG) */}
       <Section title="PERFIL DE COMBATE (ATRIBUTOS)" icon={User} h="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
             <PolarGrid stroke={colors.g} />
             <PolarAngleAxis dataKey="subject" tick={{ fill: colors.t, fontSize: 10, fontWeight: 'bold' }} />
-            <Radar
-              name="Atributos"
-              dataKey="value"
-              stroke={colors.p}
-              fill={colors.p}
-              fillOpacity={0.6}
-            />
+            <Radar name="Atributos" dataKey="value" stroke={colors.p} fill={colors.p} fillOpacity={0.6} />
           </RadarChart>
         </ResponsiveContainer>
       </Section>
@@ -161,7 +187,10 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={biometry} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
             <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }} 
+              formatter={(value, name) => [`${value} ${name === 'peso' ? 'kg' : 'cm'}`, name.toUpperCase()]}
+            />
             <Area type="monotone" dataKey="peso" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
             <Area type="monotone" dataKey="cintura" stroke={colors.s} fill={colors.s} fillOpacity={0.1} />
           </AreaChart>
@@ -172,7 +201,10 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={volume} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
             <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }}
+              formatter={(value) => [`${value} kg`, 'Volume']}
+            />
             <Area type="stepAfter" dataKey="volume" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
           </AreaChart>
         </ResponsiveContainer>
@@ -193,13 +225,22 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <button onClick={() => setIsSelectorOpen(true)} className="w-full bg-card border border-success/30 text-success text-[10px] font-black p-3 rounded-xl flex justify-between items-center uppercase active:scale-95 shadow-lg">
           {selectedExercise || "SELECIONAR EXERCÍCIO"} <Search size={14} />
         </button>
+        
+        {/* 🔥 GRÁFICO DE EVOLUÇÃO DE CARGAS CORRIGIDO (COM KG) 🔥 */}
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
           {selectedExercise && loadData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={loadData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+              <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                 <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-                <YAxis stroke={colors.t} fontSize={10} tickLine={false} domain={['auto', 'auto']} width={25} />
+                {/* Eixo Y agora mostra o "kg" */}
+                <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
+                {/* Tooltip agora formata o valor certinho ao clicar */}
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.s}`, fontSize: '10px' }}
+                  itemStyle={{ color: colors.s, fontWeight: 'bold' }}
+                  formatter={(value) => [`${value} kg`, 'Carga Máxima']}
+                />
                 <Line type="monotone" dataKey="carga" stroke={colors.s} strokeWidth={3} dot={{ fill: colors.s, r: 3 }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
