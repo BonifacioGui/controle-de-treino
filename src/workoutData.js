@@ -1,19 +1,25 @@
 // src/workoutData.js
 export const initialWorkoutData = {
-  SEG: {
+  A: {
     title: "Push Day",
     focus: "Peito, Ombro e Tríceps",
     exercises: [
       { name: "Supino Reto", sets: "3x10", target: "19kg", note: "Controle total" },
       { name: "Supino Inclinado", sets: "3x10", target: "18kg", note: "Controlar descida" },
-      { name: "Crossover", sets: "3x12", target: "Máximo", note: "Escápulas fixas" },
+      { 
+        name: "Crossover", 
+        sets: "3x12", 
+        target: "Máximo", 
+        note: "Escápulas fixas", 
+        alternatives: ["Peck Deck", "Crucifixo com Halteres"] 
+      },
       { name: "Tríceps Francês", sets: "3x10", target: "26kg", note: "Volume" },
       { name: "Tríceps Corda", sets: "3x12", target: "28kg", note: "Extensão total" },
       { name: "Elevação Lateral", sets: "3x12", target: "8kg", note: "Braços à frente" },
       { name: "Desenvolvimento", sets: "3x10", target: "8kg", note: "Pegada estável" },
     ]
   },
-  TER: {
+  B: {
     title: "PULL",
     focus: "Costas, Posterior de Ombro e Bíceps",
     exercises: [
@@ -26,7 +32,7 @@ export const initialWorkoutData = {
       { name: "Rosca Martelo", sets: "3x10", target: "Halter", note: "Sustentar 2s no topo" },
     ]
   },
-  QUA: {
+  C: {
     title: "Legs 1",
     focus: "Quadríceps e Core",
     exercises: [
@@ -39,7 +45,7 @@ export const initialWorkoutData = {
       { name: "Vacuum", sets: "4x30s", target: "98cm", note: "Vácuo total" },
     ]
   },
-  QUI: {
+  D: {
     title: "Arm & Shoulder",
     focus: "Deltoides e Braços",
     exercises: [
@@ -54,7 +60,7 @@ export const initialWorkoutData = {
       { name: "Crucifixo Inverso", sets: "3x12", target: "Postural", note: "Controle" },
     ]
   },
-  SEX: {
+  E: {
     title: "Legs 2",
     focus: "Posterior e Panturrilha",
     exercises: [
@@ -67,7 +73,7 @@ export const initialWorkoutData = {
       { name: "Vacuum", sets: "4x30s", target: "Linha de Cintura", note: "Prática diária" },
     ]
   },
-  SAB: {
+  F: {
     title: "Cardio & Core",
     focus: "Resistência",
     exercises: [

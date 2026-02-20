@@ -16,21 +16,61 @@ const EXERCISE_STATS = {
   'Rosca Martelo': 'CHA', 'Rosca Alternada': 'CHA', 'Rosca 45º': 'CHA', 'Elevação Pélvica': 'CHA'
 };
 
-// --- 2. MISSÕES (Mantido) ---
+// --- 2. MISSÕES (CORRIGIDAS) ---
 export const DAILY_QUESTS_POOL = [
   { id: 'vol_beginner', title: 'Aquecimento Pesado', desc: 'Mova 5.000kg totais.', reward: 200, check: (s) => calculateSessionVolume(s) >= 5000 },
   { id: 'vol_intermediate', title: 'Caminhão de Mudança', desc: 'Acumule 15.000kg totais.', reward: 450, check: (s) => calculateSessionVolume(s) >= 15000 },
   { id: 'vol_pro', title: 'Hércules', desc: 'Mova 25.000kg totais.', reward: 800, check: (s) => calculateSessionVolume(s) >= 25000 },
   { id: 'reps_100', title: 'Centenário', desc: 'Faça 100+ repetições.', reward: 150, check: (s) => calculateTotalReps(s) >= 100 },
   { id: 'reps_200', title: 'Maratonista', desc: 'Faça 200+ repetições.', reward: 400, check: (s) => calculateTotalReps(s) >= 200 },
-  { id: 'focus_chest', title: 'Peito de Aço', desc: '8+ séries de empurrar.', reward: 300, check: (s) => s.exercises.filter(e => /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + (e.sets.length || 0), 0) >= 8 },
-  { id: 'focus_legs', title: 'Não pule o Leg Day', desc: 'Treino de Pernas.', reward: 500, check: (s) => s.exercises.some(e => /agachamento|leg|extensora|flexora/i.test(e.name)) },
-  { id: 'focus_arms', title: 'Esmaga que Cresce', desc: '4+ exercícios de braço.', reward: 250, check: (s) => s.exercises.filter(e => /rosca|tríceps|triceps/i.test(e.name)).length >= 4 },
-  { id: 'focus_abs', title: 'Tanque de Guerra', desc: 'Exercícios de Core.', reward: 300, check: (s) => s.exercises.some(e => /prancha|abdominal|vacuum/i.test(e.name)) },
+  
+  // 🔥 CORREÇÃO: Adicionado "e.done" nas missões de foco abaixo 🔥
+  { 
+    id: 'focus_chest', 
+    title: 'Peito de Aço', 
+    desc: '8+ séries de empurrar.', 
+    reward: 300, 
+    check: (s) => s.exercises.filter(e => e.done && /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + (e.sets.length || 0), 0) >= 8 
+  },
+  { 
+    id: 'focus_legs', 
+    title: 'Não pule o Leg Day', 
+    desc: 'Treino de Pernas.', 
+    reward: 500, 
+    check: (s) => s.exercises.some(e => e.done && /agachamento|leg|extensora|flexora/i.test(e.name)) 
+  },
+  { 
+    id: 'focus_arms', 
+    title: 'Esmaga que Cresce', 
+    desc: '4+ exercícios de braço.', 
+    reward: 250, 
+    check: (s) => s.exercises.filter(e => e.done && /rosca|tríceps|triceps/i.test(e.name)).length >= 4 
+  },
+  { 
+    id: 'focus_abs', 
+    title: 'Tanque de Guerra', 
+    desc: 'Exercícios de Core.', 
+    reward: 300, 
+    check: (s) => s.exercises.some(e => e.done && /prancha|abdominal|vacuum/i.test(e.name)) 
+  },
+
   { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, check: (s) => s.exercises.length > 0 && s.exercises.every(ex => ex.done === true) },
   { id: 'meta_insane', title: 'God Mode', desc: '20ton + 150 Reps.', reward: 1500, check: (s) => calculateSessionVolume(s) >= 20000 && calculateTotalReps(s) >= 150 },
-  { id: 'time_early', title: 'Clube das 5', desc: 'Treine antes das 12h.', reward: 300, check: (s) => new Date().getHours() < 12 },
-  { id: 'time_night', title: 'Morcego', desc: 'Treine após as 19h.', reward: 300, check: (s) => new Date().getHours() >= 19 }
+  // 🔥 CORREÇÃO: Agora exige que o volume do treino seja maior que ZERO antes de olhar a hora 🔥
+  { 
+    id: 'time_early', 
+    title: 'Clube das 5', 
+    desc: 'Treine antes das 12h.', 
+    reward: 300, 
+    check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() < 12 
+  },
+  { 
+    id: 'time_night', 
+    title: 'Morcego', 
+    desc: 'Treine após as 19h.', 
+    reward: 300, 
+    check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() >= 19 
+  }
 ];
 
 // --- 3. LÓGICA DE SORTEIO COM SEMENTE (LOCAL TIME FIX) ---
@@ -46,13 +86,12 @@ function mulberry32(a) {
 
 export const getDailyQuests = () => {
     const now = new Date();
-    // 🔥 IMPORTANTE: Pega a data LOCAL (Ano, Mês, Dia) em vez de UTC
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     
     const todayStr = `${year}-${month}-${day}`;
-    const seed = parseInt(`${year}${month}${day}`); // Ex: 20260212
+    const seed = parseInt(`${year}${month}${day}`); 
     
     const randomFunc = mulberry32(seed);
 
@@ -69,7 +108,7 @@ export const getDailyQuests = () => {
     }));
 };
 
-// --- 4. CÁLCULOS AUXILIARES (Mantido) ---
+// --- 4. CÁLCULOS AUXILIARES ---
 
 const calculateSessionVolume = (session) => {
     if (!session || !session.exercises) return 0;

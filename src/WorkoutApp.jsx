@@ -15,6 +15,9 @@ import UserLevel from './components/UserLevel';
 import BadgeList from './components/BadgeList'; 
 import CharacterSheet from './components/CharacterSheet';
 import QuestBoard from './components/QuestBoard';
+import AuthView from './components/AuthView';
+import ProfileView from './components/ProfileView'; // 🔥 1. Import do Novo Componente
+import { supabase } from './supabaseClient';
 
 // Celebrações
 import Cr7Celebration from './components/Cr7Celebration'; 
@@ -22,25 +25,38 @@ import LevelUpModal from './components/LevelUpModal';
 import { getDailyQuests } from './utils/rpgSystem';
 
 const WorkoutApp = () => { 
+  // --- 1. ESTADOS E HOOKS ---
+  const [session, setSession] = useState(null);
   const { state, setters, actions, stats } = useWorkout();
   
-  // Estados de Interface
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
-  // Estados de Celebração e Level Up
   const [showCr7, setShowCr7] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [pendingLevelUp, setPendingLevelUp] = useState(false);
   
-  // Referência para guardar o nível anterior e comparar
   const prevLevelRef = useRef(stats?.level || 1);
-
   const hasSavedData = !!localStorage.getItem('workout_plan');
 
-  // --- GERAÇÃO DE MISSÕES ---
+  // --- 2. MONITORAMENTO DE SESSÃO ---
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  
+
+  // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
     const checkAndGenerateQuests = () => {
       const today = new Date().toLocaleDateString('pt-BR');
@@ -58,7 +74,6 @@ const WorkoutApp = () => {
     checkAndGenerateQuests();
   }, []);
 
-  // --- EFEITOS DE TEMA E REDE ---
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -73,7 +88,6 @@ const WorkoutApp = () => {
     };
   }, []);
 
-  // --- AUTO-INICIALIZAÇÃO ---
   useEffect(() => {
     if (state.view === 'import' || !state.workoutData || Object.keys(state.workoutData).length === 0) {
        const saved = localStorage.getItem('workout_plan');
@@ -85,21 +99,18 @@ const WorkoutApp = () => {
     }
   }, [state.view, state.workoutData, setters]);
 
-  // --- MONITORAMENTO DE LEVEL UP (CORRIGIDO) ---
   useEffect(() => {
     const currentLevel = stats?.level || 1;
-    
     if (currentLevel > prevLevelRef.current) {
       if (showCr7) {
-        setPendingLevelUp(true); // Se o vídeo está a passar, guarda para depois
+        setPendingLevelUp(true);
       } else {
-        setShowLevelUp(true); // Se não há vídeo, mostra logo
+        setShowLevelUp(true);
       }
       prevLevelRef.current = currentLevel;
     }
   }, [stats?.level, showCr7]);
 
-  // Atualiza estado global de modal se alguma celebração ou menu estiver ativo
   useEffect(() => {
     setIsAnyModalOpen(showCr7 || showLevelUp || isMenuOpen);
   }, [showCr7, showLevelUp, isMenuOpen]);
@@ -109,11 +120,7 @@ const WorkoutApp = () => {
     setters.setView('workout');
   }, [actions, setters]);
 
-  // --- WRAPPERS DE AÇÃO ---
-  
   const handleFinishWorkoutWrapper = () => {
-    // 🔥 CORREÇÃO: Removido o setPendingLevelUp(true) daqui. 
-    // O useEffect acima é que decide se houve level up baseado no XP real.
     setShowCr7(true);
     actions.finishWorkout();
   };
@@ -126,32 +133,25 @@ const WorkoutApp = () => {
     }
   };
 
-  // --- LÓGICA DO FOGO EVOLUTIVO ---
   const getFlameStyle = (streak) => {
-    if (streak >= 30) return {
-        color: "text-cyan-400",
-        shadow: "shadow-[0_0_20px_rgba(34,211,238,0.6)] border-cyan-500/50 bg-cyan-950/30",
-        iconClass: "fill-cyan-400 animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,1)]"
-    };
-    if (streak >= 7) return {
-        color: "text-red-500",
-        shadow: "shadow-[0_0_15px_rgba(239,68,68,0.5)] border-red-500/50 bg-red-950/30",
-        iconClass: "fill-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]"
-    };
-    if (streak > 0) return {
-        color: "text-orange-500",
-        shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-950/20",
-        iconClass: "fill-orange-500 animate-pulse drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]"
-    };
-    return {
-        color: "text-muted",
-        shadow: "border-border bg-card/50",
-        iconClass: "text-muted"
-    };
+    if (streak >= 30) return { color: "text-cyan-400", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.6)] border-cyan-500/50 bg-cyan-950/30", iconClass: "fill-cyan-400 animate-pulse" };
+    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.5)] border-red-500/50 bg-red-950/30", iconClass: "fill-red-500 animate-pulse" };
+    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-950/20", iconClass: "fill-orange-500 animate-pulse" };
+    return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
   };
 
   const flameStyle = getFlameStyle(stats?.streak || 0);
 
+  // --- 4. VERIFICAÇÃO DE SESSÃO ---
+  if (!session) {
+    return <AuthView />;
+  }
+
+  const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+  // 🔥 2. Extrai os dados do usuário para passar para o ProfileView
+  const userMetadata = session?.user?.user_metadata || null;
+
+  // --- 5. RENDERIZAÇÃO DO JSX ---
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
@@ -159,8 +159,6 @@ const WorkoutApp = () => {
 
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
-          
-          {/* ESQUERDA: TÍTULO */}
           <div className="flex items-center gap-2 z-10">
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
                   <Zap className="text-black fill-black" size={24} />
@@ -171,7 +169,6 @@ const WorkoutApp = () => {
               </h1>
           </div>
 
-          {/* CENTRO: STREAK */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
             <div className={`flex flex-col items-center justify-center px-4 h-14 rounded-2xl border transition-all duration-500 min-w-[80px] ${flameStyle.shadow} relative overflow-hidden group`}>
                 <div className="relative mb-0.5 z-10">
@@ -186,7 +183,6 @@ const WorkoutApp = () => {
             </div>
           </div>
 
-          {/* DIREITA: STATUS E MENU */}
           <div className="flex items-center gap-3 z-10">
             <div className={`hidden sm:flex flex-col justify-center text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
                {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
@@ -202,65 +198,60 @@ const WorkoutApp = () => {
         </header>
       )}
 
-      {/* ÁREA DE GAMIFICAÇÃO */}
-      {state.view === 'workout' && !state.showMeme && (
-        <div className="mb-6 space-y-4 animate-in slide-in-from-bottom-5 duration-700">
-          <UserLevel history={state.history} />
-          <QuestBoard />
-          <CharacterSheet history={state.history} />
-          <BadgeList history={state.history} />
-        </div>
-      )}
-
-      {/* NAVEGAÇÃO DE DIAS */}
       {state.view === 'workout' && state.workoutData && !state.showMeme && (
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
-          {Object.keys(state.workoutData).map((day) => (
+      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-1">
+        {Object.keys(state.workoutData).map((day) => {
+          const wData = state.workoutData[day];
+          const isActive = state.activeDay === day;
+          
+          return (
             <button
               key={day}
               onClick={() => setters.setActiveDay(day)}
-              className={`px-8 py-4 rounded-2xl font-black text-lm transition-all duration-300 uppercase tracking-widest border shrink-0
-                ${state.activeDay === day 
-                  ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgb(var(--primary))] scale-105' 
-                  : 'bg-card text-muted border-border hover:border-primary/50 hover:text-primary'
+              className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
+                ${isActive 
+                  ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] scale-[1.02]' 
+                  : 'bg-card text-muted border-border hover:border-primary/40 hover:bg-input/50'
                 }`}
             >
-              {day.replace('TREINO ', '').replace('-FEIRA', '')}
+              {/* Efeito de luz sutil no fundo do card ativo */}
+              {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
+              
+              {/* A Letra Gigante em Itálico */}
+              <span className={`text-3xl font-black italic tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
+                {day}
+              </span>
+              
+              {/* Divisória Vertical e Dados (HUD) */}
+              <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border/50 group-hover:border-primary/30'}`}>
+                <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">
+                  {wData?.title || "TREINO"}
+                </span>
+                <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive ? 'text-black/70' : 'text-muted'}`}>
+                  {wData?.focus || "SISTEMA"}
+                </span>
+              </div>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
+    )}
 
-      {/* VIEWS */}
       <div className="relative z-10 min-h-[50vh]">
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
+              {...state} 
+              {...setters} 
+              actions={actions}
               activeDay={state.activeDay} 
               setActiveDay={setters.setActiveDay}
               workoutData={state.workoutData} 
               selectedDate={state.selectedDate} 
               setSelectedDate={actions.handleDateChange}
-              weightInput={state.weightInput} 
-              setWeightInput={setters.setWeightInput} 
-              waistInput={state.waistInput} 
-              setWaistInput={setters.setWaistInput} 
               latestStats={stats.latest} 
-              progress={state.progress} 
-              toggleCheck={actions.toggleCheck} 
-              updateSetData={actions.updateSetData} 
-              updateSessionSets={actions.updateSessionSets} 
-              sessionNote={state.sessionNote} 
-              setSessionNote={setters.setSessionNote} 
               finishWorkout={handleFinishWorkoutWrapper}
-              saveBiometrics={actions.saveBiometrics}
-              bodyHistory={state.bodyHistory} 
-              history={state.history}
-              timerState={state.timerState}
-              closeTimer={actions.closeTimer}
-              workoutTimer={state.workoutTimer}
-              toggleWorkoutTimer={actions.toggleWorkoutTimer}
-              resetWorkoutTimer={actions.resetWorkoutTimer}
+              streak={stats.streak}
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -278,7 +269,8 @@ const WorkoutApp = () => {
             addExercise={actions.manageData.add} 
             removeExercise={actions.manageData.remove} 
             editExerciseBase={actions.manageData.edit} 
-            setView={setters.setView} 
+            setView={setters.setView}
+            addFromCatalog={actions.manageData.addFromCatalog}
           />
         )}
 
@@ -301,18 +293,27 @@ const WorkoutApp = () => {
               setIsModalOpen={setIsAnyModalOpen}
             />
         )}
+
+        {/* ABA DE PERFIL (Apenas o componente unificado) */}
+        {state.view === 'profile' && (
+          <ProfileView 
+            userMetadata={userMetadata} 
+            setView={setters.setView} 
+            stats={stats} 
+            history={state.history}
+            quests={dailyQuests}
+          />
+        )}
         
         {state.view === 'import' && !hasSavedData && (
             <Importer onSuccess={handleImportSuccess} />
         )}
       </div>
       
-      {/* NAVEGAÇÃO INFERIOR - CORREÇÃO: Some em qualquer modal/celebração */}
       {!state.showMeme && !isAnyModalOpen && (
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       
-      {/* CELEBRAÇÕES */}
       {showCr7 && <Cr7Celebration onClose={handleVideoComplete} />}
       
       {showLevelUp && (
@@ -322,11 +323,9 @@ const WorkoutApp = () => {
         />
       )}
       
-      {/* MENU LATERAL */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
-          
           <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-black text-primary uppercase tracking-widest">CONFIG</h2>
@@ -337,23 +336,26 @@ const WorkoutApp = () => {
 
             <div className="space-y-4 mb-8">
               <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
-              <button onClick={() => setTheme('driver')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-primary text-muted hover:text-primary font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Cyberpunk</span> {theme === 'driver' && <Moon size={16} />}
+              <button onClick={() => setTheme('driver')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'driver' ? 'border-primary text-primary' : 'border-border text-muted'}`}>
+                <span>Cyberpunk</span> <Moon size={16} />
               </button>
-              <button onClick={() => setTheme('matrix')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-[#00ff41] text-muted hover:text-[#00ff41] font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Matrix</span> {theme === 'matrix' && <Terminal size={16} />}
+              <button onClick={() => setTheme('matrix')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'matrix' ? 'border-[#00ff41] text-[#00ff41]' : 'border-border text-muted'}`}>
+                <span>Matrix</span> <Terminal size={16} />
               </button>
-              <button onClick={() => setTheme('light')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-blue-500 text-muted hover:text-blue-500 font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Light</span> {theme === 'light' && <Sun size={16} />}
+              <button onClick={() => setTheme('light')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'light' ? 'border-blue-500 text-blue-500' : 'border-border text-muted'}`}>
+                <span>Light</span> <Sun size={16} />
               </button>
-              <button onClick={() => setTheme('spiderman')} className="w-full p-4 rounded-xl border-2 bg-input border-border hover:border-red-600 text-muted hover:text-red-600 font-black uppercase tracking-wider transition-all flex justify-between">
-                <span>Aranha</span> {theme === 'spiderman' && <Zap size={16} />}
+              <button onClick={() => setTheme('spiderman')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'spiderman' ? 'border-red-600 text-red-600' : 'border-border text-muted'}`}>
+                <span>Aranha</span> <Zap size={16} />
               </button>
             </div>
             
-            <div className="mt-auto text-center text-xs text-muted opacity-30">
-              Projeto Bomba v2.4<br/>System Online
-            </div>
+            <button 
+              onClick={() => supabase.auth.signOut()} 
+              className="mt-auto w-full py-4 rounded-xl border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+            >
+              ENCERRAR SESSÃO
+            </button>
           </div>
         </div>
       )}
