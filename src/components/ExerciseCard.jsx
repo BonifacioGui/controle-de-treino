@@ -1,19 +1,22 @@
-// src/components/ExerciseCard.jsx
 import React from 'react';
-import { CheckCircle2, Star, Ghost, Target, Zap, Sword, Circle, Trophy, Crown } from 'lucide-react';
+import { CheckCircle2, Star, Ghost, Target, Zap, Sword, Circle, Trophy, RefreshCcw } from 'lucide-react';
 import { safeParseFloat, calculate1RM, getSmartSuggestion, isSameExercise } from '../utils/workoutUtils';
 
 const ExerciseCard = ({ 
-  ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow 
+  ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow, 
+  onSwap // 🔥 Nova prop para a ação de trocar
 }) => {
   const isDone = progress[id]?.done;
   const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
   const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
 
-  // Lógica de Histórico e PR
+  // Define o nome que será exibido (Original ou o trocado)
+  const displayName = progress[id]?.swappedName || ex.name;
+
+  // Lógica de Histórico e PR baseada no nome que está na tela
   const exerciseHistory = (history || [])
     .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
-    .filter(e => isSameExercise(ex.name, e.name));
+    .filter(e => isSameExercise(displayName, e.name));
 
   const exercisePR = exerciseHistory.reduce((max, e) => {
       const sessionMax = Math.max(...(e.sets?.map(s => safeParseFloat(s.weight)) || [0]));
@@ -27,22 +30,45 @@ const ExerciseCard = ({
   const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => safeParseFloat(s.weight)) || [0])) : 0;
   const isBreakingPR = (progress[id]?.sets || []).some(s => safeParseFloat(s.weight) > exercisePR && exercisePR > 0);
 
+  // Função para rotacionar entre as alternativas
+  const handleSwap = () => {
+    if (!ex.alternatives || ex.alternatives.length === 0) return;
+    
+    const allOptions = [ex.name, ...ex.alternatives];
+    const currentIndex = allOptions.indexOf(displayName);
+    const nextIndex = (currentIndex + 1) % allOptions.length;
+    onSwap(id, allOptions[nextIndex]);
+  };
+
   return (
     <div className={`p-4 rounded-xl border transition-all duration-500 relative overflow-hidden ${isBreakingPR ? 'border-yellow-400 bg-yellow-400/5' : isDone ? 'border-primary bg-black/40' : 'bg-card border-border hover:border-primary/30'}`}>
       {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-primary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none z-0">OK</div>)}
       
       <div className="flex justify-between items-start mb-4 relative z-10">
         <div className="flex-1">
-          <h3 className={`font-black text-lg leading-tight flex items-center gap-2 ${isBreakingPR ? 'text-yellow-400' : isDone ? 'text-primary' : 'text-main'}`}>
-          {ex.name}
-          {/* 🔥 TROFÉU RESTAURADO AQUI 🔥 */}
-          {isBreakingPR && (
-            <div className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/50 px-1.5 py-0.5 rounded-md animate-bounce shadow-[0_0_10px_rgba(250,204,21,0.4)]">
-              <Trophy size={14} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-[8px] font-black text-yellow-400 uppercase tracking-tighter">NEW PR</span>
-            </div>
-          )}
-        </h3>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <h3 className={`font-black text-lg leading-tight flex items-center gap-2 ${isBreakingPR ? 'text-yellow-400' : isDone ? 'text-primary' : 'text-main'}`}>
+              {displayName}
+              {isBreakingPR && (
+                <div className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/50 px-1.5 py-0.5 rounded-md animate-bounce shadow-[0_0_10px_rgba(250,204,21,0.4)]">
+                  <Trophy size={14} className="text-yellow-400 fill-yellow-400" />
+                  <span className="text-[8px] font-black text-yellow-400 uppercase tracking-tighter">NEW PR</span>
+                </div>
+              )}
+            </h3>
+
+            {/* 🔥 BOTÃO DE TROCAR (Só aparece se houver alternativas no workoutData) */}
+            {ex.alternatives && ex.alternatives.length > 0 && !isDone && (
+              <button 
+                onClick={handleSwap}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-input border border-border text-[10px] font-black text-muted hover:text-primary hover:border-primary transition-all active:scale-90"
+                title="Trocar por alternativa"
+              >
+                <RefreshCcw size={10} />
+                TROCAR
+              </button>
+            )}
+          </div>
           
           <div className="flex gap-2 mt-1.5 flex-wrap items-center">
             {lastWeight > 0 && (
@@ -54,7 +80,7 @@ const ExerciseCard = ({
             {lastWeight > 0 && !isDone && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20 text-[9px] font-mono text-green-400 animate-pulse">
                 <Target size={10} />
-                <span>META: {getSmartSuggestion(ex.name, lastWeight)}kg</span>
+                <span>META: {getSmartSuggestion(displayName, lastWeight)}kg</span>
               </div>
             )}
             {exercisePR > 0 && (
@@ -71,6 +97,7 @@ const ExerciseCard = ({
         </button>
       </div>
       
+      {/* Resto do componente permanece igual... */}
       <div className="space-y-3 relative z-10">
         <div className="flex items-center gap-2 bg-input/50 p-2 rounded-lg border border-border h-10">
           <span className="text-[10px] font-black text-muted uppercase tracking-widest">{isTimeBased ? 'Tempo' : 'Ciclos'}</span>

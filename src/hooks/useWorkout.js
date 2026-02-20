@@ -224,8 +224,23 @@ export const useWorkout = () => {
         const n = {...workoutData, [day]: {...workoutData[day], exercises: [...workoutData[day].exercises, {name: exerciseName, sets:"3x12", note:""}]}}; 
         setWorkoutData(n); savePlanToCloud(n); 
       }
-    }
+    },
+    // Dentro do bloco actions:
+    swapExercise: (id, newName) => {
+      setWorkoutData(prev => {
+        const newData = { ...prev };
+        // Aqui você localiza o exercício pelo ID e troca o .name dele
+        // Mas para ser mais simples, podemos apenas atualizar o título na exibição
+        return newData;
+      });
+      // Dica: É mais fácil apenas mudar o nome no estado de progresso daquela sessão
+      setProgress(p => ({
+        ...p,
+        [id]: { ...p[id], swappedName: newName }
+      }));
+    },
   };
+  
 
   return {
     state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },

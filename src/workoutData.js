@@ -6,7 +6,13 @@ export const initialWorkoutData = {
     exercises: [
       { name: "Supino Reto", sets: "3x10", target: "19kg", note: "Controle total" },
       { name: "Supino Inclinado", sets: "3x10", target: "18kg", note: "Controlar descida" },
-      { name: "Crossover", sets: "3x12", target: "Máximo", note: "Escápulas fixas" },
+      { 
+        name: "Crossover", 
+        sets: "3x12", 
+        target: "Máximo", 
+        note: "Escápulas fixas", 
+        alternatives: ["Peck Deck", "Crucifixo com Halteres"] 
+      },
       { name: "Tríceps Francês", sets: "3x10", target: "26kg", note: "Volume" },
       { name: "Tríceps Corda", sets: "3x12", target: "28kg", note: "Extensão total" },
       { name: "Elevação Lateral", sets: "3x12", target: "8kg", note: "Braços à frente" },

@@ -243,7 +243,7 @@ const WorkoutApp = () => {
             <WorkoutView 
               {...state} 
               {...setters} 
-              {...actions}
+              actions={actions}
               activeDay={state.activeDay} 
               setActiveDay={setters.setActiveDay}
               workoutData={state.workoutData} 

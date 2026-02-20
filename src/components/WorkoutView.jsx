@@ -14,7 +14,8 @@ const WorkoutView = ({
   progress, toggleCheck, updateSetData, 
   updateSessionSets, sessionNote, setSessionNote, finishWorkout,
   history, timerState, closeTimer,
-  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer
+  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer,
+  actions // 🔥 Recebendo as ações do hook
 }) => {
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -66,7 +67,7 @@ const WorkoutView = ({
 
         <BossSection currentWorkout={currentWorkout} todayVolume={todayStats.volume} history={history} selectedDate={selectedDate} activeDay={activeDay} />
 
-        {/* Navegação entre protocolos: independente da data */}
+        {/* Navegação entre protocolos */}
         <div className="flex items-center justify-between bg-card border border-border p-2 rounded-2xl shadow-sm">
           <button onClick={handlePrevDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronLeft size={24} /></button>
           <div className="text-center">
@@ -81,9 +82,15 @@ const WorkoutView = ({
         <div className="space-y-4">
           {currentWorkout?.exercises?.map((ex, i) => (
             <ExerciseCard 
-              key={`${selectedDate}-${activeDay}-${i}`} id={`${selectedDate}-${activeDay}-${i}`}
-              ex={ex} progress={progress} history={history} toggleCheck={toggleCheck}
-              updateSetData={updateSetData} updateSessionSets={updateSessionSets}
+              key={`${selectedDate}-${activeDay}-${i}`} 
+              id={`${selectedDate}-${activeDay}-${i}`}
+              ex={ex} 
+              progress={progress} 
+              history={history} 
+              toggleCheck={toggleCheck}
+              updateSetData={updateSetData} 
+              updateSessionSets={updateSessionSets}
+              onSwap={actions?.swapExercise} // 🔥 Conectando a função de troca
               toggleSetComplete={(id, idx) => {
                 const isDone = progress[id]?.sets?.[idx]?.completed;
                 updateSetData(id, idx, 'completed', !isDone);
