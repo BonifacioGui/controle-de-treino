@@ -60,9 +60,14 @@ const WorkoutView = ({
       <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28">
         
         <WorkoutHeader 
-          selectedDate={selectedDate} setSelectedDate={setSelectedDate}
-          isCalendarOpen={isCalendarOpen} setIsCalendarOpen={setIsCalendarOpen}
-          workoutTimer={workoutTimer} toggleWorkoutTimer={toggleWorkoutTimer} resetWorkoutTimer={resetWorkoutTimer}
+          selectedDate={selectedDate} 
+          setSelectedDate={setSelectedDate}
+          isCalendarOpen={isCalendarOpen} 
+          setIsCalendarOpen={setIsCalendarOpen}
+          workoutTimer={workoutTimer} 
+          // BUSQUE AS FUNÇÕES DE DENTRO DE ACTIONS:
+          toggleWorkoutTimer={actions.toggleWorkoutTimer} 
+          resetWorkoutTimer={actions.resetWorkoutTimer}
         />
 
         <BossSection currentWorkout={currentWorkout} todayVolume={todayStats.volume} history={history} selectedDate={selectedDate} activeDay={activeDay} />
@@ -79,25 +84,26 @@ const WorkoutView = ({
           <button onClick={handleNextDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronRight size={24} /></button>
         </div>
 
+        {/* Dentro do WorkoutView.jsx */}
         <div className="space-y-4">
-          {currentWorkout?.exercises?.map((ex, i) => (
-            <ExerciseCard 
-              key={`${selectedDate}-${activeDay}-${i}`} 
-              id={`${selectedDate}-${activeDay}-${i}`}
-              ex={ex} 
-              progress={progress} 
-              history={history} 
-              toggleCheck={toggleCheck}
-              updateSetData={updateSetData} 
-              updateSessionSets={updateSessionSets}
-              onSwap={actions?.swapExercise} // 🔥 Conectando a função de troca
-              toggleSetComplete={(id, idx) => {
-                const isDone = progress[id]?.sets?.[idx]?.completed;
-                updateSetData(id, idx, 'completed', !isDone);
-                if (!isDone) setRestTimerConfig(p => ({ ...p, isOpen: true }));
-              }}
-            />
-          ))}
+          {currentWorkout?.exercises?.map((ex, i) => {
+            const id = `${selectedDate}-${activeDay}-${i}`;
+            return (
+              <ExerciseCard 
+                key={id} 
+                id={id}
+                ex={ex} 
+                progress={progress} 
+                history={history} 
+                toggleCheck={actions.toggleCheck}
+                updateSetData={actions.updateSetData} 
+                updateSessionSets={actions.updateSessionSets} // Pega do actions
+                onSwap={actions.onSwap} // 🔥 CORRIGIDO: Era swapExercise, agora é onSwap
+                toggleSetComplete={actions.toggleSetComplete} // 🔥 CORRIGIDO: Use a do Hook
+                shakingRow={null}
+              />
+            );
+          })}
         </div>
 
         <div className="space-y-4 pt-4">
