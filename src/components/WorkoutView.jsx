@@ -60,9 +60,14 @@ const WorkoutView = ({
       <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28">
         
         <WorkoutHeader 
-          selectedDate={selectedDate} setSelectedDate={setSelectedDate}
-          isCalendarOpen={isCalendarOpen} setIsCalendarOpen={setIsCalendarOpen}
-          workoutTimer={workoutTimer} toggleWorkoutTimer={toggleWorkoutTimer} resetWorkoutTimer={resetWorkoutTimer}
+          selectedDate={selectedDate} 
+          setSelectedDate={setSelectedDate}
+          isCalendarOpen={isCalendarOpen} 
+          setIsCalendarOpen={setIsCalendarOpen}
+          workoutTimer={workoutTimer} 
+          // BUSQUE AS FUNÇÕES DE DENTRO DE ACTIONS:
+          toggleWorkoutTimer={actions.toggleWorkoutTimer} 
+          resetWorkoutTimer={actions.resetWorkoutTimer}
         />
 
         <BossSection currentWorkout={currentWorkout} todayVolume={todayStats.volume} history={history} selectedDate={selectedDate} activeDay={activeDay} />
