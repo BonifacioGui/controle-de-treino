@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { initialWorkoutData } from '../workoutData';
 
-// Função auxiliar livre (fora do hook)
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});
   return keys[0] || 'A';
@@ -10,8 +9,6 @@ const getInitialWorkout = (data) => {
 
 export const useWorkout = () => {
   const [userId, setUserId] = useState(null);
-
-  // --- 1. DADOS BASE ---
   const [workoutData, setWorkoutData] = useState(() => {
     try {
       const saved = localStorage.getItem('workout_plan');
@@ -19,9 +16,7 @@ export const useWorkout = () => {
     } catch { return initialWorkoutData; }
   });
 
-  // O estado nasce no primeiro treino da ficha (ex: A)
   const [activeDay, setActiveDay] = useState(() => getInitialWorkout(workoutData));
-
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sessionNote, setSessionNote] = useState('');
   const [weightInput, setWeightInput] = useState('');
@@ -34,9 +29,9 @@ export const useWorkout = () => {
     try {
       const saved = localStorage.getItem('workout_stopwatch');
       if (saved) {
-         const parsed = JSON.parse(saved);
-         if (parsed.isRunning) return { ...parsed, elapsed: Math.floor((Date.now() - parsed.startTime) / 1000) };
-         return parsed;
+        const parsed = JSON.parse(saved);
+        if (parsed.isRunning) return { ...parsed, elapsed: Math.floor((Date.now() - parsed.startTime) / 1000) };
+        return parsed;
       }
       return { isRunning: false, startTime: null, elapsed: 0 };
     } catch { return { isRunning: false, startTime: null, elapsed: 0 }; }
@@ -63,7 +58,7 @@ export const useWorkout = () => {
     } catch { return []; }
   });
 
-  // --- AUTH E CLOUD SYNC ---
+  // --- AUTH ---
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -92,13 +87,13 @@ export const useWorkout = () => {
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
 
-  // --- LÓGICA DE STREAK ---
+  // --- STREAK LOGIC ---
   const streak = useMemo(() => {
     if (!history || history.length === 0) return 0;
     const uniqueDates = [...new Set(history.map(h => h.date.includes('/') ? h.date.split('/').reverse().join('-') : h.date.split('T')[0]))].sort().reverse();
-    if (uniqueDates.length === 0) return 0;
     const createDate = (str) => { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); };
     const today = new Date(); today.setHours(0,0,0,0);
+    if (uniqueDates.length === 0) return 0;
     const lastWorkoutDate = createDate(uniqueDates[0]);
     const diffDays = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
     if (!(diffDays === 0 || diffDays === 1 || (today.getDay() === 1 && diffDays <= 2))) return 0;
@@ -117,7 +112,7 @@ export const useWorkout = () => {
     audio.volume = 0.3; audio.play().catch(() => {});
   }, []);
 
-  // --- SYNC LOCALSTORAGE ---
+  // --- PERSISTENCE SYNC ---
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
@@ -136,71 +131,126 @@ export const useWorkout = () => {
     return () => clearInterval(interval);
   }, [workoutTimer.isRunning]);
 
-  const savePlanToCloud = async (newData) => {
-    if (!userId) return;
-    try { await supabase.from('workout_plans').upsert({ user_id: userId, plan_data: newData, updated_at: new Date() }, { onConflict: 'user_id' }); }
-    catch (err) { console.error(err); }
-  };
+  // --- STABLE UPDATE FUNCTIONS ---
+  const updateSetData = useCallback((id, i, f, v) => {
+    setProgress(p => {
+      const c = p[id] || { sets: [] };
+      const n = [...(c.sets || [])];
+      while (n.length <= i) n.push({ weight: '', reps: '', completed: false });
+      n[i] = { ...n[i], [f]: v };
+      return { ...p, [id]: { ...c, sets: n } };
+    });
+  }, []);
 
-  const saveBiometrics = async (photoBase64 = null) => {
-    if (!userId || (!weightInput && !waistInput && !photoBase64)) return;
-    const newEntry = { user_id: userId, date: selectedDate, weight: weightInput ? parseFloat(weightInput) : null, waist: waistInput ? parseFloat(waistInput) : null };
-    if (photoBase64) newEntry.photo = photoBase64;
-    try { await supabase.from('body_stats').upsert(newEntry, { onConflict: 'user_id, date' }); } catch (err) {}
-    fetchCloudData();
-  };
+  const toggleWorkoutTimer = useCallback(() => {
+    playSound('start'); 
+    setWorkoutTimer(prev => prev.isRunning 
+      ? { ...prev, isRunning: false } 
+      : { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed }
+    );
+  }, [playSound]);
 
-  // --- ACTIONS ---
-  const actions = {
-    // 🔥 CALENDÁRIO: Muda apenas a data do registo, NUNCA o treino selecionado
+  const toggleCheck = useCallback((id) => {
+    playSound('click');
+    setProgress(p => {
+      const isDone = !p[id]?.done;
+      if (isDone) setTimerState({ active: true, seconds: 90 });
+      return { ...p, [id]: { ...p[id], done: isDone } };
+    });
+  }, [playSound]);
+
+  // --- CORE ACTIONS (Memoized) ---
+  const actions = useMemo(() => ({
+    updateSetData,
+    toggleWorkoutTimer,
+    toggleCheck,
+    
+    // Atualiza o input de "Ciclos" ou "Tempo" (Linha 104 do seu ExerciseCard)
+    updateSessionSets: (id, value) => {
+      setProgress(p => ({
+        ...p,
+        [id]: { ...p[id], actualSets: value }
+      }));
+    },
+
+    // Alterna o status de uma série individual (Linha 111 do seu ExerciseCard)
+    toggleSetComplete: (id, setIdx) => {
+      playSound('click');
+      setProgress(p => {
+        const current = p[id] || { sets: [] };
+        const newSets = [...(current.sets || [])];
+        while (newSets.length <= setIdx) newSets.push({ weight: '', reps: '', completed: false });
+        
+        newSets[setIdx] = { ...newSets[setIdx], completed: !newSets[setIdx].completed };
+        
+        // Se marcou como feito, inicia o descanso
+        if (newSets[setIdx].completed) {
+          setTimerState({ active: true, seconds: 90 });
+        }
+        return { ...p, [id]: { ...current, sets: newSets } };
+      });
+    },
+
+    // Troca o exercício por uma alternativa (Sua lógica de Swap)
+    onSwap: (id, newName) => {
+      setProgress(p => ({
+        ...p,
+        [id]: { ...p[id], swappedName: newName }
+      }));
+    },
+
+    setWeight: (val) => setWeightInput(val),
+    setWaist: (val) => setWaistInput(val),
+    setNote: (val) => setSessionNote(val),
+
     handleDateChange: (newDate) => {
       setSelectedDate(newDate);
-      
       const formattedDate = newDate.split('-').reverse().join('/');
       const entryForDate = bodyHistory.find(h => h.date === formattedDate);
       setWeightInput(entryForDate ? entryForDate.weight : '');
       setWaistInput(entryForDate ? entryForDate.waist : '');
     },
-    
+
     finishWorkout: async () => {
-      if (!userId) return;
-      await saveBiometrics();
+      setShowMeme(true); 
       playSound('success');
+      
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
       const sessionBase = {
-        user_id: userId, workout_date: selectedDate, workout_name: safeDay, note: sessionNote,
+        user_id: userId,
+        workout_date: selectedDate,
+        workout_name: safeDay,
+        note: sessionNote,
         exercises: workoutData[safeDay].exercises.map((ex, i) => {
-          const p = progress[`${selectedDate}-${safeDay}-${i}`];
-          return { name: ex.name, sets: p?.sets || [], done: p?.done || false };
+          const id = `${selectedDate}-${safeDay}-${i}`;
+          const p = progress[id];
+          return { 
+            name: p?.swappedName || ex.name, 
+            sets: p?.sets || [], 
+            done: p?.done || false,
+            actualSets: p?.actualSets || ex.sets
+          };
         })
       };
-      try { await supabase.from('workout_history').insert([sessionBase]); } catch (err) {}
-      setProgress({}); setSessionNote(''); setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
-      setShowMeme(true); setTimeout(() => { setShowMeme(false); setView('history'); fetchCloudData(); }, 3500);
+
+      if (userId) {
+        try { await supabase.from('workout_history').insert([sessionBase]); } catch (err) { console.error(err); }
+      }
+
+      setTimeout(() => { 
+        setProgress({}); 
+        setSessionNote(''); 
+        setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
+        setShowMeme(false); 
+        setView('history'); 
+        fetchCloudData();
+      }, 3500);
     },
 
-    fetchCloudData,
-    
-    updateSetData: (id, i, f, v) => setProgress(p => {
-        const c = p[id] || { sets: [] }; const n = [...(c.sets || [])];
-        while (n.length <= i) n.push({ weight: '', reps: '' }); n[i] = { ...n[i], [f]: v };
-        return { ...p, [id]: { ...c, sets: n } };
-    }),
-    toggleCheck: (id) => {
-        playSound('click');
-        setProgress(p => {
-            const isDone = !p[id]?.done;
-            if (isDone) setTimerState({ active: true, seconds: 90 });
-            return { ...p, [id]: { ...p[id], done: isDone } };
-        });
-    },
-    updateSessionSets: (id, val) => setProgress(p => ({ ...p, [id]: { ...p[id], actualSets: val } })),
-    toggleWorkoutTimer: () => {
-      playSound('start'); 
-      setWorkoutTimer(prev => prev.isRunning ? { ...prev, isRunning: false } : { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed });
-    },
     resetWorkoutTimer: () => window.confirm("Zerar?") && setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
+    fetchCloudData,
+    
     deleteEntry: async (id, type) => {
         if (!window.confirm("Apagar?")) return;
         await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
@@ -209,38 +259,26 @@ export const useWorkout = () => {
 
     manageData: {
       add: (day) => { 
-        const n = {...workoutData, [day]: {...workoutData[day], exercises: [...workoutData[day].exercises, {name:"Novo", sets:"3x12", note:""}]}}; 
-        setWorkoutData(n); savePlanToCloud(n); 
+        setWorkoutData(prev => ({
+          ...prev, 
+          [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] }
+        }));
       },
       remove: (day, i) => { 
-        const n = {...workoutData, [day]: {...workoutData[day], exercises: workoutData[day].exercises.filter((_, idx) => idx !== i)}}; 
-        setWorkoutData(n); savePlanToCloud(n); 
+        setWorkoutData(prev => ({
+          ...prev, 
+          [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) }
+        }));
       },
       edit: (day, i, f, v) => { 
-        const n = {...workoutData}; n[day].exercises[i][f] = v; 
-        setWorkoutData(n); savePlanToCloud(n); 
-      },
-      addFromCatalog: (day, exerciseName) => { 
-        const n = {...workoutData, [day]: {...workoutData[day], exercises: [...workoutData[day].exercises, {name: exerciseName, sets:"3x12", note:""}]}}; 
-        setWorkoutData(n); savePlanToCloud(n); 
+        setWorkoutData(prev => {
+          const n = JSON.parse(JSON.stringify(prev)); // Deep copy para evitar mutação
+          n[day].exercises[i][f] = v;
+          return n;
+        });
       }
-    },
-    // Dentro do bloco actions:
-    swapExercise: (id, newName) => {
-      setWorkoutData(prev => {
-        const newData = { ...prev };
-        // Aqui você localiza o exercício pelo ID e troca o .name dele
-        // Mas para ser mais simples, podemos apenas atualizar o título na exibição
-        return newData;
-      });
-      // Dica: É mais fácil apenas mudar o nome no estado de progresso daquela sessão
-      setProgress(p => ({
-        ...p,
-        [id]: { ...p[id], swappedName: newName }
-      }));
-    },
-  };
-  
+    }
+  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound]);
 
   return {
     state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },

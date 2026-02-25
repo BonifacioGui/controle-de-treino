@@ -238,20 +238,21 @@ const WorkoutApp = () => {
     )}
 
       <div className="relative z-10 min-h-[50vh]">
+        {/* Dentro do WorkoutApp.jsx */}
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
-              {...state} 
-              {...setters} 
-              actions={actions}
-              activeDay={state.activeDay} 
+              {...state} // Passa activeDay, progress, selectedDate, etc.
+              actions={actions} // Passa todas as funções (updateSetData, onSwap, etc.)
+              // Sobrescrevendo setters manuais por segurança
               setActiveDay={setters.setActiveDay}
-              workoutData={state.workoutData} 
-              selectedDate={state.selectedDate} 
-              setSelectedDate={actions.handleDateChange}
-              latestStats={stats.latest} 
+              setSelectedDate={actions.handleDateChange} // Usa a versão do actions que limpa inputs
+              setSessionNote={setters.setSessionNote}
               finishWorkout={handleFinishWorkoutWrapper}
-              streak={stats.streak}
+              // Passando funções do actions como props diretas para o WorkoutView encontrar
+              updateSetData={actions.updateSetData}
+              updateSessionSets={actions.updateSessionSets}
+              toggleCheck={actions.toggleCheck}
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
