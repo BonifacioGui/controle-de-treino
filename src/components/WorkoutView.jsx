@@ -53,8 +53,8 @@ const WorkoutView = ({
     return { volume: Math.round(volume), duration: formatTime(workoutTimer.elapsed) };
   }, [currentWorkout, progress, selectedDate, activeDay, workoutTimer.elapsed]);
 
-  const isTutorialDay = currentWorkout?.exercises?.some(ex => ex.sets === "-x-" || ex.sets === "-");
-  
+  const isTutorialDay = activeDay === 'INÍCIO' || currentWorkout?.exercises?.some(ex => ex.sets === "-x-" || ex.sets === "-");
+
   return (
     <>
       <ShareCard cardRef={cardRef} stats={todayStats} bossName="BOSS" theme={document.documentElement.getAttribute('data-theme')} />
@@ -109,12 +109,21 @@ const WorkoutView = ({
           })}
         </div>
 
-        <div className="space-y-4 pt-4">
-          <textarea placeholder="Relatório de danos..." className="w-full bg-input border border-border rounded-xl p-4 text-main font-bold outline-none focus:border-primary/50" value={sessionNote} onChange={e => setSessionNote(e.target.value)} />
-          <button onClick={finishWorkout} className="w-full bg-gradient-to-r from-primary to-secondary py-4 rounded-xl font-black text-white shadow-xl uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95">
-            <Star size={18} fill="white" /> FINALIZAR MISSÃO
-          </button>
-        </div>
+        {/* 🔥 ESCONDE O BOTÃO DE FINALIZAR SE FOR TUTORIAL */}
+        {!isTutorialDay ? (
+          <div className="space-y-4 pt-4">
+            <textarea placeholder="Relatório de danos..." className="w-full bg-input border border-border rounded-xl p-4 text-main font-bold outline-none focus:border-primary/50" value={sessionNote} onChange={e => setSessionNote(e.target.value)} />
+            <button onClick={finishWorkout} className="w-full bg-gradient-to-r from-primary to-secondary py-4 rounded-xl font-black text-white shadow-xl uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95">
+              <Star size={18} fill="white" /> FINALIZAR MISSÃO
+            </button>
+          </div>
+        ) : (
+          <div className="mt-8 p-4 border-2 border-dashed border-primary/30 rounded-xl text-center animate-pulse">
+            <span className="text-xs font-black uppercase text-primary tracking-widest">
+              Aguardando configuração do recruta...
+            </span>
+          </div>
+        )}
       </main>
 
       <div className="relative z-[300]">

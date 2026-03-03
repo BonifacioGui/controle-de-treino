@@ -265,7 +265,11 @@ const WorkoutApp = () => {
         {state.view === 'manage' && (
           <ManageView 
             activeDay={state.activeDay} 
-            workoutData={state.workoutData} 
+            workoutData={state.workoutData}
+            // 🔥 ADICIONE ESTAS 3 LINHAS NOVAS AQUI:
+            setActiveDay={setters.setActiveDay}
+            addDay={actions.manageData.addDay}
+            removeDay={actions.manageData.removeDay} 
             setWorkoutData={setters.setWorkoutData} 
             addExercise={actions.manageData.add} 
             removeExercise={actions.manageData.remove} 

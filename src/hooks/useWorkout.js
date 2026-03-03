@@ -277,20 +277,65 @@ export const useWorkout = () => {
           [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] }
         }));
       },
+
+      // 🔥 AQUI ESTÁ A NOSSA FUNÇÃO DO ARSENAL DE COMBATE
+      addFromCatalog: (day, selectedExercises) => {
+        setWorkoutData(prev => {
+          const newExercises = selectedExercises.map(exName => ({
+            name: exName,
+            sets: "3x10", // Sugestão base, ele edita depois se quiser
+            note: ""      
+          }));
+
+          return {
+            ...prev,
+            [day]: {
+              ...prev[day],
+              exercises: [...(prev[day]?.exercises || []), ...newExercises]
+            }
+          };
+        });
+      },
+
       remove: (day, i) => { 
         setWorkoutData(prev => ({
           ...prev, 
           [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) }
         }));
       },
+      
       edit: (day, i, f, v) => { 
         setWorkoutData(prev => {
           const n = JSON.parse(JSON.stringify(prev)); // Deep copy para evitar mutação
           n[day].exercises[i][f] = v;
           return n;
         });
-      }
+      },
+
+      // 🔥 CRIA UMA NOVA ABA DE TREINO (A, B, C...)
+      addDay: (newDayName) => {
+        setWorkoutData(prev => {
+          if (prev[newDayName]) return prev; // Se a aba já existir, não faz nada
+          return {
+            ...prev,
+            [newDayName]: { title: `TREINO ${newDayName}`, focus: "GERAL", exercises: [] }
+          };
+        });
+      },
+
+      // 🔥 APAGA UMA ABA INTEIRA
+      removeDay: (dayName) => {
+        setWorkoutData(prev => {
+          const copy = { ...prev };
+          delete copy[dayName];
+          return copy;
+        });
+      },
+
+
     }
+
+
   }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound]);
 
   return {
