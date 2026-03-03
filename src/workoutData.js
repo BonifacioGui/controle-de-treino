@@ -1,85 +1,16 @@
 // src/workoutData.js
+
 export const initialWorkoutData = {
-  A: {
-    title: "Push Day",
-    focus: "Peito, Ombro e Tríceps",
+  "INÍCIO": {
+    title: "BEM-VINDO AO PROJETO",
+    focus: "Área de Montagem",
     exercises: [
-      { name: "Supino Reto", sets: "3x10", target: "19kg", note: "Controle total" },
-      { name: "Supino Inclinado", sets: "3x10", target: "18kg", note: "Controlar descida" },
       { 
-        name: "Crossover", 
-        sets: "3x12", 
-        target: "Máximo", 
-        note: "Escápulas fixas", 
-        alternatives: ["Peck Deck", "Crucifixo com Halteres"] 
-      },
-      { name: "Tríceps Francês", sets: "3x10", target: "26kg", note: "Volume" },
-      { name: "Tríceps Corda", sets: "3x12", target: "28kg", note: "Extensão total" },
-      { name: "Elevação Lateral", sets: "3x12", target: "8kg", note: "Braços à frente" },
-      { name: "Desenvolvimento", sets: "3x10", target: "8kg", note: "Pegada estável" },
-    ]
-  },
-  B: {
-    title: "PULL",
-    focus: "Costas, Posterior de Ombro e Bíceps",
-    exercises: [
-      { name: "Puxada Neutra", sets: "3x10", target: "Barra W", note: "Cotovelos fechados" },
-      { name: "Remada Baixa", sets: "3x10", target: "50kg", note: "Trazer no umbigo" },
-      { name: "Serrote", sets: "3x10", target: "Halter", note: "Tronco paralelo" },
-      { name: "Crucifixo Inverso", sets: "3x12", target: "Postural", note: "Controle" },
-      { name: "Face Pull", sets: "3x15", target: "Corda", note: "Foco deltoide post." },
-      { name: "Rosca Direta", sets: "3x10", target: "Barra W", note: "Sem balanço" },
-      { name: "Rosca Martelo", sets: "3x10", target: "Halter", note: "Sustentar 2s no topo" },
-    ]
-  },
-  C: {
-    title: "Legs 1",
-    focus: "Quadríceps e Core",
-    exercises: [
-      { name: "Leg Press", sets: "3x12", target: "Pés Afastados", note: "Quadril colado" },
-      { name: "Agachamento Hack", sets: "3x10", target: "20kg/lado", note: "Explosão" },
-      { name: "Elevação Pélvica", sets: "3x12", target: "Controle", note: "Contração máxima" },
-      { name: "Cadeira Extensora", sets: "3x15", target: "Esmagar", note: "Pico 1s" },
-      { name: "Agachamento Isométrico", sets: "2x30s", target: "Corpo", note: "Pausa total" },
-      { name: "Prancha", sets: "3x45s", target: "Estático", note: "Abdômen contraído" },
-      { name: "Vacuum", sets: "4x30s", target: "98cm", note: "Vácuo total" },
-    ]
-  },
-  D: {
-    title: "Arm & Shoulder",
-    focus: "Deltoides e Braços",
-    exercises: [
-      { name: "Rosca Direta", sets: "3x10", target: "Barra W", note: "Sem balanço" },
-      { name: "Rosca Alternada", sets: "3x10", target: "Giro Punho", note: "Pico do bíceps" },
-      { name: "Rosca 45º", sets: "3x10", target: "Banco 45º", note: "Alonga cabeça longa" },
-      { name: "Tríceps Corda", sets: "3x12", target: "28kg", note: "Extensão total" },
-      { name: "Tríceps Testa", sets: "3x10", target: "Volume", note: "Volume lateral do braço" },
-      { name: "Tríceps Francês", sets: "3x10", target: "26kg", note: "Volume" },
-      { name: "Desenvolvimento", sets: "3x10", target: "8kg", note: "Pegada estável" },
-      { name: "Elevação Lateral", sets: "4x15", target: "Halter", note: "Foco em ombros largos" },
-      { name: "Crucifixo Inverso", sets: "3x12", target: "Postural", note: "Controle" },
-    ]
-  },
-  E: {
-    title: "Legs 2",
-    focus: "Posterior e Panturrilha",
-    exercises: [
-      { name: "Mesa Flexora", sets: "3x10", target: "Controle", note: "Foco na descida lenta" },
-      { name: "Stiff", sets: "3x10", target: "Halter", note: "Coluna reta / Alongar posterior" },
-      { name: "Elevação Pélvica", sets: "3x10", target: "Carga Máxima", note: "Contração de pico" },
-      { name: "Cadeira Abdutora", sets: "3x12", target: "Máquina", note: "Estabilização" },
-      { name: "Panturrilha", sets: "4x15", target: "Lento", note: "Movimento completo" },
-      { name: "Prancha Lateral", sets: "3x45s", target: "45 segundos", note: "Foco nos oblíquos" },
-      { name: "Vacuum", sets: "4x30s", target: "Linha de Cintura", note: "Prática diária" },
-    ]
-  },
-  F: {
-    title: "Cardio & Core",
-    focus: "Resistência",
-    exercises: [
-      { name: "Caminhada", sets: "40 min", target: "Velo 5.5", note: "FC 130bpm" },
-      { name: "Prancha", sets: "3x60s", target: "Estático", note: "Core rígido" },
-      { name: "Abdominal Infra", sets: "3x20", target: "Lento", note: "Controlar descida" },
+        name: "🛠️ Configure seu Treino", 
+        sets: "-x-", 
+        target: "-", 
+        note: "Vá no menu 'Gerenciar' (ícone de engrenagem) para apagar este aviso e começar a criar seus dias de treino." 
+      }
     ]
   }
 };

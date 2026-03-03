@@ -175,19 +175,32 @@ export const useWorkout = () => {
 
     // Alterna o status de uma série individual (Linha 111 do seu ExerciseCard)
     toggleSetComplete: (id, setIdx) => {
-      playSound('click');
+      const now = Date.now(); // Pega o momento exato do clique
+      
       setProgress(p => {
         const current = p[id] || { sets: [] };
+        const lastSetTime = p.lastSetTimestamp || 0;
+        const isCombo = now - lastSetTime < 60000; // Combo se o intervalo for menor que 60s
+
         const newSets = [...(current.sets || [])];
-        while (newSets.length <= setIdx) newSets.push({ weight: '', reps: '', completed: false });
-        
-        newSets[setIdx] = { ...newSets[setIdx], completed: !newSets[setIdx].completed };
-        
-        // Se marcou como feito, inicia o descanso
-        if (newSets[setIdx].completed) {
-          setTimerState({ active: true, seconds: 90 });
+        while (newSets.length <= setIdx) newSets.push({ completed: false });
+
+        newSets[setIdx] = { 
+          ...newSets[setIdx], 
+          completed: !newSets[setIdx].completed,
+          finishedAt: now // Salva quando terminou
+        };
+
+        if (isCombo && newSets[setIdx].completed) {
+          console.log("COMBO ATIVADO! +10 XP Bônus");
+          // Aqui você pode disparar um som de "Power Up"
         }
-        return { ...p, [id]: { ...current, sets: newSets } };
+
+        return { 
+          ...p, 
+          [id]: { ...current, sets: newSets },
+          lastSetTimestamp: now // Atualiza para a próxima comparação
+        };
       });
     },
 

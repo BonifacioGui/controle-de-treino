@@ -6,7 +6,8 @@ import { formatTime } from '../utils/workoutUtils';
 
 const WorkoutHeader = ({ 
   selectedDate, setSelectedDate, isCalendarOpen, setIsCalendarOpen,
-  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer
+  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer,
+  isTutorialDay // 🔥 Recebendo a informação se é o tutorial
 }) => {
   
   const dateObj = new Date(selectedDate + 'T00:00:00');
@@ -30,33 +31,38 @@ const WorkoutHeader = ({
           </div>
         </div>
         
-        <div className="h-[1px] w-full bg-border/30"></div>
-        
-        {/* SEÇÃO DO CRONÔMETRO DE TREINO */}
-        {!hasStarted ? (
-          <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm">
-              <Play size={18} className="fill-current" />
-              <span className="font-black italic text-sm tracking-widest text-center">INICIAR OPERAÇÃO</span>
-          </button>
-        ) : (
-          <div className="flex items-center justify-between bg-black/40 border border-primary/30 p-2 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className={`p-1.5 rounded transition-colors ${workoutTimer.isRunning ? 'bg-primary text-black animate-pulse' : 'bg-gray-800 text-gray-400'}`}>
-                   <TimerIcon size={16} />
-                </div>
-                <span className={`text-xl font-mono font-black leading-none tracking-wider ${workoutTimer.isRunning ? 'text-white' : 'text-gray-400'}`}>
-                   {formatTime(workoutTimer.elapsed)}
-                </span>
+        {/* 🔥 TRAVA DE SEGURANÇA: Só mostra o Cronômetro e o Iniciar Operação se NÃO for tutorial */}
+        {!isTutorialDay && (
+          <>
+            <div className="h-[1px] w-full bg-border/30"></div>
+            
+            {/* SEÇÃO DO CRONÔMETRO DE TREINO */}
+            {!hasStarted ? (
+              <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm">
+                  <Play size={18} className="fill-current" />
+                  <span className="font-black italic text-sm tracking-widest text-center">INICIAR OPERAÇÃO</span>
+              </button>
+            ) : (
+              <div className="flex items-center justify-between bg-black/40 border border-primary/30 p-2 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded transition-colors ${workoutTimer.isRunning ? 'bg-primary text-black animate-pulse' : 'bg-gray-800 text-gray-400'}`}>
+                       <TimerIcon size={16} />
+                    </div>
+                    <span className={`text-xl font-mono font-black leading-none tracking-wider ${workoutTimer.isRunning ? 'text-white' : 'text-gray-400'}`}>
+                       {formatTime(workoutTimer.elapsed)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                      <button onClick={toggleWorkoutTimer} className="p-1.5 rounded bg-gray-800 border border-gray-600 hover:text-primary transition-all">
+                          {workoutTimer.isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                      </button>
+                      <button onClick={resetWorkoutTimer} className="p-1.5 rounded bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                          <Trash2 size={16} />
+                      </button>
+                  </div>
               </div>
-              <div className="flex gap-2">
-                  <button onClick={toggleWorkoutTimer} className="p-1.5 rounded bg-gray-800 border border-gray-600 hover:text-primary transition-all">
-                      {workoutTimer.isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                  </button>
-                  <button onClick={resetWorkoutTimer} className="p-1.5 rounded bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all">
-                      <Trash2 size={16} />
-                  </button>
-              </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 

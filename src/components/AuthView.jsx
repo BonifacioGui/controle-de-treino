@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, LogIn, Scale, Ruler, Calendar as CalendarIcon } from 'lucide-react';
+import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, LogIn, Scale, Ruler, Calendar as CalendarIcon, Mail } from 'lucide-react';
 import CyberCalendar from './CyberCalendar'; // 🔥 Importando o seu calendário customizado!
 
 const AuthView = () => {
@@ -10,8 +10,9 @@ const AuthView = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 🔥 Estado para controlar a visibilidade do calendário
+  // 🔥 Estados Novos
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isSignedUp, setIsSignedUp] = useState(false); // Controla a tela de sucesso
 
   // Form Data Expandido
   const [email, setEmail] = useState('');
@@ -45,31 +46,43 @@ const AuthView = () => {
   const handleSignUp = async () => {
     setLoading(true);
     setErrorMsg('');
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: metadata.username,
-          birthdate: metadata.birthdate,
-          gender: metadata.gender,
-          height: metadata.height,
-          starting_weight: metadata.weight,
-          goal: metadata.goal,
-          class: metadata.class,
-          level: 1,
-          xp: 0
-        }
-      }
-    });
 
-    if (error) {
-        setErrorMsg(error.message);
-    } else {
-        alert('Recrutamento finalizado! Conta criada com sucesso.');
-        setIsLogin(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: metadata.username,
+            birthdate: metadata.birthdate,
+            gender: metadata.gender,
+            height: metadata.height,
+            starting_weight: metadata.weight, 
+            goal: metadata.goal,
+            class: metadata.class,
+            level: 1,
+            xp: 0,
+            joined_at: new Date().toISOString()
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.user) {
+        setIsSignedUp(true); // Muda para a tela de confirmação de e-mail
+      }
+
+    } catch (err) {
+      let friendlyMsg = err.message;
+      if (err.message === 'User already registered') {
+        friendlyMsg = 'Este codinome (e-mail) já está em uso por outro soldado.';
+      }
+      setErrorMsg(friendlyMsg);
+      
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const nextStep = () => setStep(s => s + 1);
@@ -77,7 +90,6 @@ const AuthView = () => {
 
   const isStep2Valid = metadata.username && metadata.birthdate && metadata.gender && metadata.height && metadata.weight;
 
-  // Formata a data de YYYY-MM-DD para DD/MM/YYYY só para exibição
   const displayDate = metadata.birthdate ? metadata.birthdate.split('-').reverse().join('/') : 'Selecione';
 
   return (
@@ -92,8 +104,30 @@ const AuthView = () => {
             </div>
         )}
 
-        {isLogin ? (
-          // --- TELA DE LOGIN ---
+        {/* 🔥 NOVA PARTE: TELA DE CONFIRMAÇÃO DE EMAIL 🔥 */}
+        {isSignedUp ? (
+          <div className="text-center space-y-6 animate-in zoom-in duration-300">
+            <div className="inline-flex p-4 rounded-full bg-yellow-500/20 text-yellow-500 mb-4 border border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+              <Mail size={48} />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tighter">Missão Enviada</h2>
+            <p className="text-muted text-sm leading-relaxed">
+              As diretrizes foram enviadas para <br/><span className="text-primary font-bold">{email}</span>. <br/><br/>
+              Acesse seu e-mail e confirme sua identidade para liberar o acesso ao <span className="text-primary font-black">PROJETO BOMBA</span>.
+            </p>
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-[10px] font-bold text-yellow-500 uppercase tracking-widest">
+              Atenção: O acesso será bloqueado até a confirmação!
+            </div>
+            <button 
+              onClick={() => { setIsSignedUp(false); setIsLogin(true); setStep(1); }} 
+              className="w-full bg-input border-2 border-border text-main font-black p-4 rounded-xl hover:border-primary transition-all mt-4"
+            >
+              RETORNAR AO LOGIN
+            </button>
+          </div>
+
+        // --- TELA DE LOGIN ---
+        ) : isLogin ? (
           <div className="space-y-6 animate-in slide-in-from-left duration-300">
             <div className="text-center mb-8">
               <div className="inline-flex p-3 rounded-2xl bg-primary/20 text-primary mb-4 border border-primary/30 shadow-[0_0_15px_rgba(var(--primary),0.5)]">
@@ -124,8 +158,9 @@ const AuthView = () => {
               <button onClick={() => setIsLogin(false)} className="text-[10px] font-black text-muted hover:text-primary uppercase tracking-widest transition-colors">Novo Soldado? Iniciar Cadastro</button>
             </div>
           </div>
+
+        // --- CADASTRO MULTISTEP ---
         ) : (
-          // --- CADASTRO MULTISTEP ---
           <div>
             <div className="text-center mb-8">
               <div className="inline-flex p-3 rounded-2xl bg-primary/20 text-primary mb-4 border border-primary/30">
@@ -184,7 +219,6 @@ const AuthView = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* 🔥 BOTÃO DO CYBER CALENDAR AQUI 🔥 */}
                   <div className="relative">
                     <label className="text-[10px] font-black uppercase text-muted mb-1 block">Nascimento</label>
                     <button 
@@ -197,7 +231,6 @@ const AuthView = () => {
                       <CalendarIcon size={16} className="text-muted" />
                     </button>
 
-                    {/* RENDERIZAÇÃO DO CALENDÁRIO */}
                     {showCalendar && (
                       <>
                         <div className="fixed inset-0 z-[100]" onClick={() => setShowCalendar(false)}></div>

@@ -352,7 +352,19 @@ const WorkoutApp = () => {
             </div>
             
             <button 
-              onClick={() => supabase.auth.signOut()} 
+              onClick={async () => {
+                // 1. Limpa os dados do usuário atual do navegador
+                localStorage.removeItem('workout_plan');
+                localStorage.removeItem('daily_progress');
+                localStorage.removeItem('workout_history');
+                localStorage.removeItem('body_history');
+                localStorage.removeItem('workout_stopwatch');
+                
+                // Se quiser apagar TUDO (incluindo tema), pode usar apenas: localStorage.clear();
+                
+                // 2. Encerra a sessão no Supabase
+                await supabase.auth.signOut();
+              }} 
               className="mt-auto w-full py-4 rounded-xl border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
             >
               ENCERRAR SESSÃO

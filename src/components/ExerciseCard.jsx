@@ -4,11 +4,14 @@ import { safeParseFloat, calculate1RM, getSmartSuggestion, isSameExercise } from
 
 const ExerciseCard = ({ 
   ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow, 
-  onSwap // 🔥 Nova prop para a ação de trocar
+  onSwap 
 }) => {
   const isDone = progress[id]?.done;
   const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
   const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
+
+  // 🔥 DETECTOR DE TUTORIAL (Se for "-x-" ou "-", esconde os inputs e botões de ação)
+  const isTutorial = ex.sets === "-x-" || ex.sets === "-";
 
   // Define o nome que será exibido (Original ou o trocado)
   const displayName = progress[id]?.swappedName || ex.name;
@@ -57,8 +60,8 @@ const ExerciseCard = ({
               )}
             </h3>
 
-            {/* 🔥 BOTÃO DE TROCAR (Só aparece se houver alternativas no workoutData) */}
-            {ex.alternatives && ex.alternatives.length > 0 && !isDone && (
+            {/* BOTÃO DE TROCAR */}
+            {ex.alternatives && ex.alternatives.length > 0 && !isDone && !isTutorial && (
               <button 
                 onClick={handleSwap}
                 className="flex items-center gap-1 px-2 py-1 rounded-md bg-input border border-border text-[10px] font-black text-muted hover:text-primary hover:border-primary transition-all active:scale-90"
@@ -92,52 +95,58 @@ const ExerciseCard = ({
           </div>
           <p className="text-xs text-muted font-bold uppercase mt-2 italic">{ex.note}</p>
         </div>
-        <button onClick={() => toggleCheck(id)} className={`ml-3 p-1.5 rounded-full transition-all border ${isDone ? 'border-primary text-primary bg-transparent' : 'border-border text-muted hover:text-white'}`}>
-          <CheckCircle2 size={24} />
-        </button>
-      </div>
-      
-      {/* Resto do componente permanece igual... */}
-      <div className="space-y-3 relative z-10">
-        <div className="flex items-center gap-2 bg-input/50 p-2 rounded-lg border border-border h-10">
-          <span className="text-[10px] font-black text-muted uppercase tracking-widest">{isTimeBased ? 'Tempo' : 'Ciclos'}</span>
-          <input type={isTimeBased ? "text" : "number"} className="bg-transparent text-primary font-black outline-none w-16 text-center text-lg border-b border-primary/30" value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")} onChange={(e) => updateSessionSets(id, e.target.value)} />
-        </div>
-        
-        {!isTimeBased && (
-          <div className="grid gap-2">
-            {Array.from({ length: currentSetCount }).map((_, setIdx) => {
-              const isSetDone = progress[id]?.sets?.[setIdx]?.completed;
-              const uniqueSetKey = `${id}-${setIdx}`;
-              return (
-              <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${shakingRow === uniqueSetKey ? 'translate-x-2 bg-red-500/20' : ''} ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent'}`}>
-                <button onClick={() => toggleSetComplete(id, setIdx)} className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all ${isSetDone ? 'bg-primary text-black border-primary' : 'bg-input border-border text-muted'}`}>
-                    {isSetDone ? <Sword size={16} /> : <Circle size={16} />}
-                </button>
-                <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
-                <div className="flex-1 flex gap-1.5 items-center">
-                    <input type="text" inputMode="decimal" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
-                      className={`w-full bg-input border rounded p-1.5 font-black text-lg text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]' : 'border-border text-success'}`} 
-                    />
-                    <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
-                      className="w-full bg-input border border-border rounded p-1.5 text-secondary font-black text-lg text-center h-10" 
-                    />
-                    <div className="relative min-w-[45px]">
-                      <input type="number" min="1" max="10" placeholder="RPE" value={progress[id]?.sets?.[setIdx]?.rpe || ""} onChange={(e) => updateSetData(id, setIdx, 'rpe', e.target.value)} 
-                        className="w-full bg-black/40 border border-orange-500/30 rounded p-1.5 text-orange-400 font-black text-xs text-center h-10" 
-                      />
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[5px] font-black text-orange-500 uppercase bg-black px-1">Esforço</span>
-                    </div>
-                    {(() => {
-                       const oneRM = calculate1RM(progress[id]?.sets?.[setIdx]?.weight, progress[id]?.sets?.[setIdx]?.reps);
-                       if (oneRM) return (<div className="flex flex-col items-center min-w-[25px]"><span className="text-[5px] text-muted font-black uppercase">1RM</span><span className="text-[9px] text-secondary font-black font-mono">{oneRM}</span></div>);
-                    })()}
-                </div>
-              </div>
-            )})}
-          </div>
+
+        {/* 🔥 TRAVA DO BOTÃO CHECK: Só aparece se NÃO for tutorial */}
+        {!isTutorial && (
+          <button onClick={() => toggleCheck(id)} className={`ml-3 p-1.5 rounded-full transition-all border ${isDone ? 'border-primary text-primary bg-transparent' : 'border-border text-muted hover:text-white'}`}>
+            <CheckCircle2 size={24} />
+          </button>
         )}
       </div>
+      
+      {/* 🔥 TRAVA DOS INPUTS: Só aparecem as caixas de texto se NÃO for tutorial */}
+      {!isTutorial && (
+        <div className="space-y-3 relative z-10">
+          <div className="flex items-center gap-2 bg-input/50 p-2 rounded-lg border border-border h-10">
+            <span className="text-[10px] font-black text-muted uppercase tracking-widest">{isTimeBased ? 'Tempo' : 'Ciclos'}</span>
+            <input type={isTimeBased ? "text" : "number"} className="bg-transparent text-primary font-black outline-none w-16 text-center text-lg border-b border-primary/30" value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")} onChange={(e) => updateSessionSets(id, e.target.value)} />
+          </div>
+          
+          {!isTimeBased && (
+            <div className="grid gap-2">
+              {Array.from({ length: currentSetCount }).map((_, setIdx) => {
+                const isSetDone = progress[id]?.sets?.[setIdx]?.completed;
+                const uniqueSetKey = `${id}-${setIdx}`;
+                return (
+                <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all ${shakingRow === uniqueSetKey ? 'translate-x-2 bg-red-500/20' : ''} ${isSetDone ? 'bg-primary/10 border border-primary/30' : 'bg-transparent'}`}>
+                  <button onClick={() => toggleSetComplete(id, setIdx)} className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all ${isSetDone ? 'bg-primary text-black border-primary' : 'bg-input border-border text-muted'}`}>
+                      {isSetDone ? <Sword size={16} /> : <Circle size={16} />}
+                  </button>
+                  <span className="text-xs font-black text-muted w-4">#{setIdx + 1}</span>
+                  <div className="flex-1 flex gap-1.5 items-center">
+                      <input type="text" inputMode="decimal" placeholder="KG" value={progress[id]?.sets?.[setIdx]?.weight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)} 
+                        className={`w-full bg-input border rounded p-1.5 font-black text-lg text-center h-10 ${safeParseFloat(progress[id]?.sets?.[setIdx]?.weight) > exercisePR && exercisePR > 0 ? 'border-yellow-400 text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]' : 'border-border text-success'}`} 
+                      />
+                      <input type="text" placeholder="REPS" value={progress[id]?.sets?.[setIdx]?.reps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)} 
+                        className="w-full bg-input border border-border rounded p-1.5 text-secondary font-black text-lg text-center h-10" 
+                      />
+                      <div className="relative min-w-[45px]">
+                        <input type="number" min="1" max="10" placeholder="RPE" value={progress[id]?.sets?.[setIdx]?.rpe || ""} onChange={(e) => updateSetData(id, setIdx, 'rpe', e.target.value)} 
+                          className="w-full bg-black/40 border border-orange-500/30 rounded p-1.5 text-orange-400 font-black text-xs text-center h-10" 
+                        />
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[5px] font-black text-orange-500 uppercase bg-black px-1">Esforço</span>
+                      </div>
+                      {(() => {
+                         const oneRM = calculate1RM(progress[id]?.sets?.[setIdx]?.weight, progress[id]?.sets?.[setIdx]?.reps);
+                         if (oneRM) return (<div className="flex flex-col items-center min-w-[25px]"><span className="text-[5px] text-muted font-black uppercase">1RM</span><span className="text-[9px] text-secondary font-black font-mono">{oneRM}</span></div>);
+                      })()}
+                  </div>
+                </div>
+              )})}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -53,6 +53,8 @@ const WorkoutView = ({
     return { volume: Math.round(volume), duration: formatTime(workoutTimer.elapsed) };
   }, [currentWorkout, progress, selectedDate, activeDay, workoutTimer.elapsed]);
 
+  const isTutorialDay = currentWorkout?.exercises?.some(ex => ex.sets === "-x-" || ex.sets === "-");
+  
   return (
     <>
       <ShareCard cardRef={cardRef} stats={todayStats} bossName="BOSS" theme={document.documentElement.getAttribute('data-theme')} />
@@ -68,6 +70,7 @@ const WorkoutView = ({
           // BUSQUE AS FUNÇÕES DE DENTRO DE ACTIONS:
           toggleWorkoutTimer={actions.toggleWorkoutTimer} 
           resetWorkoutTimer={actions.resetWorkoutTimer}
+          isTutorialDay={isTutorialDay}
         />
 
         <BossSection currentWorkout={currentWorkout} todayVolume={todayStats.volume} history={history} selectedDate={selectedDate} activeDay={activeDay} />
