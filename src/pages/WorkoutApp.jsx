@@ -1,28 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react';
-import { useWorkout } from './hooks/useWorkout'; 
-import { initialWorkoutData } from './workoutData'; 
+import { useWorkout } from '../hooks/useWorkout'; 
+import { initialWorkoutData } from '../data/workoutData'; 
 
 // Componentes
-import WorkoutView from './components/WorkoutView';
-import HistoryView from './components/HistoryView';
-import ManageView from './components/ManageView';
-import StatsView from './components/StatsView';
-import CyberNav from './components/CyberNav';
-import MatrixRain from './components/MatrixRain'; 
-import Importer from './components/Importer';
-import UserLevel from './components/UserLevel';
-import BadgeList from './components/BadgeList'; 
-import CharacterSheet from './components/CharacterSheet';
-import QuestBoard from './components/QuestBoard';
-import AuthView from './components/AuthView';
-import ProfileView from './components/ProfileView'; // 🔥 1. Import do Novo Componente
-import { supabase } from './supabaseClient';
+import WorkoutView from '../components/WorkoutView';
+import HistoryView from '../components/HistoryView';
+import ManageView from '../components/ManageView';
+import StatsView from '../components/StatsView';
+import CyberNav from '../components/CyberNav';
+import MatrixRain from '../components/MatrixRain'; 
+import Importer from '../components/Importer';
+import UserLevel from '../components/UserLevel';
+import BadgeList from '../components/BadgeList'; 
+import CharacterSheet from '../components/CharacterSheet';
+import QuestBoard from '../components/QuestBoard';
+import AuthView from '../components/AuthView';
+import ProfileView from '../components/ProfileView'; // 🔥 1. Import do Novo Componente
+import { supabase } from '../services/supabaseClient';
 
 // Celebrações
-import Cr7Celebration from './components/Cr7Celebration'; 
-import LevelUpModal from './components/LevelUpModal';
-import { getDailyQuests } from './utils/rpgSystem';
+import Cr7Celebration from '../components/Cr7Celebration'; 
+import LevelUpModal from '../components/LevelUpModal';
+import { getDailyQuests } from '../utils/rpgSystem';
 
 const WorkoutApp = () => { 
   // --- 1. ESTADOS E HOOKS ---

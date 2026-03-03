@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
-import { initialWorkoutData } from '../workoutData';
+import { supabase } from '../services/supabaseClient';
+import { initialWorkoutData } from '../data/workoutData';
 
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});

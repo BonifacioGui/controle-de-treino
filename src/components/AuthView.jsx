@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, LogIn, Scale, Ruler, Calendar as CalendarIcon, Mail } from 'lucide-react';
 import CyberCalendar from './CyberCalendar'; // 🔥 Importando o seu calendário customizado!
 

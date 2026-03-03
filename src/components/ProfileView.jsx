@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { User, LogOut, Activity, Scale, Target, Shield, Camera, Settings, X, Save, Calendar } from 'lucide-react'; 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { calculateStats } from '../utils/rpgSystem';
 
 // --- SEUS COMPONENTES ---

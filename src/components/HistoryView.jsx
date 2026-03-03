@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
 import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap, Plus, CalendarDays } from 'lucide-react';
-import { supabase } from '../supabaseClient'; 
+import { supabase } from '../services/supabaseClient'; 
 
 // --- HELPERS ---
 const normalizeName = (name) => name ? name.toLowerCase().trim() : "";
