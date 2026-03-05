@@ -25,6 +25,9 @@ export const useWorkout = () => {
   const [view, setView] = useState('workout');
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
 
+  // 🔥 O CADEADO DE SINCRONIZAÇÃO
+  const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
+
   const [workoutTimer, setWorkoutTimer] = useState(() => {
     try {
       const saved = localStorage.getItem('workout_stopwatch');
@@ -74,15 +77,48 @@ export const useWorkout = () => {
   const fetchCloudData = useCallback(async () => {
     if (!userId) return;
     try {
+      // 1. Histórico de Corpo
       const { data: bodyData } = await supabase.from('body_stats').select('*').eq('user_id', userId).order('date', { ascending: false });
       if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: b.date.split('T')[0].split('-').reverse().join('/') })));
       
+      // 2. Histórico de Treino
       const { data: trainData } = await supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name })));
 
-      const { data: planData } = await supabase.from('workout_plans').select('plan_data').eq('user_id', userId).single();
-      if (planData) setWorkoutData(planData.plan_data);
-    } catch (err) { console.error("Offline:", err); }
+      // 3. O RESGATE BLINDADO DO PLANO DE TREINO
+      const { data: planList, error: planError } = await supabase
+        .from('workout_plans')
+        .select('plan_data')
+        .eq('user_id', userId)
+        .limit(1); 
+      
+      if (planError) {
+        console.error("🚨 Erro do Supabase ao buscar o treino:", planError.message);
+        return; 
+      }
+
+      const planData = planList && planList.length > 0 ? planList[0] : null;
+
+      if (planData && planData.plan_data) {
+        const parsedData = typeof planData.plan_data === 'string' 
+          ? JSON.parse(planData.plan_data) 
+          : planData.plan_data;
+        
+        setWorkoutData(parsedData);
+        
+        // 🔥 CORREÇÃO DA TELA DE ERRO: Muda a aba automaticamente se a atual sumir
+        setActiveDay(currentDay => parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A'));
+
+        localStorage.setItem('workout_plan', JSON.stringify(parsedData));
+      } else {
+        console.warn("⚠️ O banco respondeu com sucesso, mas o treino estava vazio.");
+      }
+    } catch (err) { 
+      console.error("Offline ou erro de rede:", err); 
+    } finally {
+      // 🔥 A CHAVE MESTRA: Destranca a subida de dados APÓS tentar ler a nuvem
+      setIsCloudSyncReady(true);
+    }
   }, [userId]);
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
@@ -112,14 +148,39 @@ export const useWorkout = () => {
     audio.volume = 0.3; audio.play().catch(() => {});
   }, []);
 
-  // --- PERSISTENCE SYNC ---
+  // --- PERSISTENCE SYNC E CLOUD BACKUP ---
   useEffect(() => {
+    // 1. Salva sempre no celular primeiro (rápido)
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
     localStorage.setItem('workout_history', JSON.stringify(history));
     localStorage.setItem('body_history', JSON.stringify(bodyHistory));
     localStorage.setItem('workout_stopwatch', JSON.stringify(workoutTimer)); 
-  }, [workoutData, progress, history, bodyHistory, workoutTimer]);
+    
+    // 2. 🔥 BACKUP AUTOMÁTICO NA NUVEM PARA O PLANO DE TREINO
+    const syncPlanToCloud = async () => {
+      // 🚨 CADEADO FECHADO: Não faz nada até a nuvem ser lida no início
+      if (!isCloudSyncReady) return;
+
+      if (userId && Object.keys(workoutData).length > 0) {
+        try {
+          const { error } = await supabase
+            .from('workout_plans')
+            .upsert(
+              { user_id: userId, plan_data: workoutData }, 
+              { onConflict: 'user_id' }
+            );
+          
+          if (error) console.error("🚨 Falha no Backup da Nuvem:", error.message);
+        } catch (err) {
+          console.error("Erro na sincronização:", err);
+        }
+      }
+    };
+
+    syncPlanToCloud();
+
+  }, [workoutData, progress, history, bodyHistory, workoutTimer, userId, isCloudSyncReady]);
 
   useEffect(() => {
     let interval = null;
@@ -165,7 +226,6 @@ export const useWorkout = () => {
     toggleWorkoutTimer,
     toggleCheck,
     
-    // Atualiza o input de "Ciclos" ou "Tempo" (Linha 104 do seu ExerciseCard)
     updateSessionSets: (id, value) => {
       setProgress(p => ({
         ...p,
@@ -173,46 +233,38 @@ export const useWorkout = () => {
       }));
     },
 
-    // Alterna o status de uma série individual (Linha 111 do seu ExerciseCard)
     toggleSetComplete: (id, setIdx) => {
-      const now = Date.now(); // Pega o momento exato do clique
+      const now = Date.now();
       
       setProgress(p => {
         const current = p[id] || { sets: [] };
         const lastSetTime = p.lastSetTimestamp || 0;
-        const isCombo = now - lastSetTime < 60000; // Combo se o intervalo for menor que 60s
+        const isCombo = now - lastSetTime < 60000; 
 
         const newSets = [...(current.sets || [])];
         while (newSets.length <= setIdx) newSets.push({ completed: false });
 
-        // Descobre se a série está sendo MARCADA ou DESMARCADA
         const isNowCompleted = !newSets[setIdx].completed;
 
         newSets[setIdx] = { 
           ...newSets[setIdx], 
           completed: isNowCompleted,
-          finishedAt: now // Salva quando terminou
+          finishedAt: now 
         };
 
-        // 🔥 GATILHO DE ELITE: Se a série foi concluída, dispara o Cronômetro Global!
         if (isNowCompleted) {
           setTimerState({ active: true, seconds: 90 });
-          
-          if (isCombo) {
-            console.log("COMBO ATIVADO! +10 XP Bônus");
-            // Aqui você pode disparar um som de "Power Up" se quiser
-          }
+          if (isCombo) console.log("COMBO ATIVADO! +10 XP Bônus");
         }
 
         return { 
           ...p, 
           [id]: { ...current, sets: newSets },
-          lastSetTimestamp: now // Atualiza para a próxima comparação
+          lastSetTimestamp: now
         };
       });
     },
 
-    // Troca o exercício por uma alternativa (Sua lógica de Swap)
     onSwap: (id, newName) => {
       setProgress(p => ({
         ...p,
@@ -286,12 +338,11 @@ export const useWorkout = () => {
         }));
       },
 
-      // 🔥 AQUI ESTÁ A NOSSA FUNÇÃO DO ARSENAL DE COMBATE
       addFromCatalog: (day, selectedExercises) => {
         setWorkoutData(prev => {
           const newExercises = selectedExercises.map(exName => ({
             name: exName,
-            sets: "3x10", // Sugestão base, ele edita depois se quiser
+            sets: "3x10", 
             note: ""      
           }));
 
@@ -314,16 +365,15 @@ export const useWorkout = () => {
       
       edit: (day, i, f, v) => { 
         setWorkoutData(prev => {
-          const n = JSON.parse(JSON.stringify(prev)); // Deep copy para evitar mutação
+          const n = JSON.parse(JSON.stringify(prev)); 
           n[day].exercises[i][f] = v;
           return n;
         });
       },
 
-      // 🔥 CRIA UMA NOVA ABA DE TREINO (A, B, C...)
       addDay: (newDayName) => {
         setWorkoutData(prev => {
-          if (prev[newDayName]) return prev; // Se a aba já existir, não faz nada
+          if (prev[newDayName]) return prev; 
           return {
             ...prev,
             [newDayName]: { title: `TREINO ${newDayName}`, focus: "GERAL", exercises: [] }
@@ -331,7 +381,6 @@ export const useWorkout = () => {
         });
       },
 
-      // 🔥 APAGA UMA ABA INTEIRA
       removeDay: (dayName) => {
         setWorkoutData(prev => {
           const copy = { ...prev };
@@ -339,10 +388,7 @@ export const useWorkout = () => {
           return copy;
         });
       },
-
-
     }
-
 
   }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound]);
 

@@ -52,7 +52,16 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  
+
+  // 🔥 NOVO RADAR: Puxar os dados da nuvem assim que confirmar quem é o soldado
+  // 🔥 NOVO RADAR BLINDADO: Puxar os dados da nuvem UMA ÚNICA VEZ
+  useEffect(() => {
+    if (session?.user?.id) {
+      actions.fetchCloudData();
+    }
+    // Comando de autoridade para ignorar o linter e evitar o loop infinito:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
 
   // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
