@@ -268,7 +268,7 @@ export const useWorkout = () => {
       }, 3500);
     },
 
-    resetWorkoutTimer: () => window.confirm("Zerar?") && setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
+    resetWorkoutTimer: () => setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
     fetchCloudData,
     
