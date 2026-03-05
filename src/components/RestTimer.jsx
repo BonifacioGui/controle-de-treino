@@ -2,40 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { Timer, X } from 'lucide-react';
 
 const RestTimer = ({ initialSeconds = 90, onClose }) => {
-  const [seconds, setSeconds] = useState(initialSeconds);
-  const [isActive, setIsActive] = useState(true);
+  // Captura o exato momento em que o timer deve acabar
+  const [endTime, setEndTime] = useState(() => Date.now() + initialSeconds * 1000);
+  const [timeLeft, setTimeLeft] = useState(initialSeconds);
 
-  // Reinicia o timer se o initialSeconds mudar (ex: novo exercício)
+  // Se o componente receber novos segundos (o usuário clicou em outra série), recalcula o alvo
   useEffect(() => {
-    setSeconds(initialSeconds);
-    setIsActive(true);
+    setEndTime(Date.now() + initialSeconds * 1000);
+    setTimeLeft(initialSeconds);
   }, [initialSeconds]);
 
+  // Motor do relógio: roda a cada segundo checando a hora do celular
   useEffect(() => {
-    let interval = null;
-    
-    if (isActive && seconds > 0) {
-      interval = setInterval(() => {
-        setSeconds(s => s - 1);
-      }, 1000);
-    } else if (seconds === 0 && isActive) {
-      // Tocou o som? Para o active para não tocar de novo
-      const beep = new Audio('https://www.myinstants.com/media/sounds/beep-ping.mp3'); 
-      beep.volume = 0.5;
-      beep.play().catch(() => {});
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      setIsActive(false);
-      // Opcional: Chamar onClose() aqui se quiser que feche sozinho
-    }
+    if (timeLeft <= 0) return;
+
+    const interval = setInterval(() => {
+      const distance = Math.round((endTime - Date.now()) / 1000);
+      
+      if (distance <= 0) {
+        clearInterval(interval);
+        setTimeLeft(0);
+        playBeep();
+        onClose(); // Fecha via função pai, sem estado duplicado
+      } else {
+        setTimeLeft(distance);
+      }
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [isActive, seconds]);
+  }, [endTime, timeLeft, onClose]);
 
-  const addTime = (sec) => setSeconds(s => Math.max(0, s + sec));
+  const playBeep = () => {
+    const beep = new Audio('https://www.myinstants.com/media/sounds/beep-ping.mp3'); 
+    beep.volume = 0.5;
+    beep.play().catch(() => {});
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  };
 
-  if (!isActive && seconds === 0) return null; 
+  const addTime = (sec) => {
+    setEndTime(prev => prev + sec * 1000);
+    setTimeLeft(prev => prev + sec);
+  };
 
   return (
-    <div className="fixed bottom-24 right-4 z-[150] flex flex-col items-end animate-in slide-in-from-bottom-5">
+    <div className="fixed bottom-24 right-4 z-[9999] flex flex-col items-end animate-in slide-in-from-bottom-5">
       <div className="bg-black/90 border border-primary text-primary p-4 rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.4)] backdrop-blur-md flex items-center gap-4 min-w-[200px]">
         <div className="p-3 bg-primary/10 rounded-full animate-pulse">
           <Timer size={24} />
@@ -44,7 +54,7 @@ const RestTimer = ({ initialSeconds = 90, onClose }) => {
         <div className="flex-1">
           <p className="text-[10px] uppercase tracking-widest text-muted">Descanso</p>
           <p className="text-3xl font-black font-mono">
-            {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
           </p>
         </div>
 

@@ -185,15 +185,23 @@ export const useWorkout = () => {
         const newSets = [...(current.sets || [])];
         while (newSets.length <= setIdx) newSets.push({ completed: false });
 
+        // Descobre se a série está sendo MARCADA ou DESMARCADA
+        const isNowCompleted = !newSets[setIdx].completed;
+
         newSets[setIdx] = { 
           ...newSets[setIdx], 
-          completed: !newSets[setIdx].completed,
+          completed: isNowCompleted,
           finishedAt: now // Salva quando terminou
         };
 
-        if (isCombo && newSets[setIdx].completed) {
-          console.log("COMBO ATIVADO! +10 XP Bônus");
-          // Aqui você pode disparar um som de "Power Up"
+        // 🔥 GATILHO DE ELITE: Se a série foi concluída, dispara o Cronômetro Global!
+        if (isNowCompleted) {
+          setTimerState({ active: true, seconds: 90 });
+          
+          if (isCombo) {
+            console.log("COMBO ATIVADO! +10 XP Bônus");
+            // Aqui você pode disparar um som de "Power Up" se quiser
+          }
         }
 
         return { 

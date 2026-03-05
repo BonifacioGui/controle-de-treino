@@ -1,26 +1,19 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Scroll, Zap, Share2, Star, ChevronLeft, ChevronRight } from 'lucide-react'; 
-import { toPng } from 'html-to-image'; 
+import { Star, ChevronLeft, ChevronRight } from 'lucide-react'; 
 
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
 import ShareCard from './ShareCard';
-import RestTimer from './RestTimer';
 import { formatTime, safeParseFloat } from '../utils/workoutUtils';
 
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
-  progress, toggleCheck, updateSetData, 
-  updateSessionSets, sessionNote, setSessionNote, finishWorkout,
-  history, timerState, closeTimer,
-  workoutTimer, toggleWorkoutTimer, resetWorkoutTimer,
-  actions // 🔥 Recebendo as ações do hook
+  progress, sessionNote, setSessionNote, finishWorkout, history,
+  workoutTimer, actions 
 }) => {
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
-  const [isSharing, setIsSharing] = useState(false);
   const cardRef = useRef(null);
 
   const days = useMemo(() => Object.keys(workoutData || {}), [workoutData]); 
@@ -67,7 +60,6 @@ const WorkoutView = ({
           isCalendarOpen={isCalendarOpen} 
           setIsCalendarOpen={setIsCalendarOpen}
           workoutTimer={workoutTimer} 
-          // BUSQUE AS FUNÇÕES DE DENTRO DE ACTIONS:
           toggleWorkoutTimer={actions.toggleWorkoutTimer} 
           resetWorkoutTimer={actions.resetWorkoutTimer}
           isTutorialDay={isTutorialDay}
@@ -87,7 +79,6 @@ const WorkoutView = ({
           <button onClick={handleNextDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronRight size={24} /></button>
         </div>
 
-        {/* Dentro do WorkoutView.jsx */}
         <div className="space-y-4">
           {currentWorkout?.exercises?.map((ex, i) => {
             const id = `${selectedDate}-${activeDay}-${i}`;
@@ -100,9 +91,9 @@ const WorkoutView = ({
                 history={history} 
                 toggleCheck={actions.toggleCheck}
                 updateSetData={actions.updateSetData} 
-                updateSessionSets={actions.updateSessionSets} // Pega do actions
-                onSwap={actions.onSwap} // 🔥 CORRIGIDO: Era swapExercise, agora é onSwap
-                toggleSetComplete={actions.toggleSetComplete} // 🔥 CORRIGIDO: Use a do Hook
+                updateSessionSets={actions.updateSessionSets} 
+                onSwap={actions.onSwap} 
+                toggleSetComplete={actions.toggleSetComplete}
                 shakingRow={null}
               />
             );
@@ -125,11 +116,6 @@ const WorkoutView = ({
           </div>
         )}
       </main>
-
-      <div className="relative z-[300]">
-        {timerState?.active && <RestTimer initialSeconds={timerState.seconds} onClose={closeTimer} />}
-        {restTimerConfig.isOpen && <RestTimer initialSeconds={restTimerConfig.duration} onClose={() => setRestTimerConfig(p => ({ ...p, isOpen: false }))} />}
-      </div>
     </>
   );
 };

@@ -11,12 +11,9 @@ import StatsView from '../components/StatsView';
 import CyberNav from '../components/CyberNav';
 import MatrixRain from '../components/MatrixRain'; 
 import Importer from '../components/Importer';
-import UserLevel from '../components/UserLevel';
-import BadgeList from '../components/BadgeList'; 
-import CharacterSheet from '../components/CharacterSheet';
-import QuestBoard from '../components/QuestBoard';
 import AuthView from '../components/AuthView';
 import ProfileView from '../components/ProfileView'; // 🔥 1. Import do Novo Componente
+import RestTimer from '../components/RestTimer'; // 🔥 1. ADICIONE ESTA LINHA
 import { supabase } from '../services/supabaseClient';
 
 // Celebrações
@@ -37,6 +34,7 @@ const WorkoutApp = () => {
   const [showCr7, setShowCr7] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [pendingLevelUp, setPendingLevelUp] = useState(false);
+  const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
   
   const prevLevelRef = useRef(stats?.level || 1);
   const hasSavedData = !!localStorage.getItem('workout_plan');
@@ -253,6 +251,7 @@ const WorkoutApp = () => {
               updateSetData={actions.updateSetData}
               updateSessionSets={actions.updateSessionSets}
               toggleCheck={actions.toggleCheck}
+              setRestTimerConfig={setRestTimerConfig} // 🔥 3. ADICIONE ESTA LINHA
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -376,6 +375,22 @@ const WorkoutApp = () => {
           </div>
         </div>
       )}
+      {/* 🔥 4. CRONÔMETROS GLOBAIS (SOBREVIVEM A QUALQUER TROCA DE TELA) 🔥 */}
+      <div className="relative z-[9999]">
+        {state.timerState?.active && (
+          <RestTimer 
+            initialSeconds={state.timerState.seconds} 
+            onClose={actions.closeTimer} 
+          />
+        )}
+        
+        {restTimerConfig.isOpen && (
+          <RestTimer 
+            initialSeconds={restTimerConfig.duration} 
+            onClose={() => setRestTimerConfig(p => ({ ...p, isOpen: false }))} 
+          />
+        )}
+      </div>
     </div>
   );
 };
