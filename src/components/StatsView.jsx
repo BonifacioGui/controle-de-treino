@@ -147,7 +147,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
         <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95"><ChevronLeft size={20}/></button>
-        <h2 className="text-lg font-black italic uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
+        <h2 className="text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
       {/* RADAR DE PERFIL (RPG) */}
@@ -175,7 +175,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
                 <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} style={{ height: `${m.intensity}%` }} />
                 <div className="relative z-10">
                     <span className={`text-[7px] font-black block uppercase ${isHot ? 'text-red-400' : 'text-muted'}`}>{m.name}</span>
-                    <span className={`text-sm font-black italic ${isHot ? 'text-white' : 'text-main'}`}>{m.intensity}%</span>
+                    <span className={`text-sm font-black  ${isHot ? 'text-white' : 'text-main'}`}>{m.intensity}%</span>
                 </div>
               </div>
             );
@@ -216,7 +216,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
           {hallOfFame.map(([n, w]) => (
             <div key={n} className="bg-card/80 p-2 rounded-xl border border-warning/30 relative overflow-hidden group">
               <h4 className="text-[9px] font-bold text-main truncate uppercase relative z-10">{n}</h4>
-              <p className="text-lg font-black italic relative z-10">{w}<span className="text-[8px] ml-0.5 text-warning">KG</span></p>
+              <p className="text-lg font-black relative z-10">{w}<span className="text-[8px] ml-0.5 text-warning">KG</span></p>
             </div>
           ))}
         </div>

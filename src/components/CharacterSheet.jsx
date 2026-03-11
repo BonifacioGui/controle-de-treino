@@ -36,7 +36,7 @@ const CharacterSheet = ({ history }) => {
                   </div>
                   <span className="text-[10px] font-bold text-muted uppercase">{key}</span>
                 </div>
-                <span className="text-xl font-black text-white italic">
+                <span className="text-xl font-black text-white ">
                   {data.level}
                 </span>
               </div>

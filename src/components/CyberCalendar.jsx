@@ -62,7 +62,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
           <select 
             value={viewDate.getMonth()}
             onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
-            className="bg-transparent border-none text-main font-black italic uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
+            className="bg-transparent border-none text-main font-black uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
           >
             {months.map((m, i) => <option key={i} value={i} className="bg-card text-white">{m}</option>)}
           </select>

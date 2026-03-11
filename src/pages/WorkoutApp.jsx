@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react';
+import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff, LogOut} from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import { initialWorkoutData } from '../data/workoutData'; 
 
@@ -9,7 +9,6 @@ import HistoryView from '../components/HistoryView';
 import ManageView from '../components/ManageView';
 import StatsView from '../components/StatsView';
 import CyberNav from '../components/CyberNav';
-import MatrixRain from '../components/MatrixRain'; 
 import Importer from '../components/Importer';
 import AuthView from '../components/AuthView';
 import ProfileView from '../components/ProfileView'; // 🔥 1. Import do Novo Componente
@@ -38,6 +37,9 @@ const WorkoutApp = () => {
   
   const prevLevelRef = useRef(stats?.level || 1);
   const hasSavedData = !!localStorage.getItem('workout_plan');
+
+  // 🔥 ESTADO DO BOTÃO DE LOGOUT
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   // --- 2. MONITORAMENTO DE SESSÃO ---
   useEffect(() => {
@@ -162,8 +164,6 @@ const WorkoutApp = () => {
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
-      {theme === 'matrix' && <MatrixRain />}
-
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
           <div className="flex items-center gap-2 z-10">
@@ -172,7 +172,7 @@ const WorkoutApp = () => {
               </div>
               <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter hidden sm:block uppercase">
                   PROJETO<br/>
-                  <span className="text-primary">BOMBA</span>
+                  <span className="text-primary animate-pulse drop-shadow-[0_0_10px_currentColor]">BOMBA</span>
               </h1>
           </div>
 
@@ -225,7 +225,7 @@ const WorkoutApp = () => {
               {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
               
               {/* A Letra Gigante em Itálico */}
-              <span className={`text-3xl font-black italic tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
+              <span className={`text-3xl font-black tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
                 {day}
               </span>
               
@@ -336,51 +336,90 @@ const WorkoutApp = () => {
         />
       )}
       
-      {isMenuOpen && (
+     {isMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
+            setIsMenuOpen(false);
+            setConfirmLogout(false); // Reseta a confirmação se fechar o menu
+          }}></div>
           <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+            
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">CONFIG</h2>
-              <button onClick={() => setIsMenuOpen(false)} className="text-muted hover:text-red-500 transition-colors">
+              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">COMANDO</h2>
+              <button onClick={() => {
+                setIsMenuOpen(false);
+                setConfirmLogout(false);
+              }} className="text-muted hover:text-red-500 transition-colors">
                 <X size={32} />
               </button>
             </div>
 
+            {/* Identificação do Soldado */}
+            {session?.user && (
+              <div className="mb-8 p-4 bg-input/30 border border-border/50 rounded-xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-black text-lg">
+                  {session.user.email ? session.user.email[0].toUpperCase() : 'S'}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest">Soldado Ativo</p>
+                  <p className="text-xs font-black text-main truncate">{session.user.email}</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 mb-8">
-              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
-              <button onClick={() => setTheme('driver')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'driver' ? 'border-primary text-primary' : 'border-border text-muted'}`}>
-                <span>Cyberpunk</span> <Moon size={16} />
-              </button>
-              <button onClick={() => setTheme('matrix')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'matrix' ? 'border-[#00ff41] text-[#00ff41]' : 'border-border text-muted'}`}>
-                <span>Matrix</span> <Terminal size={16} />
-              </button>
-              <button onClick={() => setTheme('light')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'light' ? 'border-blue-500 text-blue-500' : 'border-border text-muted'}`}>
-                <span>Light</span> <Sun size={16} />
-              </button>
-              <button onClick={() => setTheme('spiderman')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'spiderman' ? 'border-red-600 text-red-600' : 'border-border text-muted'}`}>
-                <span>Aranha</span> <Zap size={16} />
+              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Interface Tática</span>
+              
+              {/* Interruptor Inteligente de Tema */}
+              <button 
+                onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} 
+                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600 shadow-inner' : 'bg-black/50 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.15)]'}`}
+              >
+                <span className="font-black uppercase tracking-widest text-sm">
+                  {theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}
+                </span>
+                {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             </div>
             
-            <button 
-              onClick={async () => {
-                // 1. Limpa os dados do usuário atual do navegador
-                localStorage.removeItem('workout_plan');
-                localStorage.removeItem('daily_progress');
-                localStorage.removeItem('workout_history');
-                localStorage.removeItem('body_history');
-                localStorage.removeItem('workout_stopwatch');
-                
-                // Se quiser apagar TUDO (incluindo tema), pode usar apenas: localStorage.clear();
-                
-                // 2. Encerra a sessão no Supabase
-                await supabase.auth.signOut();
-              }} 
-              className="mt-auto w-full py-4 rounded-xl border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
-            >
-              ENCERRAR SESSÃO
-            </button>
+            {/* 🔥 NOVO: Logout In-line Sem Alertas */}
+            {!confirmLogout ? (
+              <button 
+                onClick={() => setConfirmLogout(true)} 
+                className="mt-auto w-full py-4 rounded-xl border border-red-500/30 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+              >
+                <LogOut size={18} />
+                ENCERRAR SESSÃO
+              </button>
+            ) : (
+              <div className="mt-auto space-y-3 animate-in fade-in zoom-in duration-200 bg-red-950/20 p-3 rounded-xl border border-red-500/30">
+                <p className="text-center text-xs font-black text-red-400 uppercase tracking-widest">Abandonar a base?</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setConfirmLogout(false)}
+                    className="flex-1 py-3 rounded-lg border border-border text-muted font-black uppercase text-xs hover:bg-card transition-all active:scale-95"
+                  >
+                    CANCELAR
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      // 1. Limpa os dados do usuário atual do navegador
+                      localStorage.removeItem('workout_plan');
+                      localStorage.removeItem('daily_progress');
+                      localStorage.removeItem('workout_history');
+                      localStorage.removeItem('body_history');
+                      localStorage.removeItem('workout_stopwatch');
+                      
+                      // 2. Encerra a sessão no Supabase
+                      await supabase.auth.signOut();
+                    }} 
+                    className="flex-1 py-3 rounded-lg bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-95"
+                  >
+                    CONFIRMAR
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

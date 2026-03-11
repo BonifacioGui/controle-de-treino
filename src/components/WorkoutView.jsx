@@ -72,7 +72,7 @@ const WorkoutView = ({
           <button onClick={handlePrevDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronLeft size={24} /></button>
           <div className="text-center">
             <span className="text-[8px] font-black text-secondary tracking-widest uppercase block opacity-60">PROTOCOLO ATIVO</span>
-            <h2 className="text-lg font-black text-main italic uppercase tracking-tighter">
+            <h2 className="text-lg font-black text-main uppercase tracking-tighter">
               {currentWorkout?.title || 'DESCANSO'}
             </h2>
           </div>

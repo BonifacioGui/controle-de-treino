@@ -34,7 +34,7 @@ export default function Cr7Celebration({ onClose }) {
         onError={onClose} 
       />
 
-      <h2 className="text-6xl md:text-9xl font-black mt-8 neon-text-cyan italic uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)] animate-pulse pb-10">
+      <h2 className="text-6xl md:text-9xl font-black mt-8 neon-text-cyan uppercase tracking-tighter text-center drop-shadow-[0_0_20px_rgba(0,243,255,0.8)] animate-pulse pb-10">
         SIIIIIIIIIIIU!
       </h2>
     </div>

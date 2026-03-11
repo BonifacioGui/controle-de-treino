@@ -55,7 +55,7 @@ const BossBattle = ({ currentVolume }) => {
         {/* BARRA DE VIDA E INFO */}
         <div className="flex-1 space-y-2">
           <div className="flex justify-between items-end">
-            <h3 className="text-sm font-black italic uppercase tracking-widest text-white drop-shadow-md">
+            <h3 className="text-sm font-black uppercase tracking-widest text-white drop-shadow-md">
                 {isDefeated ? "BOSS ELIMINADO" : `ALVO: ${selectedBoss.name}`}
             </h3>
             <span className={`text-xs font-mono font-bold ${isDefeated ? 'text-success' : 'text-red-400'}`}>

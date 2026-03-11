@@ -16,7 +16,7 @@ export default function LevelUpModal({ level, onClose }) {
       
       {/* O Card do Level Up */}
       <div className="relative z-10 bg-slate-900 p-8 rounded-2xl border-4 border-yellow-400 text-center shadow-2xl max-w-sm w-full mx-4">
-        <h2 className="text-4xl font-black text-yellow-400 mb-6 italic uppercase tracking-tighter drop-shadow-md">
+        <h2 className="text-4xl font-black text-yellow-400 mb-6 uppercase tracking-tighter drop-shadow-md">
           LEVEL UP!
         </h2>
         

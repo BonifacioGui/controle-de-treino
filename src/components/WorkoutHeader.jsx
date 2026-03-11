@@ -10,7 +10,6 @@ const WorkoutHeader = ({
   isTutorialDay 
 }) => {
   
-  // 🔥 NOVO ESTADO PARA O MODAL DE EXCLUSÃO
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
@@ -30,7 +29,7 @@ const WorkoutHeader = ({
         {/* SEÇÃO DE DATA / CALENDÁRIO */}
         <div onClick={() => setIsCalendarOpen(true)} className="flex items-center justify-between cursor-pointer group/calendar">
           <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-main italic leading-none">{selectedDate.split('-').reverse()[0]}</span>
+              <span className="text-xl font-black text-main leading-none">{selectedDate.split('-').reverse()[0]}</span>
               <span className="text-xs font-bold text-muted uppercase">{dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.','')}</span>
               <span className="text-[10px] font-black text-primary uppercase tracking-widest ml-2 opacity-50">DATA_DA_MISSÃO</span>
           </div>
@@ -39,16 +38,21 @@ const WorkoutHeader = ({
           </div>
         </div>
         
-        {/* 🔥 TRAVA DE SEGURANÇA */}
         {!isTutorialDay && (
           <>
             <div className="h-[1px] w-full bg-border/30"></div>
             
             {/* SEÇÃO DO CRONÔMETRO DE TREINO */}
             {!hasStarted ? (
-              <button onClick={toggleWorkoutTimer} className="w-full py-3 rounded-lg bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-black transition-all group flex items-center justify-center gap-2 shadow-sm">
-                  <Play size={18} className="fill-current" />
-                  <span className="font-black italic text-sm tracking-widest text-center">INICIAR OPERAÇÃO</span>
+              /* 🔥 BOTÃO "GRITANDO": Neon Glow + Pulsing + High Contrast */
+              <button 
+                onClick={toggleWorkoutTimer} 
+                className="w-full py-2 rounded-xl bg-primary/10 border-2 border-primary text-primary transition-all duration-300 group flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_35px_rgba(var(--primary),0.5)] hover:bg-primary/20 active:scale-95 animate-pulse"
+              >
+                  <Play size={20} className="fill-primary drop-shadow-[0_0_4px_rgba(var(--primary),0.8)]" />
+                  <span className="font-black text-base tracking-[0.2em] uppercase text-primary drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+                    INICIAR OPERAÇÃO
+                  </span>
               </button>
             ) : (
               <div className="flex items-center justify-between bg-black/40 border border-primary/30 p-2 rounded-lg">
@@ -65,7 +69,6 @@ const WorkoutHeader = ({
                           {workoutTimer.isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
                       </button>
                       
-                      {/* 🔥 O BOTÃO AGORA CHAMA O MODAL NOVO EM VEZ DE ZERAR DIRETO */}
                       <button onClick={() => setIsResetModalOpen(true)} className="p-1.5 rounded bg-red-900/30 border border-red-800 text-red-500 hover:bg-red-500 hover:text-white transition-all">
                           <Trash2 size={16} />
                       </button>
@@ -88,7 +91,7 @@ const WorkoutHeader = ({
         </div>
       )}
 
-      {/* 🔥 NOVO MODAL DE CONFIRMAÇÃO DE ZERAR CRONÔMETRO 🔥 */}
+      {/* MODAL DE CONFIRMAÇÃO DE ZERAR */}
       {isResetModalOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setIsResetModalOpen(false)}></div>

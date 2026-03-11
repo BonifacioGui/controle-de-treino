@@ -197,7 +197,7 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
           {isEditing ? (
              <textarea value={editedSession.note || ''} onChange={(e) => setEditedSession({...editedSession, note: e.target.value})} className="w-full bg-card border border-warning/50 rounded-lg p-2 text-xs text-warning font-medium outline-none h-16" placeholder="Editar observações..." />
           ) : (
-            session.note && <div className="text-[10px] text-warning italic p-2 bg-warning/5 rounded border border-warning/20">"{session.note}"</div>
+            session.note && <div className="text-[10px] text-warning p-2 bg-warning/5 rounded border border-warning/20">"{session.note}"</div>
           )}
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             {isEditing 
@@ -330,7 +330,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     <>
       <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
         <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
-          <h2 className="text-lg font-black flex items-center gap-2 italic text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+          <h2 className="text-lg font-black flex items-center gap-2 text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
             <Database size={20} className="text-primary" /> Log de Operações
           </h2>
           <span className="text-[8px] font-black text-muted tracking-[0.2em]">RECOVERY.SYS</span>
@@ -347,7 +347,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           <div className="overflow-y-auto pr-1 pb-8 max-h-[35vh]">
             {history.length === 0 && (
               <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
-                <p className="text-muted text-xs font-black uppercase tracking-widest italic">Buffer Vazio.</p>
+                <p className="text-muted text-xs font-black uppercase tracking-widest ">Buffer Vazio.</p>
               </div>
             )}
             {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={setReportData} />)}
@@ -434,7 +434,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           {/* LISTA DE CARDS (CHARACTER SHEETS) */}
           <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
             {sortedBody.length === 0 && !showBioForm && (
-              <div className="text-[10px] text-muted italic p-2 w-full text-center border border-dashed border-border rounded-lg">
+              <div className="text-[10px] text-muted p-2 w-full text-center border border-dashed border-border rounded-lg">
                 Nenhum scan corporal registrado.
               </div>
             )}
@@ -531,7 +531,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
               </div>
 
               {reportData.note && (
-                <div className="bg-black/30 p-4 rounded-2xl border border-border text-center text-sm italic text-muted">
+                <div className="bg-black/30 p-4 rounded-2xl border border-border text-center text-sm text-muted">
                   "{reportData.note.split('|')[0].trim()}"
                 </div>
               )}
