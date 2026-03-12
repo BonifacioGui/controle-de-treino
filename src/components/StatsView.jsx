@@ -3,22 +3,20 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ChevronLeft, Activity, Target, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
 import { calculateStats } from '../utils/rpgSystem';
 import MuscleHeatmap from './MuscleHeatmap';
-// --- HELPER: Unificação de Nomes via Mapeamento ---
+
 // --- HELPER: O Pente Fino Universal de Nomes ---
-// --- HELPER: Unifica nomes (Lógica Blindada Universal) ---
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
   let clean = rawName.split('(')[0].trim();
-  // Remove acentos e caracteres especiais para facilitar a busca
   const lower = clean.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
 
-  // 🔥 UNIFICAÇÃO DE OMBROS (O seu bug do Desenvolvimento)
+  // OMBROS
   if (lower.includes("desenv")) return "Desenvolvimento";
   if (lower.includes("lateral")) return "Elevação Lateral";
   if (lower.includes("frontal")) return "Elevação Frontal";
   if (lower.includes("facepull") || (lower.includes("face") && lower.includes("pull"))) return "Face Pull";
 
-  // 🔥 UNIFICAÇÃO DE PERNAS (O bug da Abdutora/Adutora)
+  // PERNAS
   if (lower.includes("abdu")) return "Cadeira Abdutora";
   if (lower.includes("adut")) return "Cadeira Adutora";
   if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
@@ -28,7 +26,7 @@ const getCanonicalName = (rawName) => {
   if (lower.includes("flexora")) return "Mesa Flexora";
   if (lower.includes("panturrilha") || lower.includes("gemeos")) return "Panturrilha";
 
-  // 🔥 UNIFICAÇÃO DE BRAÇOS
+  // BRAÇOS
   if (lower.includes("triceps")) {
       if (lower.includes("testa")) return "Tríceps Testa";
       if (lower.includes("frances")) return "Tríceps Francês";
@@ -40,14 +38,14 @@ const getCanonicalName = (rawName) => {
       return "Rosca Direta";
   }
 
-  // 🔥 UNIFICAÇÃO DE PEITO
+  // PEITO
   if (lower.includes("supino")) {
       if (lower.includes("inclinado")) return "Supino Inclinado";
       return "Supino Reto";
   }
   if (lower.includes("crossover") || (lower.includes("cross") && lower.includes("over"))) return "Crossover";
 
-  // 🔥 UNIFICAÇÃO DE COSTAS
+  // COSTAS
   if (lower.includes("puxada")) return "Puxada Frontal";
   if (lower.includes("remada")) {
       if (lower.includes("baixa") || lower.includes("triangulo")) return "Remada Baixa";
@@ -55,7 +53,6 @@ const getCanonicalName = (rawName) => {
       return "Remada";
   }
 
-  // Mantém o nome original formatado se não cair em nenhuma regra
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
@@ -73,17 +70,14 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   const [selectedExercise, setSelectedExercise] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const theme = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || 'driver' : 'driver';
 
   useEffect(() => { setIsModalOpen?.(isSelectorOpen); }, [isSelectorOpen, setIsModalOpen]);
 
-  const colors = {
-    driver: { p: '#22d3ee', s: '#ec4899', g: '#1e293b', t: '#94a3b8' },
-    matrix: { p: '#00ff41', s: '#008f11', g: '#003b00', t: '#008f11' },
-    spiderman: { p: '#ef4444', s: '#facc15', g: '#000', t: '#000' }
-  }[theme] || { p: '#22d3ee', s: '#ec4899', g: '#1e293b', t: '#94a3b8' };
+  // Cores dinâmicas para os gráficos
+  const pColor = "rgb(var(--primary))";
+  const sColor = "rgb(var(--secondary))";
 
-  // --- DATA PROCESSING (MEMOIZED) ---
+  // --- DATA PROCESSING ---
   const { biometry, volume, heatmap, hallOfFame, exercises, radarData } = useMemo(() => {
     const h = Array.isArray(history) ? history : [];
     const b = Array.isArray(bodyHistory) ? bodyHistory : [];
@@ -146,17 +140,17 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   return (
     <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
-        <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95"><ChevronLeft size={20}/></button>
-        <h2 className="text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
+        <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95 shadow-sm"><ChevronLeft size={20}/></button>
+        <h2 className="text-lg font-black uppercase text-primary tracking-tighter drop-shadow-sm">CENTRAL DE DADOS</h2>
       </header>
 
       {/* RADAR DE PERFIL (RPG) */}
       <Section title="PERFIL DE COMBATE (ATRIBUTOS)" icon={User} h="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-            <PolarGrid stroke={colors.g} />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: colors.t, fontSize: 10, fontWeight: 'bold' }} />
-            <Radar name="Atributos" dataKey="value" stroke={colors.p} fill={colors.p} fillOpacity={0.6} />
+            <PolarGrid stroke="var(--border)" />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--main)', fontSize: 10, fontWeight: 'bold' }} />
+            <Radar name="Atributos" dataKey="value" stroke={pColor} fill={pColor} fillOpacity={0.4} />
           </RadarChart>
         </ResponsiveContainer>
       </Section>
@@ -169,31 +163,34 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
             return (
               <div 
                 key={m.name} 
-                className={`bg-input/30 border p-2 rounded-xl relative overflow-hidden transition-all duration-500 
+                className={`bg-input border p-2 rounded-xl relative overflow-hidden transition-all duration-500 shadow-inner
                   ${isHot ? 'border-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-border'}`}
               >
                 <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} style={{ height: `${m.intensity}%` }} />
                 <div className="relative z-10">
-                    <span className={`text-[7px] font-black block uppercase ${isHot ? 'text-red-400' : 'text-muted'}`}>{m.name}</span>
-                    <span className={`text-sm font-black  ${isHot ? 'text-white' : 'text-main'}`}>{m.intensity}%</span>
+                    <span className={`text-[7px] font-black block uppercase ${isHot ? 'text-red-600 dark:text-red-400' : 'text-main/50'}`}>{m.name}</span>
+                    <span className={`text-sm font-black  ${isHot ? 'text-main drop-shadow-md' : 'text-main'}`}>{m.intensity}%</span>
                 </div>
               </div>
             );
           })}
         </div>
       </Section>
-       {/* Renderiza o mapa de calor usando o histórico */}
+      
+      {/* Renderiza o mapa de calor usando o histórico */}
       <MuscleHeatmap history={history} />
+      
       <Section title="BIOMETRIA" icon={Activity}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={biometry} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-            <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
+            <XAxis dataKey="date" stroke="var(--main)" opacity={0.5} fontSize={10} tickLine={false} />
             <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }} 
+              contentStyle={{ backgroundColor: 'var(--card)', border: `1px solid ${pColor}`, borderRadius: '8px', fontSize: '10px', color: 'var(--main)' }} 
+              itemStyle={{ fontWeight: 'bold' }}
               formatter={(value, name) => [`${value} ${name === 'peso' ? 'kg' : 'cm'}`, name.toUpperCase()]}
             />
-            <Area type="monotone" dataKey="peso" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
-            <Area type="monotone" dataKey="cintura" stroke={colors.s} fill={colors.s} fillOpacity={0.1} />
+            <Area type="monotone" dataKey="peso" stroke={pColor} fill={pColor} fillOpacity={0.2} />
+            <Area type="monotone" dataKey="cintura" stroke={sColor} fill={sColor} fillOpacity={0.1} />
           </AreaChart>
         </ResponsiveContainer>
       </Section>
@@ -201,12 +198,13 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       <Section title="TONELAGEM (VOLUME)" icon={Flame}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={volume} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-            <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
+            <XAxis dataKey="date" stroke="var(--main)" opacity={0.5} fontSize={10} tickLine={false} />
             <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }}
+              contentStyle={{ backgroundColor: 'var(--card)', border: `1px solid ${pColor}`, borderRadius: '8px', fontSize: '10px', color: 'var(--main)' }}
+              itemStyle={{ fontWeight: 'bold', color: pColor }}
               formatter={(value) => [`${value} kg`, 'Volume']}
             />
-            <Area type="stepAfter" dataKey="volume" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
+            <Area type="stepAfter" dataKey="volume" stroke={pColor} fill={pColor} fillOpacity={0.2} />
           </AreaChart>
         </ResponsiveContainer>
       </Section>
@@ -214,54 +212,69 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       <Section title="TOP RECORDES" icon={Trophy} h="auto">
         <div className="grid grid-cols-2 gap-2">
           {hallOfFame.map(([n, w]) => (
-            <div key={n} className="bg-card/80 p-2 rounded-xl border border-warning/30 relative overflow-hidden group">
-              <h4 className="text-[9px] font-bold text-main truncate uppercase relative z-10">{n}</h4>
-              <p className="text-lg font-black relative z-10">{w}<span className="text-[8px] ml-0.5 text-warning">KG</span></p>
+            <div key={n} className="bg-input p-2 rounded-xl border border-warning/30 relative overflow-hidden group shadow-inner">
+              <h4 className="text-[9px] font-bold text-main/70 truncate uppercase relative z-10">{n}</h4>
+              <p className="text-lg font-black relative z-10 text-main">{w}<span className="text-[8px] ml-0.5 text-warning font-bold">KG</span></p>
             </div>
           ))}
         </div>
       </Section>
 
       <section className="space-y-3">
-        <button onClick={() => setIsSelectorOpen(true)} className="w-full bg-card border border-success/30 text-success text-[10px] font-black p-3 rounded-xl flex justify-between items-center uppercase active:scale-95 shadow-lg">
-          {selectedExercise || "SELECIONAR EXERCÍCIO"} <Search size={14} />
+        <button onClick={() => setIsSelectorOpen(true)} className="w-full bg-input border border-success/50 text-success text-[10px] font-black p-4 rounded-xl flex justify-between items-center uppercase active:scale-95 shadow-sm transition-all hover:bg-success/5">
+          {selectedExercise || "SELECIONAR EXERCÍCIO PARA ANÁLISE"} <Search size={16} />
         </button>
         
-        {/* 🔥 GRÁFICO DE EVOLUÇÃO DE CARGAS CORRIGIDO (COM KG) 🔥 */}
+        {/* GRÁFICO DE EVOLUÇÃO DE CARGAS */}
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
           {selectedExercise && loadData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-                {/* Eixo Y agora mostra o "kg" */}
-                <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
-                {/* Tooltip agora formata o valor certinho ao clicar */}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--main)" opacity={0.1} />
+                <XAxis dataKey="date" stroke="var(--main)" opacity={0.5} fontSize={10} tickLine={false} />
+                <YAxis stroke="var(--main)" opacity={0.5} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.s}`, fontSize: '10px' }}
-                  itemStyle={{ color: colors.s, fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: 'var(--card)', border: `1px solid ${sColor}`, borderRadius: '8px', fontSize: '10px', color: 'var(--main)' }}
+                  itemStyle={{ color: sColor, fontWeight: 'bold' }}
                   formatter={(value) => [`${value} kg`, 'Carga Máxima']}
                 />
-                <Line type="monotone" dataKey="carga" stroke={colors.s} strokeWidth={3} dot={{ fill: colors.s, r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="carga" stroke={sColor} strokeWidth={3} dot={{ fill: sColor, r: 3 }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
-          ) : <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50">Aguardando seleção...</div>}
+          ) : <div className="h-full flex items-center justify-center text-main/40 text-[10px] font-bold uppercase">Aguardando seleção...</div>}
         </Section>
       </section>
 
+      {/* Modal de Busca */}
       {isSelectorOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 animate-in fade-in duration-200" onClick={() => setIsSelectorOpen(false)}>
-          <div className="bg-card w-full max-w-sm rounded-2xl border border-primary/30 flex flex-col max-h-[75vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-border flex justify-between items-center bg-input/10">
-              <h3 className="font-black text-primary uppercase text-sm tracking-widest">SISTEMA DE BUSCA</h3>
-              <button onClick={() => setIsSelectorOpen(false)} className="text-muted p-1 hover:text-white"><X size={20}/></button>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsSelectorOpen(false)}>
+          <div className="bg-card w-full max-w-sm rounded-2xl border border-primary/30 flex flex-col max-h-[75vh] overflow-hidden shadow-[0_0_40px_rgba(var(--primary),0.2)]" onClick={e => e.stopPropagation()}>
+            
+            <div className="p-4 border-b border-border flex justify-between items-center bg-input/50">
+              <h3 className="font-black text-primary uppercase text-sm tracking-widest drop-shadow-sm">SISTEMA DE BUSCA</h3>
+              <button onClick={() => setIsSelectorOpen(false)} className="text-main/50 p-1 hover:text-red-500 transition-colors"><X size={20}/></button>
             </div>
-            <div className="p-3">
-              <input type="text" placeholder="Filtrar base de dados..." className="bg-black/60 w-full p-3 rounded-xl border border-white/5 text-xs outline-none focus:border-primary/50 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} autoFocus />
+            
+            <div className="p-3 bg-card">
+              <input 
+                type="text" 
+                placeholder="Filtrar base de dados..." 
+                className="bg-input w-full p-3 rounded-xl border border-border text-xs text-main font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-main/30 shadow-inner" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                autoFocus 
+              />
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-card">
               {exercises.filter(ex => ex.toLowerCase().includes(searchTerm.toLowerCase())).map(ex => (
-                <button key={ex} onClick={() => { setSelectedExercise(ex); setIsSelectorOpen(false); }} className={`w-full text-left p-4 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${selectedExercise === ex ? 'bg-primary text-black' : 'hover:bg-white/5 text-muted hover:text-primary'}`}>{ex}</button>
+                <button 
+                  key={ex} 
+                  onClick={() => { setSelectedExercise(ex); setIsSelectorOpen(false); }} 
+                  className={`w-full text-left p-4 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${selectedExercise === ex ? 'bg-primary text-white shadow-[0_0_10px_rgba(var(--primary),0.4)]' : 'hover:bg-input text-main/60 hover:text-main'}`}
+                >
+                  {ex}
+                </button>
               ))}
             </div>
           </div>
@@ -274,11 +287,11 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
 const Section = ({ title, icon: Icon, children, h = "h-48" }) => (
   <section className="space-y-2">
     <div className="flex items-center justify-between px-1">
-        <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+        <h3 className="text-[10px] font-black text-main/60 uppercase tracking-[0.2em] flex items-center gap-2">
             <Icon size={12} className="text-primary" /> {title}
         </h3>
     </div>
-    <div className={`bg-card border border-border p-3 rounded-2xl ${h} w-full min-w-0 backdrop-blur-md relative shadow-inner overflow-hidden`}>
+    <div className={`bg-card border border-border p-3 rounded-2xl ${h} w-full min-w-0 shadow-sm overflow-hidden`}>
       {children}
     </div>
   </section>

@@ -376,7 +376,7 @@ const WorkoutApp = () => {
                 className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600 shadow-inner' : 'bg-black/50 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.15)]'}`}
               >
                 <span className="font-black uppercase tracking-widest text-sm">
-                  {theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}
+                  {theme === 'light' ? 'Modo Claro' : 'Modo Noturno'}
                 </span>
                 {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
               </button>

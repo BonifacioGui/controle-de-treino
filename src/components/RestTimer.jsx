@@ -46,25 +46,42 @@ const RestTimer = ({ initialSeconds = 90, onClose }) => {
 
   return (
     <div className="fixed bottom-24 right-4 z-[9999] flex flex-col items-end animate-in slide-in-from-bottom-5">
-      <div className="bg-black/90 border border-primary text-primary p-4 rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.4)] backdrop-blur-md flex items-center gap-4 min-w-[200px]">
-        <div className="p-3 bg-primary/10 rounded-full animate-pulse">
-          <Timer size={24} />
+      {/* 🔥 HUD Flutuante - Fundo adaptável ao invés de black/90 🔥 */}
+      <div className="bg-card/95 border-2 border-primary p-4 rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.3)] backdrop-blur-md flex items-center gap-4 min-w-[200px]">
+        
+        <div className="p-3 bg-primary/10 rounded-full animate-pulse shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+          <Timer size={24} className="text-primary" />
         </div>
         
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-widest text-muted">Descanso</p>
-          <p className="text-3xl font-black font-mono">
+          <p className="text-[10px] font-black uppercase tracking-widest text-main/60">Descanso</p>
+          <p className="text-3xl font-black font-mono text-primary drop-shadow-[0_0_5px_rgba(var(--primary),0.4)]">
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
           </p>
         </div>
 
-        <div className="flex flex-col gap-1">
-            <button onClick={() => addTime(30)} className="text-[10px] bg-gray-800 px-2 py-1 rounded border border-gray-700 hover:border-primary transition">+30s</button>
-            <button onClick={() => addTime(-30)} className="text-[10px] bg-gray-800 px-2 py-1 rounded border border-gray-700 hover:border-red-500 transition">-30s</button>
+        {/* 🔥 Botões Táticos ajustados para Claro/Escuro 🔥 */}
+        <div className="flex flex-col gap-1.5">
+            <button 
+              onClick={() => addTime(30)} 
+              className="text-[10px] font-black text-main/70 bg-input px-2 py-1 rounded border border-border hover:border-primary hover:text-primary transition-all shadow-inner active:scale-95"
+            >
+              +30s
+            </button>
+            <button 
+              onClick={() => addTime(-30)} 
+              className="text-[10px] font-black text-main/70 bg-input px-2 py-1 rounded border border-border hover:border-red-500 hover:text-red-500 transition-all shadow-inner active:scale-95"
+            >
+              -30s
+            </button>
         </div>
 
-        <button onClick={onClose} className="absolute -top-2 -left-2 bg-red-500 text-black rounded-full p-1 hover:scale-110 transition shadow-lg">
-            <X size={12} />
+        {/* Botão Fechar com Glow de Alerta */}
+        <button 
+          onClick={onClose} 
+          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full p-1.5 hover:scale-110 hover:bg-red-600 transition-all shadow-[0_0_10px_rgba(239,68,68,0.5)] z-10"
+        >
+            <X size={12} strokeWidth={3} />
         </button>
       </div>
     </div>

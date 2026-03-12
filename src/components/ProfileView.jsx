@@ -12,12 +12,10 @@ import CyberCalendar from './CyberCalendar';
 
 const ProfileView = ({ userMetadata, setView, stats, history }) => {
   
-  // 🔥 NOVIDADE: Puxa primeiro da nuvem, se não tiver, olha o cache local
   const [avatarUrl, setAvatarUrl] = useState(() => {
     return userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || localStorage.getItem('soldier_avatar') || null;
   });
   
-  // ESTADOS DO MODAL
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
@@ -35,7 +33,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
       reader.onloadend = () => {
         const base64String = reader.result;
         setAvatarUrl(base64String);
-        localStorage.setItem('soldier_avatar', base64String); // Mantém backup local
+        localStorage.setItem('soldier_avatar', base64String); 
       };
       reader.readAsDataURL(file);
     }
@@ -50,7 +48,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
           birthdate: editForm.birthdate,
           height: editForm.height,
           goal: editForm.goal,
-          avatar_url: avatarUrl // 🔥 NOVIDADE: Envia a foto oficial para a nuvem!
+          avatar_url: avatarUrl 
         }
       });
       if (error) throw error;
@@ -64,7 +62,6 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
     }
   };
 
-  // --- CÁLCULOS DE RPG E BIOMETRIA ---
   const rpgData = useMemo(() => {
     try { return calculateStats(history || []); } 
     catch (e) { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
@@ -126,13 +123,13 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       
-      {/* HEADER DE IDENTIDADE */}
-      <div className="bg-card border-2 border-primary rounded-3xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(var(--primary),0.15)] mt-2">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[50px]"></div>
+      {/* HEADER DE IDENTIDADE - Mantido com tema escuro imponente */}
+      <div className="bg-slate-900 dark:bg-card border-2 border-primary rounded-3xl p-6 relative overflow-hidden shadow-lg mt-2">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-[50px]"></div>
         
         <button 
           onClick={() => setIsEditing(true)}
-          className="absolute top-4 right-4 z-30 p-2 bg-input/80 border border-primary/50 text-primary rounded-xl hover:bg-primary hover:text-black transition-all shadow-lg"
+          className="absolute top-4 right-4 z-30 p-2 bg-black/40 backdrop-blur-md border border-primary/50 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-lg"
         >
           <Settings size={20} />
         </button>
@@ -140,7 +137,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
         <div className="flex items-center gap-4 relative z-10">
           <div className="relative w-20 h-20 shrink-0 rotate-3 group cursor-pointer z-20">
             <input type="file" id="avatar-upload" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            <label htmlFor="avatar-upload" className="w-full h-full bg-input border-2 border-primary rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.4)] overflow-hidden cursor-pointer transition-all group-hover:border-white">
+            <label htmlFor="avatar-upload" className="w-full h-full bg-slate-800 border-2 border-primary rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.4)] overflow-hidden cursor-pointer transition-all group-hover:border-white">
               {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <User size={40} className="text-primary group-hover:text-white transition-colors" />}
               <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                 <Camera size={24} className="text-white mb-1" />
@@ -152,7 +149,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
             <h2 className="text-3xl font-black uppercase tracking-tighter text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] pr-8 line-clamp-1">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
-            <span className="text-primary text-[10px] font-black uppercase tracking-widest block mt-1">
+            <span className="text-primary text-[10px] font-black uppercase tracking-widest block mt-1 drop-shadow-sm">
               Classe: {displayClass}
             </span>
           </div>
@@ -164,27 +161,27 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
       {/* BIOMETRIA */}
       <div>
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-input border border-border p-3 rounded-2xl text-center shadow-md">
+          <div className="bg-card border border-border p-3 rounded-2xl text-center shadow-sm">
             <Activity className="mx-auto text-secondary mb-1 opacity-50" size={16} />
-            <p className="text-[10px] text-muted font-black uppercase tracking-widest">Idade</p>
-            <p className="text-xl font-black text-white">{age}</p>
+            <p className="text-[10px] text-main/50 font-black uppercase tracking-widest">Idade</p>
+            <p className="text-xl font-black text-main">{age}</p>
           </div>
-          <div className="bg-input border border-border p-3 rounded-2xl text-center shadow-md">
+          <div className="bg-card border border-border p-3 rounded-2xl text-center shadow-sm">
             <Scale className="mx-auto text-secondary mb-1 opacity-50" size={16} />
-            <p className="text-[10px] text-muted font-black uppercase tracking-widest">Peso</p>
-            <p className="text-xl font-black text-white">{currentWeight}<span className="text-[10px] ml-0.5 text-muted">kg</span></p>
+            <p className="text-[10px] text-main/50 font-black uppercase tracking-widest">Peso</p>
+            <p className="text-xl font-black text-main">{currentWeight}<span className="text-[10px] ml-0.5 text-main/50">kg</span></p>
           </div>
-          <div className="bg-input border border-border p-3 rounded-2xl text-center shadow-md">
+          <div className="bg-card border border-border p-3 rounded-2xl text-center shadow-sm">
             <Target className="mx-auto text-secondary mb-1 opacity-50" size={16} />
-            <p className="text-[10px] text-muted font-black uppercase tracking-widest">IMC</p>
+            <p className="text-[10px] text-main/50 font-black uppercase tracking-widest">IMC</p>
             <p className="text-xl font-black text-primary">{imc}</p>
           </div>
         </div>
-        <p className="text-center text-[9px] text-muted uppercase font-bold tracking-[0.2em] mt-2">Diagnóstico: <span className="text-secondary">{imcClassification}</span></p>
+        <p className="text-center text-[9px] text-main/60 uppercase font-bold tracking-[0.2em] mt-3">Diagnóstico: <span className="text-secondary font-black">{imcClassification}</span></p>
       </div>
 
       {/* MAPEAMENTO TÁTICO */}
-      <div className="bg-card border-2 border-border rounded-3xl p-5 shadow-lg space-y-4">
+      <div className="bg-card border border-border rounded-3xl p-5 shadow-sm space-y-4">
         <div className="text-center mb-2">
           <h3 className="text-sm font-black text-primary uppercase tracking-widest">Mapeamento Tático</h3>
         </div>
@@ -192,11 +189,12 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
         <div className="h-56 w-full -ml-2">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-              <PolarGrid stroke="rgba(var(--primary), 0.2)" />
+              <PolarGrid stroke="rgba(128,128,128, 0.2)" />
               <PolarAngleAxis dataKey="subject" tick={{ fill: '#888888', fontSize: 9, fontWeight: 900, textTransform: 'uppercase' }} />
               <PolarRadiusAxis angle={30} domain={[0, maxStat]} tick={false} axisLine={false} />
               <Radar name="Nível" dataKey="A" stroke="rgb(var(--primary))" strokeWidth={2} fill="rgb(var(--primary))" fillOpacity={0.3} />
-              <Tooltip contentStyle={{ backgroundColor: '#111', borderColor: 'rgb(var(--primary))', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: 'rgb(var(--primary))' }} formatter={(value) => [`Nível ${value}`, 'Atributo']} />
+              {/* Tooltip corrigido para usar variável CSS do tema */}
+              <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px', color: 'var(--main)' }} itemStyle={{ color: 'rgb(var(--primary))' }} formatter={(value) => [`Nível ${value}`, 'Atributo']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -208,9 +206,9 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
             { label: 'VIT', val: rpgData?.VIT?.level || 1, color: 'text-green-500' },
             { label: 'CHA', val: rpgData?.CHA?.level || 1, color: 'text-purple-500' },
           ].map((attr) => (
-            <div key={attr.label} className="text-center bg-input/50 rounded-xl py-2">
+            <div key={attr.label} className="text-center bg-input/50 rounded-xl py-2 border border-transparent shadow-inner">
               <span className={`text-[9px] font-black uppercase tracking-tighter ${attr.color}`}>{attr.label}</span>
-              <p className="text-lg font-black text-white leading-none">{attr.val}</p>
+              <p className="text-lg font-black text-main leading-none mt-1">{attr.val}</p>
             </div>
           ))}
         </div>
@@ -220,81 +218,74 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
       <QuestBoard />
 
       <div className="space-y-3 pt-4">
-        <button onClick={() => alert("Compartilhar relatório em breve.")} className="w-full bg-card border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all">
+        <button onClick={() => alert("Compartilhar relatório em breve.")} className="w-full bg-card border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all shadow-sm">
           <Shield size={18} /> Compartilhar Ficha
         </button>
-        <button onClick={handleLogout} className="w-full bg-red-500/10 border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all">
+        <button onClick={handleLogout} className="w-full bg-red-50 dark:bg-red-900/10 border-2 border-red-500 text-red-600 dark:text-red-500 font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-sm">
           <LogOut size={18} /> Evacuar Sistema
         </button>
       </div>
 
-      {/* 🔥 CSS INJETADO PARA ESCONDER A NAV BAR (Tática de Guerrilha) 🔥 */}
       {isEditing && (
         <style>{`
-          nav, footer, .fixed.bottom-0 { 
-            display: none !important; 
-          }
-          body {
-            overflow: hidden; /* Impede a rolagem de fundo enquanto edita */
-          }
+          nav, footer, .fixed.bottom-0 { display: none !important; }
+          body { overflow: hidden; }
         `}</style>
       )}
 
       {/* MODAL TÁTICO DE EDIÇÃO */}
       {isEditing && (
-        <div className="fixed inset-0 z-[100] bg-page/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-card border-2 border-primary w-full max-w-sm rounded-3xl shadow-[0_0_40px_rgba(var(--primary),0.3)] overflow-visible">
             
-            <div className="flex justify-between items-center p-5 border-b border-border bg-input/50">
-              <h3 className="font-black text-primary uppercase tracking-widest flex items-center gap-2">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-input/50 rounded-t-3xl">
+              <h3 className="font-black text-primary uppercase tracking-widest flex items-center gap-2 drop-shadow-sm">
                 <Settings size={18} /> Ajuste de Sistema
               </h3>
-              <button onClick={() => setIsEditing(false)} className="text-muted hover:text-red-500 transition-colors">
+              <button onClick={() => setIsEditing(false)} className="text-main/50 hover:text-red-500 transition-colors">
                 <X size={24} />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Codinome</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-main/60 block mb-1">Codinome</label>
                 <input 
                   type="text" 
                   value={editForm.username} 
                   onChange={(e) => setEditForm({...editForm, username: e.target.value})}
-                  className="w-full bg-input border border-border p-3 rounded-xl text-white font-bold focus:border-primary focus:outline-none"
+                  className="w-full bg-input border border-border p-3 rounded-xl text-main font-bold focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none placeholder:text-main/30 shadow-inner transition-all"
                   placeholder="Seu novo nickname"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Altura (cm)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-main/60 block mb-1">Altura (cm)</label>
                   <input 
                     type="number" 
                     value={editForm.height} 
                     onChange={(e) => setEditForm({...editForm, height: e.target.value})}
-                    className="w-full bg-input border border-border p-3 rounded-xl text-white font-bold focus:border-primary focus:outline-none"
+                    className="w-full bg-input border border-border p-3 rounded-xl text-main font-bold focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none placeholder:text-main/30 shadow-inner transition-all"
                     placeholder="Ex: 175"
                   />
                 </div>
                 
-                {/* 🔥 SEU NOVO CALENDÁRIO CYBERPUNK AQUI 🔥 */}
                 <div className="relative">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Nascimento</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-main/60 block mb-1">Nascimento</label>
                   <button 
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className="w-full bg-input border border-border p-3 rounded-xl text-white font-bold focus:border-primary focus:outline-none flex justify-between items-center hover:border-primary/50 transition-colors"
+                    className="w-full bg-input border border-border p-3 rounded-xl font-bold focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none flex justify-between items-center hover:border-primary/50 transition-all shadow-inner"
                   >
-                    <span className={editForm.birthdate ? "text-white" : "text-muted"}>
+                    <span className={editForm.birthdate ? "text-main" : "text-main/40"}>
                       {editForm.birthdate ? editForm.birthdate.split('-').reverse().join('/') : '--/--/----'}
                     </span>
                     <Calendar size={16} className="text-primary" />
                   </button>
 
-                  {/* Renderização condicional do Calendário (Pop-over) */}
                   {showCalendar && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[110]">
-                      <div className="fixed inset-0" onClick={() => setShowCalendar(false)}></div> {/* Overlay para fechar ao clicar fora */}
+                      <div className="fixed inset-0" onClick={() => setShowCalendar(false)}></div>
                       <div className="relative">
                         <CyberCalendar 
                           selectedDate={editForm.birthdate} 
@@ -310,11 +301,11 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Especialidade (Classe)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-main/60 block mb-1">Especialidade (Classe)</label>
                 <select 
                   value={editForm.goal} 
                   onChange={(e) => setEditForm({...editForm, goal: e.target.value})}
-                  className="w-full bg-input border border-border p-3 rounded-xl text-white font-bold focus:border-primary focus:outline-none appearance-none"
+                  className="w-full bg-input border border-border p-3 rounded-xl text-main font-bold focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none appearance-none shadow-inner transition-all"
                 >
                   <option value="hypertrophy">Tank (Foco em Massa/Força)</option>
                   <option value="weight_loss">Assassin (Foco em Definição/Seca)</option>
@@ -325,7 +316,7 @@ const ProfileView = ({ userMetadata, setView, stats, history }) => {
               <button 
                 onClick={handleSaveProfile}
                 disabled={isSaving}
-                className="w-full mt-4 bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(var(--primary),0.6)] transition-all disabled:opacity-50 relative z-0"
+                className="w-full mt-4 bg-primary text-white font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 shadow-[0_0_15px_rgba(var(--primary),0.4)] transition-all disabled:opacity-50 relative z-0 active:scale-95"
               >
                 {isSaving ? 'Sincronizando...' : <><Save size={18} /> Salvar Ficha</>}
               </button>

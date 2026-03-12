@@ -63,7 +63,7 @@ const calculateVolume = (exercises) => {
 
 const ExerciseItemView = ({ exercise }) => {
   return (
-    <div className="flex items-center justify-between p-2 border-b border-border last:border-0 hover:bg-input/30 transition-colors">
+    <div className="flex items-center justify-between p-2 border-b border-border last:border-0 hover:bg-input/50 transition-colors">
       <span className="text-xs font-bold uppercase truncate text-main flex-1 mr-2">
         {exercise.name}
       </span>
@@ -71,16 +71,16 @@ const ExerciseItemView = ({ exercise }) => {
         {Array.isArray(exercise.sets) && exercise.sets.length > 0 ? (
           <div className="flex gap-1 flex-wrap justify-end">
              {exercise.sets.map((set, k) => (
-                <div key={k} className="flex items-center gap-0.5 bg-card border border-border px-1.5 py-0.5 rounded">
+                <div key={k} className="flex items-center gap-0.5 bg-card border border-border px-1.5 py-0.5 rounded shadow-sm">
                   <span className="text-[10px] font-black text-success">{set.weight}</span>
-                  <span className="text-[8px] text-muted">kg</span>
-                  <span className="text-[8px] text-muted mx-0.5">•</span>
+                  <span className="text-[8px] text-main/50">kg</span>
+                  <span className="text-[8px] text-main/30 mx-0.5">•</span>
                   <span className="text-[10px] font-black text-primary">{set.reps}</span>
                 </div>
              ))}
           </div>
         ) : (
-          <span className="text-[10px] text-muted">Concluído</span>
+          <span className="text-[10px] text-main/50 font-bold">Concluído</span>
         )}
       </div>
     </div>
@@ -95,22 +95,22 @@ const ExerciseItemEdit = ({ exercise, index, updateExercise }) => {
   };
 
   return (
-    <div className="p-2 border-b border-border bg-input/20">
+    <div className="p-2 border-b border-border bg-input/60">
       <div className="mb-1 text-xs font-black text-primary uppercase">{exercise.name}</div>
       <div className="space-y-1">
         {exercise.sets.map((set, k) => (
           <div key={k} className="flex items-center gap-2">
-            <span className="text-[10px] text-muted w-4 font-bold">#{k+1}</span>
+            <span className="text-[10px] text-main/50 w-4 font-bold">#{k+1}</span>
             <input 
               type="number" inputMode="decimal" value={set.weight} 
               onChange={(e) => handleSetChange(k, 'weight', e.target.value)}
-              className="w-14 bg-input border border-border rounded p-1 text-xs text-center font-bold focus:border-primary outline-none"
+              className="w-14 bg-card border border-border rounded p-1 text-xs text-center font-bold text-main focus:border-primary outline-none focus:ring-1 focus:ring-primary/30"
               placeholder="KG"
             />
             <input 
               type="number" inputMode="numeric" value={set.reps} 
               onChange={(e) => handleSetChange(k, 'reps', e.target.value)}
-              className="w-10 bg-input border border-border rounded p-1 text-xs text-center font-bold focus:border-secondary outline-none"
+              className="w-10 bg-card border border-border rounded p-1 text-xs text-center font-bold text-main focus:border-secondary outline-none focus:ring-1 focus:ring-secondary/30"
               placeholder="Reps"
             />
           </div>
@@ -156,37 +156,37 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
     <div className="mb-2">
       <div 
         onClick={() => !isEditing && setIsOpen(!isOpen)}
-        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isOpen || isEditing ? 'bg-input border-primary/50 shadow-sm' : 'bg-card border-border hover:border-primary/30'}`}
+        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isOpen || isEditing ? 'bg-input border-primary/50 shadow-sm' : 'bg-card border-border hover:border-primary/30 shadow-sm'}`}
       >
         <div className="flex items-center gap-3">
-          <div className={`transition-transform duration-300 ${isOpen ? 'rotate-90 text-primary' : 'text-muted'}`}>
+          <div className={`transition-transform duration-300 ${isOpen ? 'rotate-90 text-primary' : 'text-main/40'}`}>
             <ChevronRight size={16} />
           </div>
           <div>
             <h4 className={`text-xs font-black uppercase tracking-wide ${isOpen ? 'text-primary' : 'text-main'}`}>
               {displayName}
             </h4>
-            <span className="text-[10px] text-muted font-bold tracking-widest">{session.date}</span>
+            <span className="text-[10px] text-main/50 font-bold tracking-widest">{session.date}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
-              <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1.5 bg-success text-black rounded hover:brightness-110"><Save size={14} /></button>
-              <button onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="p-1.5 bg-card border border-border text-muted rounded hover:text-white"><X size={14} /></button>
+              <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1.5 bg-success text-white rounded hover:brightness-110 shadow-sm"><Save size={14} /></button>
+              <button onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="p-1.5 bg-card border border-border text-main/60 rounded hover:text-main shadow-sm"><X size={14} /></button>
             </>
           ) : (
             <>
               <button 
                 onClick={(e) => { e.stopPropagation(); openReport(session); }} 
-                className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-black rounded transition-colors flex items-center gap-1"
+                className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-white rounded transition-colors flex items-center gap-1 shadow-sm"
                 title="Relatório"
               >
                 <FileText size={14} />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="p-1.5 text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Pencil size={14} /></button>
-              <button onClick={(e) => { e.stopPropagation(); deleteEntry(session.id, 'workout'); }} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="p-1.5 text-main/40 hover:text-primary hover:bg-primary/10 rounded transition-colors"><Pencil size={14} /></button>
+              <button onClick={(e) => { e.stopPropagation(); deleteEntry(session.id, 'workout'); }} className="p-1.5 text-main/40 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /></button>
             </>
           )}
         </div>
@@ -195,11 +195,12 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
       {(isOpen || isEditing) && (
         <div className="ml-1 pl-3 border-l border-primary/20 mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
           {isEditing ? (
-             <textarea value={editedSession.note || ''} onChange={(e) => setEditedSession({...editedSession, note: e.target.value})} className="w-full bg-card border border-warning/50 rounded-lg p-2 text-xs text-warning font-medium outline-none h-16" placeholder="Editar observações..." />
+             <textarea value={editedSession.note || ''} onChange={(e) => setEditedSession({...editedSession, note: e.target.value})} className="w-full bg-input border border-amber-500/50 rounded-lg p-2 text-xs text-amber-600 dark:text-amber-500 font-bold outline-none h-16 focus:ring-1 focus:ring-amber-500/30" placeholder="Editar observações..." />
           ) : (
-            session.note && <div className="text-[10px] text-warning p-2 bg-warning/5 rounded border border-warning/20">"{session.note}"</div>
+            // 🔥 Ajuste de contraste para a observação (Amarelo legível no branco)
+            session.note && <div className="text-[10px] text-amber-700 dark:text-amber-400 font-bold p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-900/50">"{session.note}"</div>
           )}
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
             {isEditing 
               ? editedSession.exercises.map((ex, i) => <ExerciseItemEdit key={i} index={i} exercise={ex} updateExercise={updateExercise} />)
               : consolidatedExercises.map((ex, i) => <ExerciseItemView key={i} exercise={ex} />)
@@ -215,9 +216,9 @@ const WeekAccordion = ({ weekTitle, sessions, deleteEntry, updateEntry, openRepo
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div className="ml-1 mb-2">
-      <div onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 p-2 cursor-pointer text-muted hover:text-secondary transition-colors group select-none">
+      <div onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 p-2 cursor-pointer text-main/60 hover:text-secondary transition-colors group select-none">
         {isOpen ? <FolderOpen size={16} className="text-secondary" /> : <Folder size={16} />}
-        <span className="text-[10px] font-black uppercase tracking-widest group-hover:tracking-[0.2em] transition-all">
+        <span className="text-[10px] font-black uppercase tracking-widest group-hover:tracking-[0.2em] transition-all text-main group-hover:text-secondary">
           {weekTitle} <span className="text-[9px] opacity-50 ml-1">({sessions.length})</span>
         </span>
       </div>
@@ -232,12 +233,12 @@ const MonthAccordion = ({ monthTitle, weeksData, deleteEntry, updateEntry, openR
 
   return (
     <div className="mb-4">
-      <div onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 bg-primary/10 border-l-2 border-primary p-3 rounded-r-lg cursor-pointer hover:bg-primary/20 transition-all select-none">
+      <div onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 bg-primary/10 border-l-2 border-primary p-3 rounded-r-lg cursor-pointer hover:bg-primary/20 transition-all select-none shadow-sm">
         <Calendar size={16} className="text-primary" />
         <h3 className="text-xs font-black text-primary uppercase tracking-widest flex-1">{monthTitle}</h3>
         <ChevronDown size={16} className={`text-primary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </div>
-      {isOpen && <div className="mt-2 pl-1 border-l border-primary/10 ml-1 space-y-1">{sortedWeekKeys.map(weekKey => <WeekAccordion key={weekKey} weekTitle={weekKey} sessions={weeksData[weekKey]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={openReport} />)}</div>}
+      {isOpen && <div className="mt-2 pl-1 border-l border-primary/20 ml-1 space-y-1">{sortedWeekKeys.map(weekKey => <WeekAccordion key={weekKey} weekTitle={weekKey} sessions={weeksData[weekKey]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={openReport} />)}</div>}
     </div>
   );
 };
@@ -249,7 +250,6 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
 
   const [reportData, setReportData] = useState(null);
 
-  // 🔥 ESTADOS DO NOVO FORMULÁRIO DE BIOMETRIA (COMPLETO) 🔥
   const [showBioForm, setShowBioForm] = useState(false);
   const [bioDate, setBioDate] = useState(new Date().toISOString().split('T')[0]);
   const [bioWeight, setBioWeight] = useState('');
@@ -261,10 +261,8 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
   const [bioLeg, setBioLeg] = useState('');
   const [isSavingBio, setIsSavingBio] = useState(false);
 
-  // Zera o formulário ao fechar
   const handleToggleForm = () => {
     if (showBioForm) {
-      // Se está fechando, limpa os campos para a data de hoje
       setBioDate(new Date().toISOString().split('T')[0]);
       setBioWeight(''); setBioBf(''); setBioWaist('');
       setBioChest(''); setBioArm(''); setBioShoulder(''); setBioLeg('');
@@ -272,9 +270,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     setShowBioForm(!showBioForm);
   };
 
-  // 🔥 FUNÇÃO PARA EDITAR UM LOG EXISTENTE 🔥
   const handleEditBio = (b) => {
-    // b.date vem no formato "DD/MM/YYYY". O input precisa de "YYYY-MM-DD".
     if (b.date) {
       const [day, month, year] = b.date.split('/');
       setBioDate(`${year}-${month}-${day}`);
@@ -288,13 +284,10 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     setBioArm(b.arm || '');
     setBioLeg(b.leg || '');
     
-    setShowBioForm(true); // Abre o formulário
-    
-    // Rola a tela suavemente para o formulário
+    setShowBioForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Função para salvar (Cria novo se não existir, Atualiza se existir)
   const handleSaveBiometrics = async () => {
     if (!bioWeight) {
       alert("Comandante, insira ao menos o Peso para registrar o Log.");
@@ -305,7 +298,6 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
-        // O upsert usa a data. Se a data já existe, ele edita o antigo. Se não, cria um novo.
         await supabase.from('body_stats').upsert({
           user_id: session.user.id,
           date: bioDate,
@@ -330,10 +322,10 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     <>
       <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
         <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
-          <h2 className="text-lg font-black flex items-center gap-2 text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+          <h2 className="text-lg font-black flex items-center gap-2 text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.3)]">
             <Database size={20} className="text-primary" /> Log de Operações
           </h2>
-          <span className="text-[8px] font-black text-muted tracking-[0.2em]">RECOVERY.SYS</span>
+          <span className="text-[8px] font-black text-main/40 tracking-[0.2em]">RECOVERY.SYS</span>
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col gap-3">
@@ -341,22 +333,20 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
               <Activity size={14} /> Histórico de Combate
             </h3>
-            <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
+            <span className="text-[10px] text-main/60 font-bold">{history.length} LOGS</span>
           </div>
 
           <div className="overflow-y-auto pr-1 pb-8 max-h-[35vh]">
             {history.length === 0 && (
-              <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
-                <p className="text-muted text-xs font-black uppercase tracking-widest ">Buffer Vazio.</p>
+              <div className="bg-input border border-dashed border-border/50 p-6 rounded-xl text-center shadow-inner">
+                <p className="text-main/50 text-xs font-black uppercase tracking-widest">Buffer Vazio.</p>
               </div>
             )}
             {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={setReportData} />)}
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* 🔥 SCANNER CORPORAL (CHARACTER SHEET BIOMÉTRICO) 🔥       */}
-        {/* ========================================================= */}
+        {/* 🔥 SCANNER CORPORAL (CHARACTER SHEET BIOMÉTRICO) 🔥 */}
         <div className="shrink-0 space-y-3 pt-4 border-t border-border">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-black text-secondary uppercase tracking-widest flex items-center gap-2">
@@ -364,7 +354,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             </h3>
             <button 
               onClick={handleToggleForm} 
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary shadow-[0_0_10px_rgba(var(--secondary),0.4)]' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest shadow-sm ${showBioForm ? 'bg-secondary text-white border-secondary shadow-[0_0_10px_rgba(var(--secondary),0.4)]' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
             >
               {showBioForm ? <X size={12}/> : <Plus size={12}/>} 
               {showBioForm ? 'Cancelar' : 'Escanear'}
@@ -374,7 +364,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           {/* FORMULÁRIO DE ENTRADA / EDIÇÃO */}
           {showBioForm && (
             <div className="bg-card border-2 border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200 shadow-lg">
-              <div className="flex items-center gap-2 bg-input/50 border border-border rounded-lg p-2 mb-4">
+              <div className="flex items-center gap-2 bg-input border border-border rounded-lg p-2 mb-4 shadow-inner">
                 <CalendarDays size={16} className="text-secondary" />
                 <input 
                   type="date" 
@@ -387,45 +377,45 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
               {/* Status Primários */}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG) *</label>
-                  <input type="number" inputMode="decimal" placeholder="Ex: 80.5" value={bioWeight} onChange={(e) => setBioWeight(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-success outline-none focus:border-success transition-colors" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Peso (KG) *</label>
+                  <input type="number" inputMode="decimal" placeholder="Ex: 80.5" value={bioWeight} onChange={(e) => setBioWeight(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-success outline-none focus:border-success focus:ring-1 focus:ring-success/30 transition-all shadow-inner" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">BF (%)</label>
-                  <input type="number" inputMode="decimal" placeholder="Ex: 15.0" value={bioBf} onChange={(e) => setBioBf(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-warning outline-none focus:border-warning transition-colors" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">BF (%)</label>
+                  <input type="number" inputMode="decimal" placeholder="Ex: 15.0" value={bioBf} onChange={(e) => setBioBf(e.target.value)} className="w-full bg-input border border-border rounded-lg p-3 text-center text-sm font-black text-warning outline-none focus:border-warning focus:ring-1 focus:ring-warning/30 transition-all shadow-inner" />
                 </div>
               </div>
 
               {/* Medidas Secundárias */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Cintura (CM)</label>
-                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioWaist} onChange={(e) => setBioWaist(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Cintura (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioWaist} onChange={(e) => setBioWaist(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary shadow-inner" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peito (CM)</label>
-                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioChest} onChange={(e) => setBioChest(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Peito (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioChest} onChange={(e) => setBioChest(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary shadow-inner" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Ombro (CM)</label>
-                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioShoulder} onChange={(e) => setBioShoulder(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Ombro (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioShoulder} onChange={(e) => setBioShoulder(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary shadow-inner" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Braço (CM)</label>
-                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioArm} onChange={(e) => setBioArm(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Braço (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioArm} onChange={(e) => setBioArm(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary shadow-inner" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Perna (CM)</label>
-                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioLeg} onChange={(e) => setBioLeg(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary" />
+                  <label className="text-[10px] font-bold text-main/60 uppercase tracking-widest mb-1 block">Perna (CM)</label>
+                  <input type="number" inputMode="decimal" placeholder="00.0" value={bioLeg} onChange={(e) => setBioLeg(e.target.value)} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-primary outline-none focus:border-primary shadow-inner" />
                 </div>
               </div>
 
               <button 
                 onClick={handleSaveBiometrics}
                 disabled={isSavingBio || !bioWeight}
-                className="w-full bg-secondary text-black font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+                className="w-full bg-secondary text-white font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 shadow-[0_0_15px_rgba(var(--secondary),0.3)]"
               >
-                {isSavingBio ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
+                {isSavingBio ? <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
                 Registrar Status
               </button>
             </div>
@@ -434,7 +424,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           {/* LISTA DE CARDS (CHARACTER SHEETS) */}
           <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
             {sortedBody.length === 0 && !showBioForm && (
-              <div className="text-[10px] text-muted p-2 w-full text-center border border-dashed border-border rounded-lg">
+              <div className="text-[10px] text-main/50 p-3 w-full text-center bg-input border border-dashed border-border rounded-lg shadow-inner">
                 Nenhum scan corporal registrado.
               </div>
             )}
@@ -444,41 +434,40 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                 <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
                   <span className="font-black text-secondary text-[10px] tracking-widest">{b.date}</span>
                   <div className="flex gap-3">
-                    {/* 🔥 BOTÃO DE EDITAR ADICIONADO AQUI 🔥 */}
-                    <button onClick={() => handleEditBio(b)} className="text-muted hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
-                    <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500 transition-colors" title="Apagar"><Trash2 size={14} /></button>
+                    <button onClick={() => handleEditBio(b)} className="text-main/40 hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
+                    <button onClick={() => deleteEntry(b.id, 'body')} className="text-main/40 hover:text-red-500 transition-colors" title="Apagar"><Trash2 size={14} /></button>
                   </div>
                 </div>
                 
-                {/* GRID DE STATUS COMPACTO */}
+                {/* GRID DE STATUS COMPACTO - Padrão Ouro Claro/Escuro */}
                 <div className="grid grid-cols-3 gap-1.5 flex-1">
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Peso</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Peso</span>
                      <span className="text-xs font-black text-success">{b.weight || '--'}</span>
                    </div>
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">BF</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">BF</span>
                      <span className="text-xs font-black text-warning">{b.bf ? `${b.bf}%` : '--'}</span>
                    </div>
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Cintura</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Cintura</span>
                      <span className="text-xs font-black text-primary">{b.waist || '--'}</span>
                    </div>
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Peito</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Peito</span>
                      <span className="text-xs font-black text-primary">{b.chest || '--'}</span>
                    </div>
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Ombro</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Ombro</span>
                      <span className="text-xs font-black text-primary">{b.shoulder || '--'}</span>
                    </div>
-                   <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Braço</span>
+                   <div className="flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Braço</span>
                      <span className="text-xs font-black text-primary">{b.arm || '--'}</span>
                    </div>
-                   <div className="col-span-3 flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50 mt-0.5">
-                     <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Perna</span>
-                     <span className="text-xs font-black text-primary">{b.leg || '--'} <span className="text-[8px] text-muted font-normal ml-0.5">CM</span></span>
+                   <div className="col-span-3 flex flex-col items-center justify-center p-1.5 bg-input rounded-lg border border-border mt-0.5 shadow-inner">
+                     <span className="text-[7px] text-main/50 uppercase font-bold tracking-widest">Perna</span>
+                     <span className="text-xs font-black text-primary">{b.leg || '--'} <span className="text-[8px] text-main/40 font-normal ml-0.5">CM</span></span>
                    </div>
                 </div>
 
@@ -487,7 +476,7 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           </div>
         </div>
         
-        <button onClick={() => setView('workout')} className="w-full py-4 bg-card hover:bg-input border border-border hover:border-primary rounded-xl font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0 mt-2 shadow-sm">
+        <button onClick={() => setView('workout')} className="w-full py-4 bg-card hover:bg-input border border-border hover:border-primary rounded-xl font-black text-xs uppercase tracking-[0.2em] text-main/60 hover:text-primary transition-all shrink-0 mt-2 shadow-sm">
           Retornar à Base
         </button>
       </main>
@@ -497,48 +486,50 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
       {/* ========================================== */}
       {reportData && createPortal(
         <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReportData(null)}></div>
+          <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setReportData(null)}></div>
           
           <div className="bg-card border-2 border-primary w-full max-w-sm rounded-3xl shadow-[0_0_40px_rgba(var(--primary),0.3)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
             
-            <div className="bg-primary text-black p-6 text-center relative">
-              <button onClick={() => setReportData(null)} className="absolute right-4 top-4 text-black/50 hover:text-black transition-colors">
+            <div className="bg-primary text-white p-6 text-center relative">
+              <button onClick={() => setReportData(null)} className="absolute right-4 top-4 text-white/70 hover:text-white transition-colors">
                 <X size={24} />
               </button>
-              <Zap size={40} className="mx-auto mb-2 opacity-80" />
-              <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">Relatório de<br/>Combate</h3>
-              <p className="font-bold text-xs mt-2 opacity-80 uppercase tracking-widest">{reportData.date}</p>
+              <Zap size={40} className="mx-auto mb-2 opacity-90 drop-shadow-md" />
+              <h3 className="text-2xl font-black uppercase tracking-tighter leading-none drop-shadow-md">Relatório de<br/>Combate</h3>
+              <p className="font-bold text-xs mt-2 opacity-90 uppercase tracking-widest">{reportData.date}</p>
             </div>
 
             <div className="p-6 space-y-6">
               <div className="text-center">
                 <p className="text-primary font-black text-xl uppercase tracking-widest">{reportData.dayName || 'Treino Extra'}</p>
-                <p className="text-muted text-xs uppercase tracking-widest mt-1">Status: Concluído</p>
+                <p className="text-main/60 text-xs uppercase tracking-widest mt-1">Status: Concluído</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-input border border-border p-4 rounded-2xl text-center">
-                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Exercícios</p>
-                  <p className="text-2xl font-black text-white">
+                <div className="bg-input border border-border p-4 rounded-2xl text-center shadow-inner">
+                  <p className="text-[10px] text-main/50 font-bold uppercase tracking-widest mb-1">Exercícios</p>
+                  {/* 🔥 CORRIGIDO text-white PARA text-main AQUI 🔥 */}
+                  <p className="text-2xl font-black text-main drop-shadow-sm">
                     {reportData.exercises?.filter(e => e.done).length || 0}
-                    <span className="text-sm text-muted">/{reportData.exercises?.length || 0}</span>
+                    <span className="text-sm text-main/40">/{reportData.exercises?.length || 0}</span>
                   </p>
                 </div>
-                <div className="bg-input border border-border p-4 rounded-2xl text-center">
-                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Carga Movida</p>
-                  <p className="text-2xl font-black text-primary">{calculateVolume(reportData.exercises || [])} <span className="text-sm">kg</span></p>
+                <div className="bg-input border border-border p-4 rounded-2xl text-center shadow-inner">
+                  <p className="text-[10px] text-main/50 font-bold uppercase tracking-widest mb-1">Carga Movida</p>
+                  <p className="text-2xl font-black text-primary drop-shadow-sm">{calculateVolume(reportData.exercises || [])} <span className="text-sm text-main/40">kg</span></p>
                 </div>
               </div>
 
               {reportData.note && (
-                <div className="bg-black/30 p-4 rounded-2xl border border-border text-center text-sm text-muted">
+                // 🔥 CORRIGIDO bg-black/30 e text-muted PARA bg-input e text-main/70 🔥
+                <div className="bg-input p-4 rounded-2xl border border-border text-center text-sm text-main/70 font-medium italic shadow-inner">
                   "{reportData.note.split('|')[0].trim()}"
                 </div>
               )}
 
               <button 
                 onClick={() => alert("Função de screenshot/compartilhamento em desenvolvimento!")}
-                className="w-full bg-primary/10 border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all"
+                className="w-full bg-primary/10 border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
               >
                 <Share2 size={20} /> Compartilhar Feito
               </button>

@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-
-  --font-sans: 'Orbitron', sans-serif;
+  --font-sans: 'Inter', sans-serif;
   --font-cyber: 'Orbitron', sans-serif;
 
   --color-page: var(--bg-page);
@@ -17,8 +16,7 @@
   --color-warning: rgb(var(--warning));
   --color-border: var(--border-color);
 
-  /* ================= ANIMAÇÕES ================= */
-
+  /* ================= ANIMAÇÕES DINÂMICAS ================= */
   @keyframes glitch {
     0% { transform: translate(0); }
     20% { transform: translate(-2px,2px); }
@@ -29,9 +27,9 @@
   }
 
   @keyframes glowPulse {
-    0% { filter: drop-shadow(0 0 6px rgba(0,255,255,.5)); }
-    50% { filter: drop-shadow(0 0 16px rgba(0,255,255,.9)); }
-    100% { filter: drop-shadow(0 0 6px rgba(0,255,255,.5)); }
+    0% { filter: drop-shadow(0 0 6px rgba(var(--primary), .5)); }
+    50% { filter: drop-shadow(0 0 16px rgba(var(--primary), .9)); }
+    100% { filter: drop-shadow(0 0 6px rgba(var(--primary), .5)); }
   }
 
   @keyframes neonBorder {
@@ -44,357 +42,238 @@
     0% { transform: translateY(-100%); }
     100% { transform: translateY(200%); }
   }
-
 }
 
 .animate-glitch {
   animation: glitch .3s cubic-bezier(.25,.46,.45,.94) infinite;
 }
 
-/* ================= BASE ================= */
-
+/* ================= BASE TIPOGRÁFICA ================= */
 @layer base {
-
-  html,body{
-    font-family:'Orbitron',sans-serif;
+  html, body {
+    font-family: 'Inter', sans-serif; /* Textos longos ficam limpos */
   }
 
-  input,button,textarea,select{
-    font-family:inherit;
+  h1, h2, h3, h4, h5, h6, input, button, select, .font-cyber {
+    font-family: 'Orbitron', sans-serif; /* Mantém a identidade tática onde importa */
   }
 
-  /* ================= DARK ================= */
+  /* ================= DARK THEME (Cyberpunk) ================= */
+  :root {
+    --bg-page: #020617;
+    --bg-card: rgba(15,23,42,.65);
+    --bg-input: rgba(2,6,23,.9);
 
-  :root{
+    --text-main: #ffffff;
+    --text-muted: #94a3b8;
 
-    --bg-page:#020617;
-    --bg-card:rgba(15,23,42,.65);
-    --bg-input:rgba(2,6,23,.9);
+    --primary: 0, 243, 255; /* Ciano Neon */
+    --secondary: 255, 0, 255; /* Magenta Neon */
+    --success: 16, 185, 129;
+    --warning: 245, 158, 11;
 
-    --text-main:#ffffff;
-    --text-muted:#94a3b8;
-
-    --primary:0,243,255;
-    --secondary:255,0,255;
-    --success:16,185,129;
-    --warning:245,158,11;
-
-    --border-color:#1e293b;
-
-    --grid-color:rgba(255,255,255,.06);
-
-    --texture-opacity:.15;
-
-    --card-shadow:0 20px 50px rgba(0,0,0,.45);
-
+    --border-color: #1e293b;
+    --grid-color: rgba(0, 243, 255, 0.04);
+    --texture-opacity: .15;
+    --card-shadow: 0 20px 50px rgba(0,0,0,.45);
   }
 
-  /* ================= LIGHT FUTURE UI ================= */
+  /* ================= LIGHT THEME (Laboratório Premium) ================= */
+  [data-theme='light'] {
+    --bg-page: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-input: #f1f5f9;
 
-  [data-theme='light']{
+    --text-main: #0f172a;
+    --text-muted: #64748b;
 
-    --bg-page:#f1f5f9;
+    /* Ciano fechado para Azul Petróleo (Garante leitura no fundo claro) */
+    --primary: 8, 145, 178; 
+    /* Slate elegante para secundária */
+    --secondary: 71, 85, 105; 
 
-    --bg-card:rgba(255,255,255,.85);
+    --success: 21, 128, 61;
+    --warning: 217, 119, 6;
 
-    --bg-input:#ffffff;
-
-    --text-main:#0f172a;
-    --text-muted:#475569;
-
-    --primary:0,243,255;
-    --secondary:236,72,153;
-
-    --success:16,185,129;
-    --warning:245,158,11;
-
-    --border-color:rgba(0,0,0,.08);
-
-    --grid-color:rgba(0,0,0,.05);
-
-    --texture-opacity:.04;
-
-    --card-shadow:
-      0 20px 40px rgba(0,0,0,.08),
-      0 6px 12px rgba(0,0,0,.04);
-
+    --border-color: rgba(15, 23, 42, 0.1);
+    --grid-color: transparent; /* Mata a grade no modo claro para focar nos dados */
+    --texture-opacity: 0;
+    
+    /* Sombras reais e elegantes, nada de brilho esfumaçado */
+    --card-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
   }
 
-  body{
-    background:var(--bg-page);
-    color:var(--text-main);
-    font-weight:600;
-    transition:.35s;
+  body {
+    background: var(--bg-page);
+    color: var(--text-main);
+    font-weight: 600;
+    transition: background 0.35s ease, color 0.35s ease;
   }
-
 }
 
-/* ================= BACKGROUND FUTURISTA ================= */
+/* ================= BACKGROUNDS ================= */
+/* Fundo Cyberpunk (SÓ NO DARK) */
+:root body {
+  background: 
+    radial-gradient(circle at 15% 25%, rgba(var(--primary), .12), transparent 40%),
+    radial-gradient(circle at 80% 75%, rgba(var(--secondary), .1), transparent 40%),
+    var(--bg-page);
+}
 
-[data-theme='light'] body{
-
-background:
-
-radial-gradient(circle at 15% 25%, rgba(0,243,255,.2), transparent 40%),
-
-radial-gradient(circle at 80% 75%, rgba(255,0,255,.15), transparent 40%),
-
-linear-gradient(180deg,#f8fafc,#e2e8f0);
-
+/* Fundo Clínico (SÓ NO LIGHT) - Remove gradientes coloridos */
+[data-theme='light'] body {
+  background: var(--bg-page);
 }
 
 /* ================= CYBER GRID ================= */
-
-.cyber-grid{
-
-background-image:
-
-linear-gradient(to right,var(--grid-color) 1px,transparent 1px),
-linear-gradient(to bottom,var(--grid-color) 1px,transparent 1px);
-
-background-size:40px 40px;
-
+.cyber-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 /* ================= CARD HUD ================= */
-
-.card-hud{
-
-position:relative;
-
-background:var(--bg-card);
-
-border-radius:14px;
-
-border:1px solid var(--border-color);
-
-box-shadow:var(--card-shadow);
-
-backdrop-filter:blur(12px);
-
-transition:.25s;
-
-overflow:hidden;
-
+.card-hud {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+  transition: .25s;
+  overflow: hidden;
 }
 
-.card-hud:hover{
-
-transform:translateY(-4px);
-
-box-shadow:
-
-0 20px 50px rgba(0,0,0,.15);
-
+.card-hud:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(0,0,0,.15);
 }
 
-/* borda neon */
-
-.card-hud::before{
-
-content:"";
-
-position:absolute;
-
-inset:0;
-
-padding:1px;
-
-border-radius:14px;
-
-background:linear-gradient(
-120deg,
-rgba(0,255,255,.7),
-rgba(255,0,255,.7),
-rgba(0,255,255,.7)
-);
-
-mask:
-linear-gradient(#000 0 0) content-box,
-linear-gradient(#000 0 0);
-
-mask-composite:exclude;
-
-animation:neonBorder 4s infinite;
-
-pointer-events:none;
-
+/* Borda neon e scanline (DESLIGADAS NO MODO CLARO PARA MANTER A ELEGÂNCIA) */
+[data-theme='light'] .card-hud::before,
+[data-theme='light'] .card-hud::after {
+  display: none;
 }
 
-/* scanline */
+.card-hud::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(var(--primary),.7), rgba(var(--secondary),.7), rgba(var(--primary),.7));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: neonBorder 4s infinite;
+  pointer-events: none;
+}
 
-.card-hud::after{
-
-content:"";
-
-position:absolute;
-
-left:0;
-right:0;
-
-height:50px;
-
-background:linear-gradient(
-transparent,
-rgba(0,255,255,.18),
-transparent
-);
-
-animation:scanline 6s linear infinite;
-
+.card-hud::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; height: 50px;
+  background: linear-gradient(transparent, rgba(var(--primary),.18), transparent);
+  animation: scanline 6s linear infinite;
 }
 
 /* ================= BOTÃO CYBER ================= */
-
-.btn-cyber{
-
-position:relative;
-
-background:linear-gradient(
-135deg,
-rgb(var(--primary)),
-rgb(var(--secondary))
-);
-
-border:none;
-
-color:white;
-
-padding:12px 22px;
-
-border-radius:10px;
-
-font-weight:700;
-
-letter-spacing:.5px;
-
-cursor:pointer;
-
-transition:.25s;
-
-box-shadow:
-
-0 10px 30px rgba(0,255,255,.35);
-
+.btn-cyber {
+  position: relative;
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--secondary)));
+  border: none;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: .25s;
+  box-shadow: 0 10px 30px rgba(var(--primary),.35);
 }
 
-.btn-cyber:hover{
-
-transform:translateY(-3px);
-
-box-shadow:
-
-0 16px 40px rgba(0,255,255,.55);
-
+.btn-cyber:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(var(--primary),.55);
 }
 
-/* energia pulsante */
-
-.btn-cyber::before{
-
-content:"";
-
-position:absolute;
-
-inset:-2px;
-
-border-radius:inherit;
-
-background:linear-gradient(
-135deg,
-rgba(0,255,255,.8),
-rgba(255,0,255,.8)
-);
-
-filter:blur(12px);
-
-opacity:.5;
-
-z-index:-1;
-
-animation:glowPulse 2s infinite;
-
+/* Reduz o glow excessivo no modo claro */
+[data-theme='light'] .btn-cyber::before {
+  opacity: 0.2;
 }
 
-/* ================= INPUTS ================= */
-
-input{
-
-background:var(--bg-input);
-
-border:1px solid var(--border-color);
-
-padding:10px;
-
-border-radius:8px;
-
-transition:.2s;
-
+.btn-cyber::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(var(--primary),.8), rgba(var(--secondary),.8));
+  filter: blur(12px);
+  opacity: .5;
+  z-index: -1;
+  animation: glowPulse 2s infinite;
 }
 
-input:focus{
-
-border-color:rgb(var(--primary));
-
-box-shadow:
-
-0 0 0 2px rgba(var(--primary),.25),
-0 0 12px rgba(var(--primary),.35);
-
-outline:none;
-
+/* ================= INPUTS GLOBAIS ================= */
+input {
+  background: var(--bg-input);
+  padding: 10px;
+  border-radius: 8px;
+  transition: .2s;
 }
 
-/* ================= SCROLLBAR ================= */
-
-::-webkit-scrollbar{
-width:8px;
+input:focus {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 2px rgba(var(--primary),.25), 0 0 12px rgba(var(--primary),.35);
+  outline: none;
 }
 
-::-webkit-scrollbar-thumb{
-
-background:linear-gradient(
-180deg,
-rgba(0,255,255,.6),
-rgba(255,0,255,.6)
-);
-
-border-radius:6px;
-
+/* Reduz sombra agressiva no focus do modo claro */
+[data-theme='light'] input:focus {
+  box-shadow: 0 0 0 2px rgba(var(--primary),.25);
 }
 
-*{
-scrollbar-width:thin;
-}
-
-/* Custom Scrollbar - Padrão Projeto Bomba */
-
-/* 1. Largura da barra */
+/* ================= SCROLLBAR TÁTICA (Limpa) ================= */
 ::-webkit-scrollbar {
   width: 6px; 
 }
 
-/* 2. O "trilho" por onde a barra corre (invisível/escuro) */
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* 3. A barra em si (o que você arrasta) */
 ::-webkit-scrollbar-thumb {
-  background: #00f2ff; /* Cor Ciano idêntica ao botão PUSH DAY */
+  background: rgb(var(--primary)); 
   border-radius: 20px;
-  /* Efeito de brilho neon tático */
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.6);
+  box-shadow: 0 0 10px rgba(var(--primary), 0.6);
 }
 
-/* 4. Cor ao passar o mouse (opcional, deixa mais brilhante) */
 ::-webkit-scrollbar-thumb:hover {
-  background: #00ffff;
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.9);
+  background: rgb(var(--primary));
+  box-shadow: 0 0 15px rgba(var(--primary), 0.9);
 }
 
-/* Suporte para Firefox */
+/* Modo claro: Scrollbar sem brilho neon (Sombra desativada) */
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  box-shadow: none;
+}
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  box-shadow: none;
+  background: rgba(var(--primary), 0.8);
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: #00f2ff transparent;
+  scrollbar-color: rgb(var(--primary)) transparent;
 }
+
+/* ================= BADGES TÁTICOS (Modo Duplo) ================= */
+.badge-pr { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; }
+.badge-last { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; }
+.badge-goal { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; }
+.badge-1rm { background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); color: #c084fc; }
+
+[data-theme='light'] .badge-pr { background: #fef3c7; border-color: #fcd34d; color: #b45309; }
+[data-theme='light'] .badge-last { background: #dbeafe; border-color: #bfdbfe; color: #1d4ed8; }
+[data-theme='light'] .badge-goal { background: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+[data-theme='light'] .badge-1rm { background: #f3e8ff; border-color: #e9d5ff; color: #7e22ce; }

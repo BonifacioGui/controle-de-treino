@@ -67,16 +67,21 @@ const WorkoutView = ({
 
         <BossSection currentWorkout={currentWorkout} todayVolume={todayStats.volume} history={history} selectedDate={selectedDate} activeDay={activeDay} />
 
-        {/* Navegação entre protocolos */}
+        {/* Navegação entre protocolos - Melhorada para modo claro/escuro */}
         <div className="flex items-center justify-between bg-card border border-border p-2 rounded-2xl shadow-sm">
-          <button onClick={handlePrevDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronLeft size={24} /></button>
+          <button onClick={handlePrevDay} className="p-3 text-primary hover:bg-primary/10 rounded-xl active:scale-90 transition-all">
+            <ChevronLeft size={24} />
+          </button>
           <div className="text-center">
-            <span className="text-[8px] font-black text-secondary tracking-widest uppercase block opacity-60">PROTOCOLO ATIVO</span>
+            {/* Trocado opacity-60 por text-main/60 para não afetar contraste brutalmente */}
+            <span className="text-[8px] font-black text-secondary/80 tracking-widest uppercase block">PROTOCOLO ATIVO</span>
             <h2 className="text-lg font-black text-main uppercase tracking-tighter">
               {currentWorkout?.title || 'DESCANSO'}
             </h2>
           </div>
-          <button onClick={handleNextDay} className="p-3 text-primary active:scale-90 transition-all"><ChevronRight size={24} /></button>
+          <button onClick={handleNextDay} className="p-3 text-primary hover:bg-primary/10 rounded-xl active:scale-90 transition-all">
+            <ChevronRight size={24} />
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -103,13 +108,26 @@ const WorkoutView = ({
         {/* 🔥 ESCONDE O BOTÃO DE FINALIZAR SE FOR TUTORIAL */}
         {!isTutorialDay ? (
           <div className="space-y-4 pt-4">
-            <textarea placeholder="Relatório de danos..." className="w-full bg-input border border-border rounded-xl p-4 text-main font-bold outline-none focus:border-primary/50" value={sessionNote} onChange={e => setSessionNote(e.target.value)} />
-            <button onClick={finishWorkout} className="w-full bg-gradient-to-r from-primary to-secondary py-4 rounded-xl font-black text-white shadow-xl uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95">
-              <Star size={18} fill="white" /> FINALIZAR MISSÃO
+            {/* Textarea Padrão Ouro: Placeholder ajustado e Focus Ring */}
+            <textarea 
+              placeholder="Relatório de danos..." 
+              className="w-full bg-input border border-border rounded-xl p-4 text-main font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-main/30 transition-all shadow-sm min-h-[100px]" 
+              value={sessionNote} 
+              onChange={e => setSessionNote(e.target.value)} 
+            />
+            
+            {/* Botão Finalizar Missão: Adicionado Neon Glow tático */}
+            <button 
+              onClick={finishWorkout} 
+              className="w-full bg-gradient-to-r from-primary to-secondary py-4 rounded-xl font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:shadow-[0_0_30px_rgba(var(--primary),0.6)]"
+            >
+              <Star size={18} fill="white" className="drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" /> 
+              FINALIZAR MISSÃO
             </button>
           </div>
         ) : (
-          <div className="mt-8 p-4 border-2 border-dashed border-primary/30 rounded-xl text-center animate-pulse">
+          /* Tutorial Box com borda reforçada para modo claro */
+          <div className="mt-8 p-4 border-2 border-dashed border-primary/50 bg-primary/5 rounded-xl text-center animate-pulse">
             <span className="text-xs font-black uppercase text-primary tracking-widest">
               Aguardando configuração do recruta...
             </span>

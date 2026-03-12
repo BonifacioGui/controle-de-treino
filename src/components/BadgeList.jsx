@@ -24,8 +24,9 @@ const BadgeList = ({ history }) => {
   return (
     <div className="mt-6 pl-1 animate-in slide-in-from-bottom-4 duration-700 delay-150">
       <div className="flex justify-between items-baseline px-2 mb-2">
-         <h3 className="text-[10px] font-black text-muted uppercase tracking-widest">
-            Hall da Fama
+         {/* text-muted trocado por text-main/60 para contraste firme */}
+         <h3 className="text-[10px] font-black text-main/60 uppercase tracking-widest">
+           Hall da Fama
          </h3>
          <span className="text-[9px] font-bold text-primary">
             {badges.filter(b => b.unlocked).length} / {badges.length}
@@ -42,21 +43,27 @@ const BadgeList = ({ history }) => {
               key={badge.id} 
               className={`relative min-w-[110px] w-[110px] flex flex-col items-center text-center p-3 rounded-2xl border-2 transition-all duration-500 group
                 ${badge.unlocked 
-                  ? 'bg-card border-secondary shadow-[0_0_20px_rgba(var(--secondary),0.15)] scale-100' 
-                  : 'bg-black/20 border-border opacity-40 grayscale scale-95'}`}
+                  ? 'bg-card border-secondary shadow-[0_0_15px_rgba(var(--secondary),0.2)] scale-100' 
+                  // 🔥 Modo bloqueado parecendo um slot vazio (shadow-inner e bg-input) 🔥
+                  : 'bg-input border-dashed border-border/60 opacity-60 grayscale scale-95 shadow-inner'}`}
             >
               {/* Ícone com Brilho */}
-              <div className={`mb-3 p-3 rounded-full transition-all duration-500 ${badge.unlocked ? 'bg-secondary text-white shadow-[0_0_15px_var(--secondary)]' : 'bg-input text-muted'}`}>
+              <div className={`mb-3 p-3 rounded-full transition-all duration-500 ${
+                badge.unlocked 
+                  ? 'bg-secondary text-white shadow-[0_0_15px_rgba(var(--secondary),0.5)]' 
+                  // Ícone bloqueado adaptado
+                  : 'bg-card border border-border text-main/40 shadow-sm'
+              }`}>
                 {badge.unlocked ? <IconComponent size={24} /> : <Lock size={24} />}
               </div>
 
-              {/* Título */}
-              <h4 className={`text-[11px] font-black uppercase leading-tight mb-1 ${badge.unlocked ? 'text-white' : 'text-muted'}`}>
+              {/* Título - text-main garante leitura nos dois temas */}
+              <h4 className={`text-[11px] font-black uppercase leading-tight mb-1 ${badge.unlocked ? 'text-main' : 'text-main/50'}`}>
                 {badge.title}
               </h4>
               
-              {/* Descrição */}
-              <p className="text-[9px] text-muted font-bold leading-tight px-1">
+              {/* Descrição - text-main/70 para não sumir */}
+              <p className={`text-[9px] font-bold leading-tight px-1 ${badge.unlocked ? 'text-main/70' : 'text-main/40'}`}>
                  {badge.desc}
               </p>
             </div>
