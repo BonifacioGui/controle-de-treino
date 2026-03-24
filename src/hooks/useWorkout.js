@@ -323,7 +323,6 @@ export const useWorkout = () => {
     fetchCloudData,
     
     deleteEntry: async (id, type) => {
-        if (!window.confirm("Apagar?")) return;
         await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
         fetchCloudData();
     },

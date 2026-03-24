@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
-import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap, Plus, CalendarDays } from 'lucide-react';
+import { Scale, Trash2, Activity, Database, ChevronRight, ChevronDown, Calendar, Folder, FolderOpen, Pencil, Save, X, FileText, Share2, Zap, Plus, CalendarDays, AlertTriangle } from 'lucide-react'; // 🔥 Importei o AlertTriangle
 import { supabase } from '../services/supabaseClient'; 
 
 // --- HELPERS ---
@@ -186,6 +186,8 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
                 <FileText size={14} />
               </button>
               <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="p-1.5 text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"><Pencil size={14} /></button>
+              
+              {/* O deleteEntry aqui agora vai chamar o nosso Modal customizado em vez de apagar direto */}
               <button onClick={(e) => { e.stopPropagation(); deleteEntry(session.id, 'workout'); }} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /></button>
             </>
           )}
@@ -249,7 +251,14 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
 
   const [reportData, setReportData] = useState(null);
 
-  // 🔥 ESTADOS DO NOVO FORMULÁRIO DE BIOMETRIA (COMPLETO) 🔥
+  // 🔥 NOVO: ESTADO DO MODAL DE EXCLUSÃO CYBERPUNK
+  const [itemToDelete, setItemToDelete] = useState(null);
+
+  // 🔥 Função que intercepta o clique da lixeira e abre nosso modal em vez do alert feio
+  const requestDelete = (id, type) => {
+    setItemToDelete({ id, type });
+  };
+
   const [showBioForm, setShowBioForm] = useState(false);
   const [bioDate, setBioDate] = useState(new Date().toISOString().split('T')[0]);
   const [bioWeight, setBioWeight] = useState('');
@@ -261,10 +270,8 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
   const [bioLeg, setBioLeg] = useState('');
   const [isSavingBio, setIsSavingBio] = useState(false);
 
-  // Zera o formulário ao fechar
   const handleToggleForm = () => {
     if (showBioForm) {
-      // Se está fechando, limpa os campos para a data de hoje
       setBioDate(new Date().toISOString().split('T')[0]);
       setBioWeight(''); setBioBf(''); setBioWaist('');
       setBioChest(''); setBioArm(''); setBioShoulder(''); setBioLeg('');
@@ -272,57 +279,34 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
     setShowBioForm(!showBioForm);
   };
 
-  // 🔥 FUNÇÃO PARA EDITAR UM LOG EXISTENTE 🔥
   const handleEditBio = (b) => {
-    // b.date vem no formato "DD/MM/YYYY". O input precisa de "YYYY-MM-DD".
     if (b.date) {
       const [day, month, year] = b.date.split('/');
       setBioDate(`${year}-${month}-${day}`);
     }
-    
-    setBioWeight(b.weight || '');
-    setBioBf(b.bf || '');
-    setBioWaist(b.waist || '');
-    setBioChest(b.chest || '');
-    setBioShoulder(b.shoulder || '');
-    setBioArm(b.arm || '');
-    setBioLeg(b.leg || '');
-    
-    setShowBioForm(true); // Abre o formulário
-    
-    // Rola a tela suavemente para o formulário
+    setBioWeight(b.weight || ''); setBioBf(b.bf || ''); setBioWaist(b.waist || '');
+    setBioChest(b.chest || ''); setBioShoulder(b.shoulder || ''); setBioArm(b.arm || ''); setBioLeg(b.leg || '');
+    setShowBioForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Função para salvar (Cria novo se não existir, Atualiza se existir)
   const handleSaveBiometrics = async () => {
     if (!bioWeight) {
       alert("Comandante, insira ao menos o Peso para registrar o Log.");
       return;
     }
-    
     setIsSavingBio(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
-        // O upsert usa a data. Se a data já existe, ele edita o antigo. Se não, cria um novo.
         await supabase.from('body_stats').upsert({
-          user_id: session.user.id,
-          date: bioDate,
-          weight: parseFloat(bioWeight) || null,
-          bf: parseFloat(bioBf) || null,
-          waist: parseFloat(bioWaist) || null,
-          chest: parseFloat(bioChest) || null,
-          arm: parseFloat(bioArm) || null,
-          shoulder: parseFloat(bioShoulder) || null,
-          leg: parseFloat(bioLeg) || null
+          user_id: session.user.id, date: bioDate, weight: parseFloat(bioWeight) || null,
+          bf: parseFloat(bioBf) || null, waist: parseFloat(bioWaist) || null, chest: parseFloat(bioChest) || null,
+          arm: parseFloat(bioArm) || null, shoulder: parseFloat(bioShoulder) || null, leg: parseFloat(bioLeg) || null
         }, { onConflict: 'user_id, date' });
-        
         window.location.reload(); 
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
     setIsSavingBio(false);
   };
 
@@ -350,13 +334,11 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                 <p className="text-muted text-xs font-black uppercase tracking-widest ">Buffer Vazio.</p>
               </div>
             )}
-            {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={deleteEntry} updateEntry={updateEntry} openReport={setReportData} />)}
+            {/* Repare que passamos o requestDelete aqui no lugar do deleteEntry original */}
+            {monthKeys.map(month => <MonthAccordion key={month} monthTitle={month} weeksData={groupedHistory[month]} deleteEntry={requestDelete} updateEntry={updateEntry} openReport={setReportData} />)}
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* 🔥 SCANNER CORPORAL (CHARACTER SHEET BIOMÉTRICO) 🔥       */}
-        {/* ========================================================= */}
         <div className="shrink-0 space-y-3 pt-4 border-t border-border">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-black text-secondary uppercase tracking-widest flex items-center gap-2">
@@ -371,20 +353,16 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             </button>
           </div>
 
-          {/* FORMULÁRIO DE ENTRADA / EDIÇÃO */}
           {showBioForm && (
             <div className="bg-card border-2 border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200 shadow-lg">
               <div className="flex items-center gap-2 bg-input/50 border border-border rounded-lg p-2 mb-4">
                 <CalendarDays size={16} className="text-secondary" />
                 <input 
-                  type="date" 
-                  value={bioDate}
-                  onChange={(e) => setBioDate(e.target.value)}
+                  type="date" value={bioDate} onChange={(e) => setBioDate(e.target.value)}
                   className="bg-transparent text-main text-xs font-bold w-full outline-none"
                 />
               </div>
 
-              {/* Status Primários */}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG) *</label>
@@ -396,7 +374,6 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                 </div>
               </div>
 
-              {/* Medidas Secundárias */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 block">Cintura (CM)</label>
@@ -431,7 +408,6 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             </div>
           )}
 
-          {/* LISTA DE CARDS (CHARACTER SHEETS) */}
           <div className="flex gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide">
             {sortedBody.length === 0 && !showBioForm && (
               <div className="text-[10px] text-muted p-2 w-full text-center border border-dashed border-border rounded-lg">
@@ -440,17 +416,15 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
             )}
             {sortedBody.map((b) => (
               <div key={b.id} className="min-w-[220px] max-w-[260px] bg-card border border-secondary/30 p-3 rounded-xl shadow-md relative group hover:border-secondary transition-all shrink-0 flex flex-col">
-                
                 <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
                   <span className="font-black text-secondary text-[10px] tracking-widest">{b.date}</span>
                   <div className="flex gap-3">
-                    {/* 🔥 BOTÃO DE EDITAR ADICIONADO AQUI 🔥 */}
                     <button onClick={() => handleEditBio(b)} className="text-muted hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
-                    <button onClick={() => deleteEntry(b.id, 'body')} className="text-muted hover:text-red-500 transition-colors" title="Apagar"><Trash2 size={14} /></button>
+                    {/* Alterado aqui também para o requestDelete */}
+                    <button onClick={() => requestDelete(b.id, 'body')} className="text-muted hover:text-red-500 transition-colors" title="Apagar"><Trash2 size={14} /></button>
                   </div>
                 </div>
                 
-                {/* GRID DE STATUS COMPACTO */}
                 <div className="grid grid-cols-3 gap-1.5 flex-1">
                    <div className="flex flex-col items-center justify-center p-1.5 bg-input/50 rounded-lg border border-border/50">
                      <span className="text-[7px] text-muted uppercase font-bold tracking-widest">Peso</span>
@@ -481,7 +455,6 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
                      <span className="text-xs font-black text-primary">{b.leg || '--'} <span className="text-[8px] text-muted font-normal ml-0.5">CM</span></span>
                    </div>
                 </div>
-
               </div>
             ))}
           </div>
@@ -491,6 +464,53 @@ const HistoryView = ({ history, bodyHistory, deleteEntry, updateEntry, setView }
           Retornar à Base
         </button>
       </main>
+
+      {/* ========================================== */}
+      {/* 🔥 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO (NOVO) 🔥 */}
+      {/* ========================================== */}
+      {itemToDelete && createPortal(
+        <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">
+          {/* Fundo escuro com blur */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setItemToDelete(null)}></div>
+          
+          <div className="bg-card border-2 border-red-500/50 w-full max-w-xs rounded-3xl shadow-[0_0_50px_rgba(239,68,68,0.2)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              
+              {/* Ícone de alerta pulsando sutilmente */}
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/30">
+                <AlertTriangle size={32} className="text-red-500" />
+              </div>
+              
+              <div>
+                <h3 className="text-xl font-black text-red-500 uppercase tracking-widest">Deletar Registro?</h3>
+                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-2 leading-relaxed">
+                  Esta ação é permanente e os dados serão obliterados do sistema SOLO.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-border/50">
+                <button 
+                  onClick={() => setItemToDelete(null)} 
+                  className="flex-1 py-3 rounded-xl border border-border text-muted font-black uppercase text-xs hover:bg-input hover:text-white transition-all active:scale-95"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => {
+                    // Chama a função real de apagar e depois fecha o modal
+                    deleteEntry(itemToDelete.id, itemToDelete.type);
+                    setItemToDelete(null);
+                  }} 
+                  className="flex-1 py-3 rounded-xl bg-red-600/20 border border-red-500 text-red-500 font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] active:scale-95"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ========================================== */}
       {/* 🔥 MODAL DE RELATÓRIO DO TREINO (PORTAL) 🔥 */}
