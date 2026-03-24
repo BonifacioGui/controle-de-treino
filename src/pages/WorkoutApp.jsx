@@ -12,12 +12,12 @@ import StatsView from '../components/StatsView';
 import CyberNav from '../components/CyberNav';
 import Importer from '../components/Importer';
 import AuthView from '../components/AuthView';
-import ProfileView from '../components/ProfileView'; // 🔥 1. Import do Novo Componente
-import RestTimer from '../components/RestTimer'; // 🔥 1. ADICIONE ESTA LINHA
+import ProfileView from '../components/ProfileView'; 
+import RestTimer from '../components/RestTimer'; 
 import { supabase } from '../services/supabaseClient';
 
 // Celebrações
-import Cr7Celebration from '../components/Cr7Celebration'; 
+import WorkoutComplete from '../components/WorkoutComplete'; 
 import LevelUpModal from '../components/LevelUpModal';
 import { getDailyQuests } from '../utils/rpgSystem';
 
@@ -31,7 +31,8 @@ const WorkoutApp = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
-  const [showCr7, setShowCr7] = useState(false);
+  // 🔥 ESTADOS ATUALIZADOS AQUI (Tchau CR7)
+  const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [pendingLevelUp, setPendingLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
@@ -55,14 +56,11 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-
   // 🔥 NOVO RADAR: Puxar os dados da nuvem assim que confirmar quem é o soldado
-  // 🔥 NOVO RADAR BLINDADO: Puxar os dados da nuvem UMA ÚNICA VEZ
   useEffect(() => {
     if (session?.user?.id) {
       actions.fetchCloudData();
     }
-    // Comando de autoridade para ignorar o linter e evitar o loop infinito:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
@@ -112,31 +110,33 @@ const WorkoutApp = () => {
   useEffect(() => {
     const currentLevel = stats?.level || 1;
     if (currentLevel > prevLevelRef.current) {
-      if (showCr7) {
+      if (showCelebration) {
         setPendingLevelUp(true);
       } else {
         setShowLevelUp(true);
       }
       prevLevelRef.current = currentLevel;
     }
-  }, [stats?.level, showCr7]);
+  }, [stats?.level, showCelebration]);
 
   useEffect(() => {
-    setIsAnyModalOpen(showCr7 || showLevelUp || isMenuOpen);
-  }, [showCr7, showLevelUp, isMenuOpen]);
+    setIsAnyModalOpen(showCelebration || showLevelUp || isMenuOpen);
+  }, [showCelebration, showLevelUp, isMenuOpen]);
 
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
   }, [actions, setters]);
 
+  // 🔥 ATUALIZADO
   const handleFinishWorkoutWrapper = () => {
-    setShowCr7(true);
+    setShowCelebration(true);
     actions.finishWorkout();
   };
 
+  // 🔥 ATUALIZADO
   const handleVideoComplete = () => {
-    setShowCr7(false);
+    setShowCelebration(false);
     if (pendingLevelUp) {
       setShowLevelUp(true);
       setPendingLevelUp(false);
@@ -158,7 +158,6 @@ const WorkoutApp = () => {
   }
 
   const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
-  // 🔥 2. Extrai os dados do usuário para passar para o ProfileView
   const userMetadata = session?.user?.user_metadata || null;
 
   // --- 5. RENDERIZAÇÃO DO JSX ---
@@ -167,44 +166,27 @@ const WorkoutApp = () => {
       
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
-            {/* CONTAINER DA LOGO + NOME + FRASE */}
-          {/* 1. Tirei o 'hidden' e ajustei as bordas para aparecerem só no PC (sm:border...) */}
           <div className="flex flex-col select-none sm:border-l-2 sm:border-slate-800 sm:pl-4 py-1.5">
-            
-            {/* LINHA 1: NOME SOLO + LOGO PULSANDO */}
             <div className="flex items-center gap-3 relative group">
-
-              {/* O NOME SOLO COM DEGRADÊ */}
-              {/* 2. Adicionei 'hidden sm:block' bem no começo do className */}
               <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase">
                 SOLO
               </h1>
-              
-              {/* O LOGO PEQUENO RESPIRANDO */}
               <div className="relative w-15 h-10 flex items-center justify-center">
-                
-                {/* Brilho de fundo opcional (pode manter) */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary blur-md opacity-20 transition-opacity duration-500"></div>
-                
-                {/* APLICAMOS A NOVA CLASSE AQUI */}
                 <img 
                   src={logoSolo} 
                   alt="SOLO Logo" 
                   className="logo-respirando object-contain relative z-10"
                 />
               </div>
-
             </div>
             
-            {/* LINHA 2: A FRASE (SEM ALTERAÇÕES, COMO VOCÊ GOSTOU) */}
-            {/* 3. Adicionei 'hidden sm:block' bem no começo do className */}
             <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-slate-400 uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-slate-700">
               Where <span className="text-slate-100 font-bold">Discipline</span> Becomes{' '}
               <span className="text-secondary drop-shadow-[0_0_8px_rgba(var(--secondary),0.6)] font-extrabold">
                 Dopamine
               </span>
             </p>
-
           </div>
 
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
@@ -252,15 +234,12 @@ const WorkoutApp = () => {
                   : 'bg-card text-muted border-border hover:border-primary/40 hover:bg-input/50'
                 }`}
             >
-              {/* Efeito de luz sutil no fundo do card ativo */}
               {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
               
-              {/* A Letra Gigante em Itálico */}
               <span className={`text-3xl font-black tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
                 {day}
               </span>
               
-              {/* Divisória Vertical e Dados (HUD) */}
               <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border/50 group-hover:border-primary/30'}`}>
                 <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">
                   {wData?.title || "TREINO"}
@@ -276,22 +255,19 @@ const WorkoutApp = () => {
     )}
 
       <div className="relative z-10 min-h-[50vh]">
-        {/* Dentro do WorkoutApp.jsx */}
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
-              {...state} // Passa activeDay, progress, selectedDate, etc.
-              actions={actions} // Passa todas as funções (updateSetData, onSwap, etc.)
-              // Sobrescrevendo setters manuais por segurança
+              {...state} 
+              actions={actions} 
               setActiveDay={setters.setActiveDay}
-              setSelectedDate={actions.handleDateChange} // Usa a versão do actions que limpa inputs
+              setSelectedDate={actions.handleDateChange} 
               setSessionNote={setters.setSessionNote}
               finishWorkout={handleFinishWorkoutWrapper}
-              // Passando funções do actions como props diretas para o WorkoutView encontrar
               updateSetData={actions.updateSetData}
               updateSessionSets={actions.updateSessionSets}
               toggleCheck={actions.toggleCheck}
-              setRestTimerConfig={setRestTimerConfig} // 🔥 3. ADICIONE ESTA LINHA
+              setRestTimerConfig={setRestTimerConfig} 
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -305,7 +281,6 @@ const WorkoutApp = () => {
           <ManageView 
             activeDay={state.activeDay} 
             workoutData={state.workoutData}
-            // 🔥 ADICIONE ESTAS 3 LINHAS NOVAS AQUI:
             setActiveDay={setters.setActiveDay}
             addDay={actions.manageData.addDay}
             removeDay={actions.manageData.removeDay} 
@@ -338,7 +313,6 @@ const WorkoutApp = () => {
             />
         )}
 
-        {/* ABA DE PERFIL (Apenas o componente unificado) */}
         {state.view === 'profile' && (
           <ProfileView 
             userMetadata={userMetadata} 
@@ -358,7 +332,16 @@ const WorkoutApp = () => {
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       
-      {showCr7 && <Cr7Celebration onClose={handleVideoComplete} />}
+      {/* 🔥 AQUI ENTRA O COMPONENTE NOVO COM AS VARIÁVEIS */}
+      {showCelebration && (
+        <WorkoutComplete 
+          onClose={handleVideoComplete} 
+          sessionDuration={`${stats.lastSessionStats?.duration || 0} min`}
+          sessionVolume={`${stats.lastSessionStats?.volume || 0} kg`}
+          sessionPoints={`+${stats.lastSessionStats?.xp || 0} XP`}
+          history={state.history} 
+        />
+      )}
       
       {showLevelUp && (
         <LevelUpModal 
@@ -371,7 +354,7 @@ const WorkoutApp = () => {
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
             setIsMenuOpen(false);
-            setConfirmLogout(false); // Reseta a confirmação se fechar o menu
+            setConfirmLogout(false); 
           }}></div>
           <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             
@@ -385,7 +368,6 @@ const WorkoutApp = () => {
               </button>
             </div>
 
-            {/* Identificação do Soldado */}
             {session?.user && (
               <div className="mb-8 p-4 bg-input/30 border border-border/50 rounded-xl flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-black text-lg">
@@ -401,7 +383,6 @@ const WorkoutApp = () => {
             <div className="space-y-4 mb-8">
               <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Interface Tática</span>
               
-              {/* Interruptor Inteligente de Tema */}
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} 
                 className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600 shadow-inner' : 'bg-black/50 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.15)]'}`}
@@ -413,7 +394,6 @@ const WorkoutApp = () => {
               </button>
             </div>
             
-            {/* 🔥 NOVO: Logout In-line Sem Alertas */}
             {!confirmLogout ? (
               <button 
                 onClick={() => setConfirmLogout(true)} 
@@ -434,14 +414,12 @@ const WorkoutApp = () => {
                   </button>
                   <button 
                     onClick={async () => {
-                      // 1. Limpa os dados do usuário atual do navegador
                       localStorage.removeItem('workout_plan');
                       localStorage.removeItem('daily_progress');
                       localStorage.removeItem('workout_history');
                       localStorage.removeItem('body_history');
                       localStorage.removeItem('workout_stopwatch');
                       
-                      // 2. Encerra a sessão no Supabase
                       await supabase.auth.signOut();
                     }} 
                     className="flex-1 py-3 rounded-lg bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-95"
@@ -454,7 +432,7 @@ const WorkoutApp = () => {
           </div>
         </div>
       )}
-      {/* 🔥 4. CRONÔMETROS GLOBAIS (SOBREVIVEM A QUALQUER TROCA DE TELA) 🔥 */}
+      
       <div className="relative z-[9999]">
         {state.timerState?.active && (
           <RestTimer 
