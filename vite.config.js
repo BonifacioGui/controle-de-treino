@@ -9,21 +9,21 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Projeto Bomba',
-        short_name: 'Bomba.App',
-        description: 'Controle de Treino Cyberpunk',
+        name: 'SOLO',
+        short_name: 'SOLO.App',
+        description: 'Controle de Treino',
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-192x192.png', // Você precisará adicionar essas imagens na pasta public depois
+            src: 'logo-solo192.png', // Você precisará adicionar essas imagens na pasta public depois
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'logo-solo512.png',
             sizes: '512x512',
             type: 'image/png'
           }

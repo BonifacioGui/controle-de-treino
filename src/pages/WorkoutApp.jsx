@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff, LogOut} from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import { initialWorkoutData } from '../data/workoutData'; 
+import logoSolo from '../assets/logo-solo.svg';
 
 // Componentes
 import WorkoutView from '../components/WorkoutView';
@@ -166,14 +167,44 @@ const WorkoutApp = () => {
       
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
-          <div className="flex items-center gap-2 z-10">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
-                  <Zap className="text-black fill-black" size={24} />
-              </div>
-              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter hidden sm:block uppercase">
-                  PROJETO<br/>
-                  <span className="text-primary animate-pulse drop-shadow-[0_0_10px_currentColor]">BOMBA</span>
+            {/* CONTAINER DA LOGO + NOME + FRASE */}
+          {/* 1. Tirei o 'hidden' e ajustei as bordas para aparecerem só no PC (sm:border...) */}
+          <div className="flex flex-col select-none sm:border-l-2 sm:border-slate-800 sm:pl-4 py-1.5">
+            
+            {/* LINHA 1: NOME SOLO + LOGO PULSANDO */}
+            <div className="flex items-center gap-3 relative group">
+
+              {/* O NOME SOLO COM DEGRADÊ */}
+              {/* 2. Adicionei 'hidden sm:block' bem no começo do className */}
+              <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase">
+                SOLO
               </h1>
+              
+              {/* O LOGO PEQUENO RESPIRANDO */}
+              <div className="relative w-15 h-10 flex items-center justify-center">
+                
+                {/* Brilho de fundo opcional (pode manter) */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary blur-md opacity-20 transition-opacity duration-500"></div>
+                
+                {/* APLICAMOS A NOVA CLASSE AQUI */}
+                <img 
+                  src={logoSolo} 
+                  alt="SOLO Logo" 
+                  className="logo-respirando object-contain relative z-10"
+                />
+              </div>
+
+            </div>
+            
+            {/* LINHA 2: A FRASE (SEM ALTERAÇÕES, COMO VOCÊ GOSTOU) */}
+            {/* 3. Adicionei 'hidden sm:block' bem no começo do className */}
+            <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-slate-400 uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-slate-700">
+              Where <span className="text-slate-100 font-bold">Discipline</span> Becomes{' '}
+              <span className="text-secondary drop-shadow-[0_0_8px_rgba(var(--secondary),0.6)] font-extrabold">
+                Dopamine
+              </span>
+            </p>
+
           </div>
 
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">

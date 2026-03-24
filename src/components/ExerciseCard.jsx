@@ -44,10 +44,10 @@ const ExerciseCard = ({
         ? 'border-l-amber-500 border-y-amber-500/20 border-r-amber-500/20 bg-amber-500/5'
         : isDone
           ? 'border-l-primary border-y-primary/20 border-r-primary/20 bg-primary/10 opacity-95'
-          : 'bg-card border-l-border border-y-border/50 border-r-border/50 hover:border-l-primary hover:shadow-[inset_4px_0_0_0_rgba(var(--primary),0.5)]'
+          : 'bg-card border-l-border border-y-border/50 border-r-border/50 hover:border-l-secondary hover:shadow-[inset_4px_0_0_0_rgba(var(),0.5)]'
     }`}>
       
-      {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-primary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none z-0">OK</div>)}
+      {isDone && (<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border--secondary/10 text-primary/10 font-black text-5xl uppercase pointer-events-none z-0">OK</div>)}
       
       <div className="flex justify-between items-start mb-5 relative z-10">
         <div className="flex-1">
@@ -65,7 +65,7 @@ const ExerciseCard = ({
             {ex.alternatives && ex.alternatives.length > 0 && !isDone && !isTutorial && (
               <button 
                 onClick={handleSwap}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-input border border-border text-[11px] font-black text-muted hover:text-primary hover:border-primary transition-all active:scale-90 shadow-inner"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-input border border-border text-[11px] font-black text-muted hover:text-secondary hover:border-secondary transition-all active:scale-90 shadow-inner"
                 title="Trocar por alternativa"
               >
                 <RefreshCcw size={11} />
@@ -86,13 +86,6 @@ const ExerciseCard = ({
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[9px] font-mono text-blue-400">
                 <Ghost size={10} />
                 <span>ÚLTIMA: {lastWeight}kg</span>
-              </div>
-            )}
-            
-            {lastWeight > 0 && !isDone && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[10px] font-bold font-mono text-green-600 dark:text-green-400 animate-pulse">
-                <Target size={11} />
-                <span>META: {getSmartSuggestion(displayName, lastWeight)}kg</span>
               </div>
             )}
 
@@ -120,8 +113,8 @@ const ExerciseCard = ({
             <input
               type="text"
               inputMode={isTimeBased ? "text" : "numeric"}
-              className="text-primary font-black outline-none w-20 text-center text-xl transition-colors placeholder:text-primary/30"
-              style={{ backgroundColor: 'transparent', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '2px solid rgba(0, 160, 220, 0.4)', borderRadius: 0, boxShadow: 'none' }}
+              className="text-primary font-black  outline-none w-11 text-center text-x transition-colors placeholder:text-primary/20"
+              style={{ backgroundColor: 'transparent', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '3px solid rgba(0,255,255,.6)', borderRadius: 0, boxShadow: 'none' }}
               value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")}
               onChange={(e) => updateSessionSets(id, e.target.value)}
             />
