@@ -1,11 +1,11 @@
 import React from 'react';
-import { Zap, History, BarChart2, ShieldAlert, User } from 'lucide-react'; // 🔥 Import do User adicionado
+import { History, BarChart2, ShieldAlert, User, Dumbbell, ChartNoAxesColumnIncreasing } from 'lucide-react'; // 🔥 Import do User adicionado
 
 const CyberNav = ({ currentView, setView }) => {
   const navItems = [
-    { id: 'workout', label: 'TREINO', icon: Zap, color: 'text-primary' },
-    { id: 'history', label: 'LOGS', icon: History, color: 'text-secondary' },
-    { id: 'stats', label: 'DATA', icon: BarChart2, color: 'text-success' },
+    { id: 'workout', label: 'TREINO', icon: Dumbbell, color: 'text-primary' },
+    { id: 'history', label: 'HISTÓRICO', icon: History, color: 'text-secondary' },
+    { id: 'stats', label: 'DADOS', icon: ChartNoAxesColumnIncreasing, color: 'text-success' },
     { id: 'profile', label: 'PERFIL', icon: User, color: 'text-blue-500' }, // 🔥 O NOVO BOTÃO DE PERFIL
     { id: 'manage', label: 'SISTEMA', icon: ShieldAlert, color: 'text-warning' }, 
   ];

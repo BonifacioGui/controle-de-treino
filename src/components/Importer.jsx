@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { Database, Loader2, Upload, Merge, Wand2, ShieldCheck } from 'lucide-react';
 
 const Importer = () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
-import { initialWorkoutData } from '../workoutData';
+import { supabase } from '../services/supabaseClient';
+import { initialWorkoutData } from '../data/workoutData';
+import { calculateStats } from '../utils/rpgSystem'; // 🔥 IMPORTAÇÃO DO RPG MANTIDA
 
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});
@@ -24,6 +25,11 @@ export const useWorkout = () => {
   const [showMeme, setShowMeme] = useState(false);
   const [view, setView] = useState('workout');
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
+
+  const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
+
+  // 🔥 Estado para guardar os dados da sessão que acabou de ser finalizada
+  const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
 
   const [workoutTimer, setWorkoutTimer] = useState(() => {
     try {
@@ -80,9 +86,33 @@ export const useWorkout = () => {
       const { data: trainData } = await supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name })));
 
-      const { data: planData } = await supabase.from('workout_plans').select('plan_data').eq('user_id', userId).single();
-      if (planData) setWorkoutData(planData.plan_data);
-    } catch (err) { console.error("Offline:", err); }
+      const { data: planList, error: planError } = await supabase
+        .from('workout_plans')
+        .select('plan_data')
+        .eq('user_id', userId)
+        .limit(1); 
+      
+      if (planError) {
+        console.error("🚨 Erro do Supabase ao buscar o treino:", planError.message);
+        return; 
+      }
+
+      const planData = planList && planList.length > 0 ? planList[0] : null;
+
+      if (planData && planData.plan_data) {
+        const parsedData = typeof planData.plan_data === 'string' 
+          ? JSON.parse(planData.plan_data) 
+          : planData.plan_data;
+        
+        setWorkoutData(parsedData);
+        setActiveDay(currentDay => parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A'));
+        localStorage.setItem('workout_plan', JSON.stringify(parsedData));
+      }
+    } catch (err) { 
+      console.error("Offline ou erro de rede:", err); 
+    } finally {
+      setIsCloudSyncReady(true);
+    }
   }, [userId]);
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
@@ -112,14 +142,28 @@ export const useWorkout = () => {
     audio.volume = 0.3; audio.play().catch(() => {});
   }, []);
 
-  // --- PERSISTENCE SYNC ---
+  // --- PERSISTENCE SYNC E CLOUD BACKUP ---
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
     localStorage.setItem('workout_history', JSON.stringify(history));
     localStorage.setItem('body_history', JSON.stringify(bodyHistory));
     localStorage.setItem('workout_stopwatch', JSON.stringify(workoutTimer)); 
-  }, [workoutData, progress, history, bodyHistory, workoutTimer]);
+    
+    const syncPlanToCloud = async () => {
+      if (!isCloudSyncReady) return;
+      if (userId && Object.keys(workoutData).length > 0) {
+        try {
+          const { error } = await supabase
+            .from('workout_plans')
+            .upsert({ user_id: userId, plan_data: workoutData }, { onConflict: 'user_id' });
+        } catch (err) {
+          console.error("Erro na sincronização:", err);
+        }
+      }
+    };
+    syncPlanToCloud();
+  }, [workoutData, progress, history, bodyHistory, workoutTimer, userId, isCloudSyncReady]);
 
   useEffect(() => {
     let interval = null;
@@ -159,44 +203,39 @@ export const useWorkout = () => {
     });
   }, [playSound]);
 
-  // --- CORE ACTIONS (Memoized) ---
+  // --- CORE ACTIONS ---
   const actions = useMemo(() => ({
     updateSetData,
     toggleWorkoutTimer,
     toggleCheck,
     
-    // Atualiza o input de "Ciclos" ou "Tempo" (Linha 104 do seu ExerciseCard)
     updateSessionSets: (id, value) => {
-      setProgress(p => ({
-        ...p,
-        [id]: { ...p[id], actualSets: value }
-      }));
+      setProgress(p => ({ ...p, [id]: { ...p[id], actualSets: value } }));
     },
 
-    // Alterna o status de uma série individual (Linha 111 do seu ExerciseCard)
     toggleSetComplete: (id, setIdx) => {
-      playSound('click');
+      const now = Date.now();
       setProgress(p => {
         const current = p[id] || { sets: [] };
+        const lastSetTime = p.lastSetTimestamp || 0;
+        const isCombo = now - lastSetTime < 60000; 
         const newSets = [...(current.sets || [])];
-        while (newSets.length <= setIdx) newSets.push({ weight: '', reps: '', completed: false });
-        
-        newSets[setIdx] = { ...newSets[setIdx], completed: !newSets[setIdx].completed };
-        
-        // Se marcou como feito, inicia o descanso
-        if (newSets[setIdx].completed) {
+        while (newSets.length <= setIdx) newSets.push({ completed: false });
+        const isNowCompleted = !newSets[setIdx].completed;
+
+        newSets[setIdx] = { ...newSets[setIdx], completed: isNowCompleted, finishedAt: now };
+
+        if (isNowCompleted) {
           setTimerState({ active: true, seconds: 90 });
+          if (isCombo) console.log("COMBO ATIVADO! +10 XP Bônus");
         }
-        return { ...p, [id]: { ...current, sets: newSets } };
+
+        return { ...p, [id]: { ...current, sets: newSets }, lastSetTimestamp: now };
       });
     },
 
-    // Troca o exercício por uma alternativa (Sua lógica de Swap)
     onSwap: (id, newName) => {
-      setProgress(p => ({
-        ...p,
-        [id]: { ...p[id], swappedName: newName }
-      }));
+      setProgress(p => ({ ...p, [id]: { ...p[id], swappedName: newName } }));
     },
 
     setWeight: (val) => setWeightInput(val),
@@ -216,21 +255,53 @@ export const useWorkout = () => {
       playSound('success');
       
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
+      
+      let totalVolume = 0;
+
+      const exercisesToSave = workoutData[safeDay].exercises.map((ex, i) => {
+        const id = `${selectedDate}-${safeDay}-${i}`;
+        const p = progress[id];
+        
+        // Calculando apenas o volume bruto para os status visuais
+        if (p && p.sets) {
+          p.sets.forEach(set => {
+            if (set.completed) {
+              const w = parseFloat(set.weight) || 0;
+              const r = parseInt(set.reps) || 0;
+              totalVolume += (w * r);
+            }
+          });
+        }
+
+        return { 
+          name: p?.swappedName || ex.name, 
+          sets: p?.sets || [], 
+          done: p?.done || false,
+          actualSets: p?.actualSets || ex.sets
+        };
+      });
+
+      // Calcula Duração em minutos
+      const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
+
+      // 🔥 AQUI ESTÁ A MÁGICA: A mesma matemática do seu perfil!
+      // Se ele levantou 4000kg, 4000 * 0.05 = 200 de XP.
+      const xpGained = Math.floor(totalVolume * 0.05);
+
+      // Salva os dados no estado para a tela de Celebração ler
+      setLastSessionStats({
+        duration: durationMins,
+        volume: totalVolume,
+        xp: xpGained // <-- Agora o XP real está sendo salvo!
+      });
+
+      // Monta o objeto oficial que vai para o banco
       const sessionBase = {
         user_id: userId,
         workout_date: selectedDate,
         workout_name: safeDay,
         note: sessionNote,
-        exercises: workoutData[safeDay].exercises.map((ex, i) => {
-          const id = `${selectedDate}-${safeDay}-${i}`;
-          const p = progress[id];
-          return { 
-            name: p?.swappedName || ex.name, 
-            sets: p?.sets || [], 
-            done: p?.done || false,
-            actualSets: p?.actualSets || ex.sets
-          };
-        })
+        exercises: exercisesToSave
       };
 
       if (userId) {
@@ -243,47 +314,60 @@ export const useWorkout = () => {
         setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
         setShowMeme(false); 
         setView('history'); 
-        fetchCloudData();
+        fetchCloudData(); // Vai forçar atualizar o histórico global
       }, 3500);
     },
 
-    resetWorkoutTimer: () => window.confirm("Zerar?") && setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
+    resetWorkoutTimer: () => setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
     fetchCloudData,
     
     deleteEntry: async (id, type) => {
-        if (!window.confirm("Apagar?")) return;
         await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
         fetchCloudData();
     },
 
     manageData: {
       add: (day) => { 
-        setWorkoutData(prev => ({
-          ...prev, 
-          [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] }
-        }));
+        setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] } }));
+      },
+      addFromCatalog: (day, selectedExercises) => {
+        setWorkoutData(prev => {
+          const newExercises = selectedExercises.map(exName => ({ name: exName, sets: "3x10", note: "" }));
+          return { ...prev, [day]: { ...prev[day], exercises: [...(prev[day]?.exercises || []), ...newExercises] } };
+        });
       },
       remove: (day, i) => { 
-        setWorkoutData(prev => ({
-          ...prev, 
-          [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) }
-        }));
+        setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) } }));
       },
       edit: (day, i, f, v) => { 
         setWorkoutData(prev => {
-          const n = JSON.parse(JSON.stringify(prev)); // Deep copy para evitar mutação
+          const n = JSON.parse(JSON.stringify(prev)); 
           n[day].exercises[i][f] = v;
           return n;
         });
-      }
+      },
+      addDay: (newDayName) => {
+        setWorkoutData(prev => {
+          if (prev[newDayName]) return prev; 
+          return { ...prev, [newDayName]: { title: `TREINO ${newDayName}`, focus: "GERAL", exercises: [] } };
+        });
+      },
+      removeDay: (dayName) => {
+        setWorkoutData(prev => {
+          const copy = { ...prev };
+          delete copy[dayName];
+          return copy;
+        });
+      },
     }
-  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound]);
+  // 🔥 ADICIONADO 'history' NO ARRAY DE DEPENDÊNCIAS ABAIXO PARA O CÁLCULO FUNCIONAR SEMPRE COM DADOS RECENTES
+  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound, workoutTimer]);
 
   return {
     state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },
     setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setShowMeme, setView, setWorkoutData },
     actions,
-    stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak }
+    stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak, lastSessionStats }
   };
 };

@@ -1,8 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700;800&family=Bangers&family=Cinzel+Decorative:wght@700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-cyber: var(--font-stack);
+
+  --font-sans: 'Orbitron', sans-serif;
+  --font-cyber: 'Orbitron', sans-serif;
+
   --color-page: var(--bg-page);
   --color-card: var(--bg-card);
   --color-input: var(--bg-input);
@@ -13,383 +16,384 @@
   --color-success: rgb(var(--success));
   --color-warning: rgb(var(--warning));
   --color-border: var(--border-color);
+
+  /* ================= ANIMAÇÕES ================= */
+
   @keyframes glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); }
-  80% { transform: translate(2px, -2px); }
-  100% { transform: translate(0); }
-}
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px,2px); }
+    40% { transform: translate(-2px,-2px); }
+    60% { transform: translate(2px,2px); }
+    80% { transform: translate(2px,-2px); }
+    100% { transform: translate(0); }
+  }
 
-  @keyframes glitch-color {
-    0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
-    50% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
-    100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+  @keyframes glowPulse {
+    0% { filter: drop-shadow(0 0 6px rgba(0,255,255,.5)); }
+    50% { filter: drop-shadow(0 0 16px rgba(0,255,255,.9)); }
+    100% { filter: drop-shadow(0 0 6px rgba(0,255,255,.5)); }
+  }
+
+  @keyframes neonBorder {
+    0% { opacity: .2; }
+    50% { opacity: .9; }
+    100% { opacity: .2; }
+  }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(200%); }
   }
 
 }
+
 .animate-glitch {
-    animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) infinite, 
-              glitch-color 0.3s linear infinite;
-  }
+  animation: glitch .3s cubic-bezier(.25,.46,.45,.94) infinite;
+}
+
+/* ================= BASE ================= */
+
 @layer base {
-  /* ================= TEMA 1: DRIVER (DARK NEON) ================= */
-  :root {
-    --font-stack: 'Orbitron', sans-serif;
-    --bg-page: #020617;
-    --bg-card: rgba(15, 23, 42, 0.6);
-    --bg-input: rgba(2, 6, 23, 0.9);
-    --text-main: #ffffff;
-    --text-muted: #94a3b8;
-    --primary: 0, 243, 255;   
-    --secondary: 255, 0, 255; 
-    --success: 16, 185, 129;
-    --warning: 245, 158, 11;
-    --border-color: #1e293b;
-    --grid-color: #0f172a; 
-    --neon-shadow-primary: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
-    --neon-shadow-secondary: 0 0 10px rgba(255, 0, 255, 0.4);
-    --texture-opacity: 0.15;
-    --border-width: 1px;
-    --input-placeholder-opacity: 0.5;
-  }
-  body {
-  background-color: var(--bg-page);
-  color: var(--text-main);
-  font-family: var(--font-cyber);
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
 
-  /* ================= TEMA 2: MATRIX ================= */
-  html[data-theme='matrix'] {
-    --font-stack: 'Orbitron', sans-serif;
-    --bg-page: #000000;
-    --bg-card: #050505;      
-    --bg-input: #0a0a0a;     
-    --text-main: #00ff41;    
-    --text-muted: #005c00;   
-    --primary: 0, 255, 65 !important;   
-    --secondary: 0, 255, 65 !important;
-    --success: 0, 255, 65;
-    --warning: 255, 255, 0;
-    --border-color: #004400;
-    --grid-color: #001a00;
-    --neon-shadow-primary: 0 0 5px rgba(0, 255, 65, 0.6) !important;
-    --neon-shadow-secondary: 0 0 5px rgba(0, 255, 65, 0.4) !important; 
-    --texture-opacity: 0.1;
-    --border-width: 1px;
-    --input-placeholder-opacity: 0.5;
+  html,body{
+    font-family:'Orbitron',sans-serif;
   }
 
-  /* ================= TEMA 3: LIGHT - "MIRROR'S EDGE STYLE" (CORRIGIDO) ================= */
-  [data-theme='light'] {
-    --font-stack: 'Orbitron', sans-serif; /* VOLTAMOS PARA ORBITRON (Tech) */
-    --bg-page: #f8fafc; /* Branco Gelo Tech */
-    --bg-card: rgba(255, 255, 255, 0.85); /* Branco Vidro */
-    --bg-input: #ffffff;
-    
-    /* Contraste Alto: Preto Tech */
-    --text-main: #020617; 
-    --text-muted: #475569; 
-    
-    /* Cores Cyberpunk no Claro (Ciano e Rosa saturados) */
-    --primary: 0, 160, 200; /* Ciano mais escuro para ler no branco */
-    --secondary: 236, 72, 153; /* Pink */
-    
-    --success: 16, 185, 129;
-    --warning: 245, 158, 11;
-    
-    --border-color: #cbd5e1; /* Cinza claro tech */
-    --grid-color: #e2e8f0; 
-    
-    /* Sombras nítidas em vez de neon borrado */
-    --neon-shadow-primary: none;
-    --neon-shadow-secondary: none;
-    
-    --texture-opacity: 0.03;
-    --border-width: 1px;
-    --input-placeholder-opacity: 0.4;
+  input,button,textarea,select{
+    font-family:inherit;
   }
 
-  /* ================= TEMA 4: SPIDER-MAN ================= */
-  html[data-theme='spiderman'] {
-    --font-stack: 'Rajdhani', sans-serif; 
-    --bg-page: #ef4444; 
-    --bg-card: #ffffff; 
-    --bg-input: #ffffff;
-    --text-main: #000000; 
-    --text-muted: #000000; 
-    --primary: 37, 99, 235;   
-    --secondary: 220, 38, 38; 
-    --success: 22, 163, 74;
-    --warning: 250, 204, 21; 
-    --border-color: #000000; 
-    --grid-color: rgba(0,0,0,0.1); 
-    --neon-shadow-primary: 3px 3px 0px #000000;
-    --neon-shadow-secondary: 3px 3px 0px #000000;
-    --texture-opacity: 1; 
-    --border-width: 3px;
-    --input-placeholder-opacity: 0.7;
+  /* ================= DARK ================= */
+
+  :root{
+
+    --bg-page:#020617;
+    --bg-card:rgba(15,23,42,.65);
+    --bg-input:rgba(2,6,23,.9);
+
+    --text-main:#ffffff;
+    --text-muted:#94a3b8;
+
+    --primary:0,243,255;
+    --secondary:255,0,255;
+    --success:16,185,129;
+    --warning:245,158,11;
+
+    --border-color:#1e293b;
+
+    --grid-color:rgba(255,255,255,.06);
+
+    --texture-opacity:.15;
+
+    --card-shadow:0 20px 50px rgba(0,0,0,.45);
+
   }
+
+  /* ================= LIGHT FUTURE UI ================= */
+
+  [data-theme='light']{
+
+    --bg-page:#f1f5f9;
+
+    --bg-card:rgba(255,255,255,.85);
+
+    --bg-input:#ffffff;
+
+    --text-main:#0f172a;
+    --text-muted:#475569;
+
+    --primary:0,243,255;
+    --secondary:236,72,153;
+
+    --success:16,185,129;
+    --warning:245,158,11;
+
+    --border-color:rgba(0,0,0,.08);
+
+    --grid-color:rgba(0,0,0,.05);
+
+    --texture-opacity:.04;
+
+    --card-shadow:
+      0 20px 40px rgba(0,0,0,.08),
+      0 6px 12px rgba(0,0,0,.04);
+
+  }
+
+  body{
+    background:var(--bg-page);
+    color:var(--text-main);
+    font-weight:600;
+    transition:.35s;
+  }
+
 }
 
-/* --- GLOBAIS --- */
+/* ================= BACKGROUND FUTURISTA ================= */
 
+[data-theme='light'] body{
 
-* { font-style: normal !important; }
-.border, .border-2 { border-width: var(--border-width) !important; }
+background:
 
-input::placeholder {
-  color: var(--text-muted) !important;
-  opacity: var(--input-placeholder-opacity) !important;
-  font-weight: bold;
-}
+radial-gradient(circle at 15% 25%, rgba(0,243,255,.2), transparent 40%),
 
-/* Neon Glow (Padrão) */
-.text-primary, .neon-text-cyan { 
-    color: rgb(var(--primary));
-    text-shadow: var(--neon-shadow-primary); 
-}
-.text-secondary, .neon-text-pink { 
-    color: rgb(var(--secondary));
-    text-shadow: var(--neon-shadow-secondary); 
+radial-gradient(circle at 80% 75%, rgba(255,0,255,.15), transparent 40%),
+
+linear-gradient(180deg,#f8fafc,#e2e8f0);
+
 }
 
-/* --- OVERRIDES: LIGHT THEME (CORREÇÃO VISUAL) --- */
-[data-theme='light'] .text-primary, [data-theme='light'] .text-secondary { 
-    text-shadow: none; 
-    font-weight: 800; 
+/* ================= CYBER GRID ================= */
+
+.cyber-grid{
+
+background-image:
+
+linear-gradient(to right,var(--grid-color) 1px,transparent 1px),
+linear-gradient(to bottom,var(--grid-color) 1px,transparent 1px);
+
+background-size:40px 40px;
+
 }
 
-[data-theme='light'] .bg-card, 
-[data-theme='light'] .bg-card\/60, 
-[data-theme='light'] .bg-card\/20 {
-    background-color: var(--bg-card) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid #cbd5e1 !important; /* Borda cinza técnica */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; /* Sombra suave Apple/Tech */
+/* ================= CARD HUD ================= */
+
+.card-hud{
+
+position:relative;
+
+background:var(--bg-card);
+
+border-radius:14px;
+
+border:1px solid var(--border-color);
+
+box-shadow:var(--card-shadow);
+
+backdrop-filter:blur(12px);
+
+transition:.25s;
+
+overflow:hidden;
+
 }
 
-[data-theme='light'] input {
-    background-color: #f1f5f9 !important; /* Cinza muito claro */
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
-}
-[data-theme='light'] input:focus {
-    background-color: #ffffff !important;
-    border-color: rgb(var(--primary)) !important;
-    box-shadow: 0 0 0 2px rgba(var(--primary), 0.2) !important;
+.card-hud:hover{
+
+transform:translateY(-4px);
+
+box-shadow:
+
+0 20px 50px rgba(0,0,0,.15);
+
 }
 
-/* 🔥 TÍTULO DO PROJETO NO LIGHT (FIX) 🔥 */
-[data-theme='light'] h1 {
-    font-family: 'Orbitron', sans-serif !important; /* Mesma fonte do Dark */
-    font-weight: 900;
-    text-transform: uppercase;
-    text-align: left; /* Mantém alinhado com o logo */
-    
-    /* Gradiente Tech Escuro (Metal Gun) */
-    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    
-    /* Sombra sutil para destacar do fundo branco */
-    filter: drop-shadow(0px 2px 0px rgba(0,0,0,0.1));
+/* borda neon */
+
+.card-hud::before{
+
+content:"";
+
+position:absolute;
+
+inset:0;
+
+padding:1px;
+
+border-radius:14px;
+
+background:linear-gradient(
+120deg,
+rgba(0,255,255,.7),
+rgba(255,0,255,.7),
+rgba(0,255,255,.7)
+);
+
+mask:
+linear-gradient(#000 0 0) content-box,
+linear-gradient(#000 0 0);
+
+mask-composite:exclude;
+
+animation:neonBorder 4s infinite;
+
+pointer-events:none;
+
 }
 
-/* Ajuste do subtítulo "BOMBA" no Light para ser da cor Primária (Ciano Escuro) */
-[data-theme='light'] h1 span.text-primary {
-    background: none;
-    -webkit-text-fill-color: rgb(var(--primary));
-    filter: drop-shadow(0px 1px 0px rgba(0,0,0,0.1));
+/* scanline */
+
+.card-hud::after{
+
+content:"";
+
+position:absolute;
+
+left:0;
+right:0;
+
+height:50px;
+
+background:linear-gradient(
+transparent,
+rgba(0,255,255,.18),
+transparent
+);
+
+animation:scanline 6s linear infinite;
+
 }
 
+/* ================= BOTÃO CYBER ================= */
 
-/* --- OVERRIDES: SPIDER-MAN --- */
-html[data-theme='spiderman'] body {
-  background-image: radial-gradient(#991b1b 20%, transparent 20%),
-                    radial-gradient(#991b1b 20%, transparent 20%);
-  background-color: #ef4444;
-  background-position: 0 0, 8px 8px;
-  background-size: 16px 16px;
-  font-family: 'Rajdhani', sans-serif !important;
-  font-weight: 700;
-  font-size: 18px; 
-  color: #000000 !important;
-}
+.btn-cyber{
 
-html[data-theme='spiderman'] h2,
-html[data-theme='spiderman'] h3,
-html[data-theme='spiderman'] .text-xl, 
-html[data-theme='spiderman'] .text-lg {
-    background-color: #facc15; 
-    color: #000000 !important;
-    font-family: 'Bangers', cursive !important;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    border: 3px solid black;
-    box-shadow: 4px 4px 0 black;
-    padding: 5px 15px;
-    display: inline-block; 
-    transform: rotate(-1deg);
-    margin-bottom: 15px;
-    border-radius: 4px;
-    text-shadow: none !important;
-}
+position:relative;
 
-html[data-theme='spiderman'] h1 {
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #facc15 !important;
-    -webkit-text-stroke: 1.5px black;
-    text-shadow: 4px 4px 0 #991b1b !important;
-    font-size: clamp(2.5rem, 13vw, 4rem) !important;
-    line-height: 1 !important;
-    width: 100%;
-    text-align: center;
+background:linear-gradient(
+135deg,
+rgb(var(--primary)),
+rgb(var(--secondary))
+);
+
+border:none;
+
+color:white;
+
+padding:12px 22px;
+
+border-radius:10px;
+
+font-weight:700;
+
+letter-spacing:.5px;
+
+cursor:pointer;
+
+transition:.25s;
+
+box-shadow:
+
+0 10px 30px rgba(0,255,255,.35);
+
 }
 
-html[data-theme='spiderman'] .bg-card, 
-html[data-theme='spiderman'] .bg-card\/60,
-html[data-theme='spiderman'] .bg-card\/20 {
-  background-color: #ffffff !important;
-  border: 3px solid #000000 !important;
-  box-shadow: 6px 6px 0px #2563eb !important; 
-  margin-bottom: 20px;
-  border-radius: 6px !important;
-  color: #000000 !important;
+.btn-cyber:hover{
+
+transform:translateY(-3px);
+
+box-shadow:
+
+0 16px 40px rgba(0,255,255,.55);
+
 }
 
-html[data-theme='spiderman'] button {
-  background-color: #2563eb !important; 
-  color: #ffffff !important;
-  border: 3px solid black !important;
-  box-shadow: 4px 4px 0 black !important;
-  font-family: 'Bangers', cursive;
-  font-size: 1.4rem !important;
-  border-radius: 8px !important;
-  text-shadow: 2px 2px 0 black !important;
+/* energia pulsante */
+
+.btn-cyber::before{
+
+content:"";
+
+position:absolute;
+
+inset:-2px;
+
+border-radius:inherit;
+
+background:linear-gradient(
+135deg,
+rgba(0,255,255,.8),
+rgba(255,0,255,.8)
+);
+
+filter:blur(12px);
+
+opacity:.5;
+
+z-index:-1;
+
+animation:glowPulse 2s infinite;
+
 }
 
-html[data-theme='spiderman'] input {
-  background: #ffffff !important;
-  border: 3px solid #000000 !important;
-  color: #000000 !important;
-  font-family: 'Bangers', cursive;
-  font-size: 1.8rem !important; 
-  height: 3.5rem !important;
-  box-shadow: 3px 3px 0px rgba(0,0,0,0.2) !important;
-  border-radius: 12px !important;
+/* ================= SCROLLBAR ================= */
+
+::-webkit-scrollbar{
+width:8px;
 }
 
-/* DATEPICKER FIXES */
-html[data-theme='spiderman'] .cyber-calendar {
-    font-family: 'Rajdhani', sans-serif !important;
-    border: 3px solid #000 !important;
-    color: black !important;
-    background-color: white !important;
-}
-html[data-theme='spiderman'] .react-datepicker__header {
-    background-color: #facc15 !important;
-    border-bottom: 3px solid black !important;
-    color: black !important;
-    text-shadow: none !important;
-}
-html[data-theme='spiderman'] .react-datepicker__current-month { color: black !important; text-shadow: none !important; }
-html[data-theme='spiderman'] .react-datepicker__day--selected {
-    background-color: #2563eb !important; border: 2px solid black !important; color: white !important;
+::-webkit-scrollbar-thumb{
+
+background:linear-gradient(
+180deg,
+rgba(0,255,255,.6),
+rgba(255,0,255,.6)
+);
+
+border-radius:6px;
+
 }
 
-/* --- GRIDS --- */
-.cyber-grid {
-  background-image: linear-gradient(to right, rgba(100,100,100,0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(100,100,100,0.1) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-[data-theme='matrix'] .cyber-grid {
-  background-image: linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
-}
-[data-theme='light'] .cyber-grid {
-  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
-  opacity: 1;
+*{
+scrollbar-width:thin;
 }
 
-.bg-carbon {
-  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
-  opacity: var(--texture-opacity);
-  pointer-events: none;
+/* Custom Scrollbar - Padrão Projeto Bomba */
+
+/* 1. Largura da barra */
+::-webkit-scrollbar {
+  width: 6px; 
 }
 
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
-input[type="date"]::-webkit-calendar-picker-indicator {
-  background: transparent; bottom: 0; color: transparent; cursor: pointer;
-  height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto;
+/* 2. O "trilho" por onde a barra corre (invisível/escuro) */
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Datepicker Geral */
-.cyber-calendar {
-  background-color: var(--bg-card) !important;
-  border: 2px solid rgb(var(--primary)) !important;
-  color: var(--text-main) !important;
-  font-family: var(--font-cyber) !important;
-  box-shadow: 0 0 15px rgba(var(--primary), 0.3);
-}
-
-[data-theme='light'] .cyber-calendar {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid #cbd5e1 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
-  color: #1e293b !important;
-}
-
-.react-datepicker__header {
-  background-color: var(--bg-input) !important;
-  border-bottom: 1px solid rgb(var(--primary)) !important;
-}
-[data-theme='light'] .react-datepicker__header {
-  background-color: #f1f5f9 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
-}
-
-.react-datepicker__day { color: var(--text-main) !important; }
-
-.react-datepicker__day--selected {
-  background-color: rgb(var(--primary)) !important;
-  color: #fff !important; 
-}
-
-.react-datepicker__day:hover {
-  background-color: rgba(var(--primary), 0.2) !important;
-}
-
-/* --- SCROLLBAR --- */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 4px; }
+/* 3. A barra em si (o que você arrasta) */
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--primary)); border-radius: 4px; border: 2px solid var(--bg-input); 
-}
-::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.8); }
-
-[data-theme='light'] ::-webkit-scrollbar-track { background: #e2e8f0; }
-[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: #94a3b8; border: 2px solid #f8fafc;
+  background: #00f2ff; /* Cor Ciano idêntica ao botão PUSH DAY */
+  border-radius: 20px;
+  /* Efeito de brilho neon tático */
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.6);
 }
 
-[data-theme='spiderman'] ::-webkit-scrollbar-thumb {
-    background: #2563eb; border: 2px solid #000; border-radius: 0;
-}
-[data-theme='spiderman'] ::-webkit-scrollbar-track {
-    background: #ffffff; border-left: 2px solid #000; border-radius: 0;
+/* 4. Cor ao passar o mouse (opcional, deixa mais brilhante) */
+::-webkit-scrollbar-thumb:hover {
+  background: #00ffff;
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.9);
 }
 
-* { scrollbar-width: thin; scrollbar-color: rgb(var(--primary)) var(--bg-input); }
-[data-theme='light'] * { scrollbar-color: #94a3b8 #e2e8f0; }
-[data-theme='spiderman'] * { scrollbar-color: #2563eb #ffffff; }
+/* Suporte para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #00f2ff transparent;
+}
+
+/* src/App.css */
+
+.logo-respirando {
+  width: 100%;
+  height: 100%;
+  /* O segredo: 4 segundos de duração, bem suave, infinito */
+  animation: respiro-cibernetico 4s ease-in-out infinite;
+}
+
+@keyframes respiro-cibernetico {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.5)) 
+            drop-shadow(0 0 6px rgba(255, 0, 255, 0.3));
+  }
+  50% {
+    /* Cresce de forma quase imperceptível (4%) e o neon acende com mais força */
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.9)) 
+            drop-shadow(0 0 15px rgba(0, 0, 0, 0.7));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.5)) 
+            drop-shadow(0 0 6px rgba(255, 0, 255, 0.3));
+  }
+}

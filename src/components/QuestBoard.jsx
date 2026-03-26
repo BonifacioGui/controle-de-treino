@@ -33,7 +33,7 @@ const QuestBoard = () => {
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <Scroll className="text-primary" size={20} />
-        <h3 className="font-black text-main uppercase italic tracking-wider text-sm">Contratos Diários</h3>
+        <h3 className="font-black text-main uppercase tracking-wider text-sm">Contratos Diários</h3>
       </div>
 
       <div className="space-y-3 relative z-10">

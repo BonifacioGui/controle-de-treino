@@ -1,28 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff } from 'lucide-react';
-import { useWorkout } from './hooks/useWorkout'; 
-import { initialWorkoutData } from './workoutData'; 
+import { Settings, BarChart3, Dumbbell, History, Menu, X, Share2, Zap, Flame, Sun, Moon, Terminal, Wifi, WifiOff, LogOut} from 'lucide-react';
+import { useWorkout } from '../hooks/useWorkout'; 
+import { initialWorkoutData } from '../data/workoutData'; 
+import logoSolo from '../assets/logo-solo.svg';
 
 // Componentes
-import WorkoutView from './components/WorkoutView';
-import HistoryView from './components/HistoryView';
-import ManageView from './components/ManageView';
-import StatsView from './components/StatsView';
-import CyberNav from './components/CyberNav';
-import MatrixRain from './components/MatrixRain'; 
-import Importer from './components/Importer';
-import UserLevel from './components/UserLevel';
-import BadgeList from './components/BadgeList'; 
-import CharacterSheet from './components/CharacterSheet';
-import QuestBoard from './components/QuestBoard';
-import AuthView from './components/AuthView';
-import ProfileView from './components/ProfileView'; // 🔥 1. Import do Novo Componente
-import { supabase } from './supabaseClient';
+import WorkoutView from '../components/WorkoutView';
+import HistoryView from '../components/HistoryView';
+import ManageView from '../components/ManageView';
+import StatsView from '../components/StatsView';
+import CyberNav from '../components/CyberNav';
+import Importer from '../components/Importer';
+import AuthView from '../components/AuthView';
+import ProfileView from '../components/ProfileView'; 
+import RestTimer from '../components/RestTimer'; 
+import { supabase } from '../services/supabaseClient';
 
 // Celebrações
-import Cr7Celebration from './components/Cr7Celebration'; 
-import LevelUpModal from './components/LevelUpModal';
-import { getDailyQuests } from './utils/rpgSystem';
+import WorkoutComplete from '../components/WorkoutComplete'; 
+import LevelUpModal from '../components/LevelUpModal';
+import { getDailyQuests } from '../utils/rpgSystem';
 
 const WorkoutApp = () => { 
   // --- 1. ESTADOS E HOOKS ---
@@ -34,12 +31,17 @@ const WorkoutApp = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
-  const [showCr7, setShowCr7] = useState(false);
+  // 🔥 ESTADOS ATUALIZADOS AQUI (Tchau CR7)
+  const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [pendingLevelUp, setPendingLevelUp] = useState(false);
+  const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
   
   const prevLevelRef = useRef(stats?.level || 1);
   const hasSavedData = !!localStorage.getItem('workout_plan');
+
+  // 🔥 ESTADO DO BOTÃO DE LOGOUT
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   // --- 2. MONITORAMENTO DE SESSÃO ---
   useEffect(() => {
@@ -54,7 +56,13 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  
+  // 🔥 NOVO RADAR: Puxar os dados da nuvem assim que confirmar quem é o soldado
+  useEffect(() => {
+    if (session?.user?.id) {
+      actions.fetchCloudData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
 
   // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
@@ -102,31 +110,33 @@ const WorkoutApp = () => {
   useEffect(() => {
     const currentLevel = stats?.level || 1;
     if (currentLevel > prevLevelRef.current) {
-      if (showCr7) {
+      if (showCelebration) {
         setPendingLevelUp(true);
       } else {
         setShowLevelUp(true);
       }
       prevLevelRef.current = currentLevel;
     }
-  }, [stats?.level, showCr7]);
+  }, [stats?.level, showCelebration]);
 
   useEffect(() => {
-    setIsAnyModalOpen(showCr7 || showLevelUp || isMenuOpen);
-  }, [showCr7, showLevelUp, isMenuOpen]);
+    setIsAnyModalOpen(showCelebration || showLevelUp || isMenuOpen);
+  }, [showCelebration, showLevelUp, isMenuOpen]);
 
   const handleImportSuccess = useCallback(() => {
     actions.fetchCloudData();
     setters.setView('workout');
   }, [actions, setters]);
 
+  // 🔥 ATUALIZADO
   const handleFinishWorkoutWrapper = () => {
-    setShowCr7(true);
+    setShowCelebration(true);
     actions.finishWorkout();
   };
 
+  // 🔥 ATUALIZADO
   const handleVideoComplete = () => {
-    setShowCr7(false);
+    setShowCelebration(false);
     if (pendingLevelUp) {
       setShowLevelUp(true);
       setPendingLevelUp(false);
@@ -148,25 +158,35 @@ const WorkoutApp = () => {
   }
 
   const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
-  // 🔥 2. Extrai os dados do usuário para passar para o ProfileView
   const userMetadata = session?.user?.user_metadata || null;
 
   // --- 5. RENDERIZAÇÃO DO JSX ---
   return (
     <div className="min-h-screen bg-page text-main p-4 font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
-      {theme === 'matrix' && <MatrixRain />}
-
       {!state.showMeme && (
         <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20 relative">
-          <div className="flex items-center gap-2 z-10">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary),0.5)]">
-                  <Zap className="text-black fill-black" size={24} />
-              </div>
-              <h1 className="leading-none select-none font-black text-left text-[12px] md:text-lg tracking-tighter hidden sm:block uppercase">
-                  PROJETO<br/>
-                  <span className="text-primary">BOMBA</span>
+          <div className="flex flex-col select-none sm:border-l-2 sm:border-slate-800 sm:pl-4 py-1.5">
+            <div className="flex items-center gap-3 relative group">
+              <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase">
+                SOLO
               </h1>
+              <div className="relative w-15 h-10 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary blur-md opacity-20 transition-opacity duration-500"></div>
+                <img 
+                  src={logoSolo} 
+                  alt="SOLO Logo" 
+                  className="logo-respirando object-contain relative z-10"
+                />
+              </div>
+            </div>
+            
+            <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-slate-400 uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-slate-700">
+              Where <span className="text-slate-100 font-bold">Discipline</span> Becomes{' '}
+              <span className="text-secondary drop-shadow-[0_0_8px_rgba(var(--secondary),0.6)] font-extrabold">
+                Dopamine
+              </span>
+            </p>
           </div>
 
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
@@ -214,15 +234,12 @@ const WorkoutApp = () => {
                   : 'bg-card text-muted border-border hover:border-primary/40 hover:bg-input/50'
                 }`}
             >
-              {/* Efeito de luz sutil no fundo do card ativo */}
               {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
               
-              {/* A Letra Gigante em Itálico */}
-              <span className={`text-3xl font-black italic tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
+              <span className={`text-3xl font-black tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
                 {day}
               </span>
               
-              {/* Divisória Vertical e Dados (HUD) */}
               <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border/50 group-hover:border-primary/30'}`}>
                 <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">
                   {wData?.title || "TREINO"}
@@ -238,21 +255,19 @@ const WorkoutApp = () => {
     )}
 
       <div className="relative z-10 min-h-[50vh]">
-        {/* Dentro do WorkoutApp.jsx */}
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView 
-              {...state} // Passa activeDay, progress, selectedDate, etc.
-              actions={actions} // Passa todas as funções (updateSetData, onSwap, etc.)
-              // Sobrescrevendo setters manuais por segurança
+              {...state} 
+              actions={actions} 
               setActiveDay={setters.setActiveDay}
-              setSelectedDate={actions.handleDateChange} // Usa a versão do actions que limpa inputs
+              setSelectedDate={actions.handleDateChange} 
               setSessionNote={setters.setSessionNote}
               finishWorkout={handleFinishWorkoutWrapper}
-              // Passando funções do actions como props diretas para o WorkoutView encontrar
               updateSetData={actions.updateSetData}
               updateSessionSets={actions.updateSessionSets}
               toggleCheck={actions.toggleCheck}
+              setRestTimerConfig={setRestTimerConfig} 
             />
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10">
@@ -265,7 +280,10 @@ const WorkoutApp = () => {
         {state.view === 'manage' && (
           <ManageView 
             activeDay={state.activeDay} 
-            workoutData={state.workoutData} 
+            workoutData={state.workoutData}
+            setActiveDay={setters.setActiveDay}
+            addDay={actions.manageData.addDay}
+            removeDay={actions.manageData.removeDay} 
             setWorkoutData={setters.setWorkoutData} 
             addExercise={actions.manageData.add} 
             removeExercise={actions.manageData.remove} 
@@ -295,7 +313,6 @@ const WorkoutApp = () => {
             />
         )}
 
-        {/* ABA DE PERFIL (Apenas o componente unificado) */}
         {state.view === 'profile' && (
           <ProfileView 
             userMetadata={userMetadata} 
@@ -303,6 +320,8 @@ const WorkoutApp = () => {
             stats={stats} 
             history={state.history}
             quests={dailyQuests}
+            bodyHistory={state.bodyHistory} 
+            deleteEntry={actions.deleteEntry}
           />
         )}
         
@@ -315,7 +334,16 @@ const WorkoutApp = () => {
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       
-      {showCr7 && <Cr7Celebration onClose={handleVideoComplete} />}
+      {/* 🔥 AQUI ENTRA O COMPONENTE NOVO COM AS VARIÁVEIS */}
+      {showCelebration && (
+        <WorkoutComplete 
+          onClose={handleVideoComplete} 
+          sessionDuration={`${stats.lastSessionStats?.duration || 0} min`}
+          sessionVolume={`${stats.lastSessionStats?.volume || 0} kg`}
+          sessionPoints={`+${stats.lastSessionStats?.xp || 0} XP`}
+          history={state.history} 
+        />
+      )}
       
       {showLevelUp && (
         <LevelUpModal 
@@ -324,42 +352,104 @@ const WorkoutApp = () => {
         />
       )}
       
-      {isMenuOpen && (
+     {isMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
+            setIsMenuOpen(false);
+            setConfirmLogout(false); 
+          }}></div>
           <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+            
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">CONFIG</h2>
-              <button onClick={() => setIsMenuOpen(false)} className="text-muted hover:text-red-500 transition-colors">
+              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">COMANDO</h2>
+              <button onClick={() => {
+                setIsMenuOpen(false);
+                setConfirmLogout(false);
+              }} className="text-muted hover:text-red-500 transition-colors">
                 <X size={32} />
               </button>
             </div>
 
+            {session?.user && (
+              <div className="mb-8 p-4 bg-input/30 border border-border/50 rounded-xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-black text-lg">
+                  {session.user.email ? session.user.email[0].toUpperCase() : 'S'}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest">Soldado Ativo</p>
+                  <p className="text-xs font-black text-main truncate">{session.user.email}</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 mb-8">
-              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Visual</span>
-              <button onClick={() => setTheme('driver')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'driver' ? 'border-primary text-primary' : 'border-border text-muted'}`}>
-                <span>Cyberpunk</span> <Moon size={16} />
-              </button>
-              <button onClick={() => setTheme('matrix')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'matrix' ? 'border-[#00ff41] text-[#00ff41]' : 'border-border text-muted'}`}>
-                <span>Matrix</span> <Terminal size={16} />
-              </button>
-              <button onClick={() => setTheme('light')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'light' ? 'border-blue-500 text-blue-500' : 'border-border text-muted'}`}>
-                <span>Light</span> <Sun size={16} />
-              </button>
-              <button onClick={() => setTheme('spiderman')} className={`w-full p-4 rounded-xl border-2 bg-input transition-all flex justify-between ${theme === 'spiderman' ? 'border-red-600 text-red-600' : 'border-border text-muted'}`}>
-                <span>Aranha</span> <Zap size={16} />
+              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Interface Tática</span>
+              
+              <button 
+                onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} 
+                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600 shadow-inner' : 'bg-black/50 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.15)]'}`}
+              >
+                <span className="font-black uppercase tracking-widest text-sm">
+                  {theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}
+                </span>
+                {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             </div>
             
-            <button 
-              onClick={() => supabase.auth.signOut()} 
-              className="mt-auto w-full py-4 rounded-xl border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
-            >
-              ENCERRAR SESSÃO
-            </button>
+            {!confirmLogout ? (
+              <button 
+                onClick={() => setConfirmLogout(true)} 
+                className="mt-auto w-full py-4 rounded-xl border border-red-500/30 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+              >
+                <LogOut size={18} />
+                ENCERRAR SESSÃO
+              </button>
+            ) : (
+              <div className="mt-auto space-y-3 animate-in fade-in zoom-in duration-200 bg-red-950/20 p-3 rounded-xl border border-red-500/30">
+                <p className="text-center text-xs font-black text-red-400 uppercase tracking-widest">Abandonar a base?</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setConfirmLogout(false)}
+                    className="flex-1 py-3 rounded-lg border border-border text-muted font-black uppercase text-xs hover:bg-card transition-all active:scale-95"
+                  >
+                    CANCELAR
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      localStorage.removeItem('workout_plan');
+                      localStorage.removeItem('daily_progress');
+                      localStorage.removeItem('workout_history');
+                      localStorage.removeItem('body_history');
+                      localStorage.removeItem('workout_stopwatch');
+                      
+                      await supabase.auth.signOut();
+                    }} 
+                    className="flex-1 py-3 rounded-lg bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-95"
+                  >
+                    CONFIRMAR
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
+      
+      <div className="relative z-[9999]">
+        {state.timerState?.active && (
+          <RestTimer 
+            initialSeconds={state.timerState.seconds} 
+            onClose={actions.closeTimer} 
+          />
+        )}
+        
+        {restTimerConfig.isOpen && (
+          <RestTimer 
+            initialSeconds={restTimerConfig.duration} 
+            onClose={() => setRestTimerConfig(p => ({ ...p, isOpen: false }))} 
+          />
+        )}
+      </div>
     </div>
   );
 };

@@ -55,7 +55,7 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
                    <span className={`text-[9px] font-black uppercase tracking-[0.2em] block ${bossStats.status === 'DEFEATED' ? 'text-green-500' : 'text-red-500'}`}>
                        {bossStats.status === 'DEFEATED' ? 'VITÓRIA' : 'ALVO ATUAL:'}
                    </span>
-                   <span className={`text-lg font-black text-main uppercase italic leading-none truncate max-w-[200px] block ${bossStats.status === 'DEFEATED' ? 'text-green-400' : ''}`}>
+                   <span className={`text-lg font-black text-main uppercase leading-none truncate max-w-[200px] block ${bossStats.status === 'DEFEATED' ? 'text-green-400' : ''}`}>
                       {bossName}
                   </span>
                </div>

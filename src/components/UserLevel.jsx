@@ -26,7 +26,7 @@ const UserLevel = ({ history }) => {
           <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-1">
             Status do Operador
           </span>
-          <h2 className="text-2xl font-black text-main italic uppercase leading-none drop-shadow-md">
+          <h2 className="text-2xl font-black text-main uppercase leading-none drop-shadow-md">
             {gameStats.title}
           </h2>
         </div>

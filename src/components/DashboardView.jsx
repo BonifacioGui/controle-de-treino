@@ -65,19 +65,19 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
         <div className="flex justify-between items-center mb-4">
           <div>
             <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] opacity-70">Operacional Disponível</span>
-            <h2 className="text-4xl font-black text-white italic leading-none text-glow">NÍVEL {currentLevel}</h2>
+            <h2 className="text-4xl font-black text-white leading-none text-glow">NÍVEL {currentLevel}</h2>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-bold text-muted uppercase">XP ACUMULADO</span>
-            <p className="text-xl font-black text-secondary italic">{currentXP.toLocaleString()}</p>
+            <p className="text-xl font-black text-secondary ">{currentXP.toLocaleString()}</p>
           </div>
         </div>
         <div className="h-2.5 bg-black/60 rounded-full border border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary via-secondary to-primary transition-all duration-1000" style={{ width: `${progressPercent}%` }} />
         </div>
         <div className="flex justify-between mt-2 px-1">
-           <span className="text-[7px] font-black text-primary/60 uppercase italic">RANK: {isNewRecruit ? 'RECRUTA' : 'ELITE'}</span>
-           <span className="text-[7px] font-black text-muted uppercase italic">META: {nextLevelXP.toLocaleString()}</span>
+           <span className="text-[7px] font-black text-primary/60 uppercase ">RANK: {isNewRecruit ? 'RECRUTA' : 'ELITE'}</span>
+           <span className="text-[7px] font-black text-muted uppercase ">META: {nextLevelXP.toLocaleString()}</span>
         </div>
       </div>
 
@@ -93,7 +93,7 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-secondary">
               <Scroll size={20} className="text-secondary" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Contratos de Elite</h3>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Contratos de Elite</h3>
             </div>
             <div className="grid gap-3">
               {quests.map((quest) => (
@@ -103,7 +103,7 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
                       <Award size={22} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-white uppercase italic leading-none">{quest.title}</h4>
+                      <h4 className="text-xs font-black text-white uppercase leading-none">{quest.title}</h4>
                       <p className="text-[10px] text-muted font-bold uppercase mt-1 leading-relaxed">
                         {quest.description || "Objetivo: Concluir atividade operacional do dia."}
                       </p>
@@ -119,7 +119,7 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-primary">
               <Star size={20} className="text-primary" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Hall da Fama</h3>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Hall da Fama</h3>
             </div>
             <div className="bg-card/30 p-4 rounded-2xl border border-border/50">
                <BadgeList history={history} />
@@ -130,7 +130,7 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-success">
               <HistoryIcon size={20} className="text-success" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Registros de Batalha</h3>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Registros de Batalha</h3>
             </div>
             <HistoryView 
                history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} 

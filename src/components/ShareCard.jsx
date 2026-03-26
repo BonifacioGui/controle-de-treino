@@ -15,7 +15,7 @@ const ShareCard = ({ stats, bossName, streak, theme, cardRef }) => {
 
       {/* Header */}
       <div className="relative z-10 border-b-8 border-primary pb-10">
-        <h1 className="text-[120px] font-black text-white italic leading-none">
+        <h1 className="text-[120px] font-black text-white leading-none">
           MISSÃO<br/><span className="text-primary">CUMPRIDA</span>
         </h1>
         <p className="text-4xl font-bold text-muted mt-4 tracking-[0.5em]">LOG_ID: {new Date().getTime()}</p>
@@ -29,7 +29,7 @@ const ShareCard = ({ stats, bossName, streak, theme, cardRef }) => {
           </div>
           <div>
             <p className="text-4xl font-black text-red-500 uppercase tracking-widest">Alvo Eliminado</p>
-            <h2 className="text-8xl font-black text-white italic">{bossName}</h2>
+            <h2 className="text-8xl font-black text-white ">{bossName}</h2>
           </div>
         </div>
 
@@ -61,7 +61,7 @@ const StatBox = ({ icon: Icon, label, value, color }) => (
       <Icon size={40} className={color} />
       <span className="text-3xl font-black text-muted uppercase tracking-widest">{label}</span>
     </div>
-    <p className={`text-7xl font-black italic ${color}`}>{value}</p>
+    <p className={`text-7xl font-black ${color}`}>{value}</p>
   </div>
 );
 
