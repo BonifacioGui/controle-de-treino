@@ -273,7 +273,11 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
     };
   }, [userMetadata, stats, latestBio]);
 
-  const displayClass = { hypertrophy: 'Tank (Massa)', weight_loss: 'Assassin (Seca)', endurance: 'Warrior (Resistência)' }[userMetadata?.goal] || 'Veterano';
+  const displayClass = { 
+  hypertrophy: 'Titã (Força Bruta)', 
+  weight_loss: 'Sombra (Definição)', 
+  endurance: 'Nômade (Resistência)' 
+  }[userMetadata?.goal] || 'Ciborgue';
 
   const donutData = useMemo(() => {
     if (latestBio?.weight && latestBio?.bf) {
