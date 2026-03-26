@@ -320,6 +320,8 @@ const WorkoutApp = () => {
             stats={stats} 
             history={state.history}
             quests={dailyQuests}
+            bodyHistory={state.bodyHistory} 
+            deleteEntry={actions.deleteEntry}
           />
         )}
         

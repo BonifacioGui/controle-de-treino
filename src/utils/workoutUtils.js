@@ -39,7 +39,7 @@ export const isSameExercise = (currentName, historyName) => {
   if (currentKey === historyKey) return true;
 
   const synonyms = {
-    "desenvolvimento": ["desenv", "arnold", "militar", "ompro"],
+    "desenvolvimento": ["desenv", "arnold", "militar", "ombro"],
     "supinoreto": ["supino", "plano", "barrapreto"],
     "supinoinclinado": ["inclinado"],
     "elevacaolateral": ["lateral"],

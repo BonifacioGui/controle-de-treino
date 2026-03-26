@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
-import { ChevronLeft, Activity, Target, Trophy, Search, X, Flame, Shield, User } from 'lucide-react';
-import { calculateStats } from '../utils/rpgSystem';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { ChevronLeft, Activity, Target, Trophy, Search, X, Flame, Shield, CalendarCheck, Filter } from 'lucide-react';
 import MuscleHeatmap from './MuscleHeatmap';
-// --- HELPER: Unificação de Nomes via Mapeamento ---
-// --- HELPER: O Pente Fino Universal de Nomes ---
-// --- HELPER: Unifica nomes (Lógica Blindada Universal) ---
+
 const getCanonicalName = (rawName) => {
   if (!rawName) return "";
   let clean = rawName.split('(')[0].trim();
-  // Remove acentos e caracteres especiais para facilitar a busca
   const lower = clean.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
 
-  // 🔥 UNIFICAÇÃO DE OMBROS (O seu bug do Desenvolvimento)
   if (lower.includes("desenv")) return "Desenvolvimento";
   if (lower.includes("lateral")) return "Elevação Lateral";
   if (lower.includes("frontal")) return "Elevação Frontal";
   if (lower.includes("facepull") || (lower.includes("face") && lower.includes("pull"))) return "Face Pull";
 
-  // 🔥 UNIFICAÇÃO DE PERNAS (O bug da Abdutora/Adutora)
   if (lower.includes("abdu")) return "Cadeira Abdutora";
   if (lower.includes("adut")) return "Cadeira Adutora";
   if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
@@ -28,7 +22,6 @@ const getCanonicalName = (rawName) => {
   if (lower.includes("flexora")) return "Mesa Flexora";
   if (lower.includes("panturrilha") || lower.includes("gemeos")) return "Panturrilha";
 
-  // 🔥 UNIFICAÇÃO DE BRAÇOS
   if (lower.includes("triceps")) {
       if (lower.includes("testa")) return "Tríceps Testa";
       if (lower.includes("frances")) return "Tríceps Francês";
@@ -40,14 +33,12 @@ const getCanonicalName = (rawName) => {
       return "Rosca Direta";
   }
 
-  // 🔥 UNIFICAÇÃO DE PEITO
   if (lower.includes("supino")) {
       if (lower.includes("inclinado")) return "Supino Inclinado";
       return "Supino Reto";
   }
   if (lower.includes("crossover") || (lower.includes("cross") && lower.includes("over"))) return "Crossover";
 
-  // 🔥 UNIFICAÇÃO DE COSTAS
   if (lower.includes("puxada")) return "Puxada Frontal";
   if (lower.includes("remada")) {
       if (lower.includes("baixa") || lower.includes("triangulo")) return "Remada Baixa";
@@ -55,7 +46,6 @@ const getCanonicalName = (rawName) => {
       return "Remada";
   }
 
-  // Mantém o nome original formatado se não cair em nenhuma regra
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
@@ -73,40 +63,53 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   const [selectedExercise, setSelectedExercise] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // 🔥 ESTADO DO FILTRO DA BIOMETRIA 🔥
+  const [bioChartFilter, setBioChartFilter] = useState('macro'); // 'macro', 'arms', 'legs', 'calves', 'trunk'
+
   const theme = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || 'driver' : 'driver';
 
   useEffect(() => { setIsModalOpen?.(isSelectorOpen); }, [isSelectorOpen, setIsModalOpen]);
 
   const colors = {
-    driver: { p: '#22d3ee', s: '#ec4899', g: '#1e293b', t: '#94a3b8' },
-    matrix: { p: '#00ff41', s: '#008f11', g: '#003b00', t: '#008f11' },
-    spiderman: { p: '#ef4444', s: '#facc15', g: '#000', t: '#000' }
-  }[theme] || { p: '#22d3ee', s: '#ec4899', g: '#1e293b', t: '#94a3b8' };
+    driver: { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' }, 
+    light:  { p: '#0284c7', s: '#db2777', t: '#475569', bg: '#ffffff', w: '#000000', g: '#16a34a' }  
+  }[theme] || { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' };
 
-  // --- DATA PROCESSING (MEMOIZED) ---
-  const { biometry, volume, heatmap, hallOfFame, exercises, radarData } = useMemo(() => {
+  const { biometry, volume, heatmap, hallOfFame, exercises, recentWorkoutsCount } = useMemo(() => {
     const h = Array.isArray(history) ? history : [];
     const b = Array.isArray(bodyHistory) ? bodyHistory : [];
     
-    // 1. Radar de Atributos (RPG Stats)
-    const rpgStats = calculateStats(h);
-    const radarData = Object.keys(rpgStats).map(key => ({
-        subject: rpgStats[key].label,
-        value: rpgStats[key].level,
-        fullMark: 100
-    }));
+    // 1. Biometria mapeada com os novos campos bilaterais
+    const biometry = b.map(e => ({ 
+      date: e.date.split('/').slice(0, 2).join('/'), 
+      peso: parseFloat(e.weight) || null,
+      bf: parseFloat(e.bf) || null,
+      lean_mass: parseFloat(e.lean_mass) || null,
+      cintura: parseFloat(e.waist) || null,
+      quadril: parseFloat(e.hip) || null,
+      peito: parseFloat(e.chest) || null,
+      ombro: parseFloat(e.shoulder) || null,
+      arm_l: parseFloat(e.arm_left) || null,
+      arm_r: parseFloat(e.arm_right) || null,
+      leg_l: parseFloat(e.leg_left) || null,
+      leg_r: parseFloat(e.leg_right) || null,
+      calf_l: parseFloat(e.calf_left) || null,
+      calf_r: parseFloat(e.calf_right) || null
+    })).reverse(); // Reverse para o gráfico ir do mais antigo para o mais novo (da esquerda pra direita)
 
-    // 2. Biometria
-    const biometry = b.map(e => ({ date: e.date.split('/').slice(0, 2).join('/'), peso: parseFloat(e.weight) || 0, cintura: parseFloat(e.waist) || 0 }));
-
-    // 3. Heatmap & Volume
+    // 2. Heatmap, Volume & Consistência
     const muscleCounts = { PEITO: 0, COSTAS: 0, PERNAS: 0, BRAÇOS: 0, OMBROS: 0, CORE: 0 };
     const limit = new Date(); limit.setDate(limit.getDate() - 30);
+    let recentCount = 0;
 
     const volume = h.map(s => {
       let vol = 0;
       const [d, m, y] = s.date.split('/');
       const isRecent = new Date(y, m - 1, d) >= limit;
+      
+      if (isRecent) recentCount++;
+
       s.exercises.forEach(ex => {
         ex.sets?.forEach(st => vol += (parseFloat(st.weight) || 0) * (parseFloat(st.reps) || 0));
         if (isRecent) {
@@ -115,9 +118,9 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         }
       });
       return { date: s.date.split('/').slice(0, 2).join('/'), volume: Math.round(vol), full: s.date };
-    }).filter(v => v.volume > 0);
+    }).filter(v => v.volume > 0).reverse(); // Gráfico no sentido cronológico correto
 
-    // 4. Hall of Fame
+    // 3. Hall of Fame
     const prs = {};
     h.forEach(s => s.exercises.forEach(ex => {
       const n = getCanonicalName(ex.name), max = Math.max(...(ex.sets?.map(st => parseFloat(st.weight) || 0) || [0]));
@@ -125,7 +128,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     }));
 
     return {
-      biometry, volume, radarData,
+      biometry, volume, recentWorkoutsCount: recentCount,
       heatmap: Object.entries(muscleCounts).map(([name, sets]) => ({ name, sets, intensity: Math.min(Math.round((sets / 25) * 100), 100) })),
       hallOfFame: Object.entries(prs).sort((a, b) => b[1] - a[1]).slice(0, 6),
       exercises: Array.from(new Set([...h.flatMap(s => s.exercises.map(e => getCanonicalName(e.name))), ...Object.values(workoutData || {}).flatMap(d => d.exercises?.map(e => getCanonicalName(e.name)) || [])])).sort()
@@ -143,6 +146,50 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       .sort((a, b) => new Date(a.full.split('/').reverse().join('-')) - new Date(b.full.split('/').reverse().join('-')));
   }, [history, selectedExercise]);
 
+  // Função auxiliar para renderizar o gráfico certo baseado no filtro
+  const renderBioChart = () => {
+    switch (bioChartFilter) {
+      case 'arms':
+        return (
+          <>
+            <Area type="monotone" dataKey="arm_l" name="Braço Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="arm_r" name="Braço Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+          </>
+        );
+      case 'legs':
+        return (
+          <>
+            <Area type="monotone" dataKey="leg_l" name="Perna Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="leg_r" name="Perna Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+          </>
+        );
+      case 'calves':
+        return (
+          <>
+            <Area type="monotone" dataKey="calf_l" name="Panturrilha Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="calf_r" name="Panturrilha Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+          </>
+        );
+      case 'trunk':
+        return (
+          <>
+            <Line type="monotone" dataKey="peito" name="Peito" stroke={colors.p} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="ombro" name="Ombro" stroke={colors.w} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="cintura" name="Cintura" stroke={colors.s} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="quadril" name="Quadril" stroke="#eab308" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+          </>
+        );
+      case 'macro':
+      default:
+        return (
+          <>
+            <Area type="monotone" dataKey="peso" name="Peso Bruto" stroke={colors.t} fill={colors.t} fillOpacity={0.1} connectNulls />
+            <Line type="monotone" dataKey="lean_mass" name="Massa Magra" stroke={colors.g} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+          </>
+        );
+    }
+  };
+
   return (
     <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
@@ -150,19 +197,19 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <h2 className="text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
-      {/* RADAR DE PERFIL (RPG) */}
-      <Section title="PERFIL DE COMBATE (ATRIBUTOS)" icon={User} h="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-            <PolarGrid stroke={colors.g} />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: colors.t, fontSize: 10, fontWeight: 'bold' }} />
-            <Radar name="Atributos" dataKey="value" stroke={colors.p} fill={colors.p} fillOpacity={0.6} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </Section>
+      <div className="bg-card border-2 border-primary/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_15px_rgba(var(--primary),0.1)]">
+        <div>
+          <h3 className="text-[10px] font-black text-muted uppercase tracking-widest flex items-center gap-1.5 mb-1">
+            <CalendarCheck size={14} className="text-primary" /> Consistência (30D)
+          </h3>
+          <p className="text-sm font-medium text-main">Operações concluídas no último mês</p>
+        </div>
+        <div className="text-3xl font-black text-primary">
+          {recentWorkoutsCount}
+        </div>
+      </div>
 
-      {/* MATRIX MUSCULAR */}
-      <Section title="SISTEMA MUSCULAR (30D)" icon={Shield} h="auto">
+      <Section title="DISTRIBUIÇÃO MUSCULAR (30D)" icon={Shield} h="auto">
         <div className="grid grid-cols-3 gap-2">
           {heatmap.map(m => {
             const isHot = m.intensity >= 80;
@@ -182,28 +229,62 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
           })}
         </div>
       </Section>
-       {/* Renderiza o mapa de calor usando o histórico */}
+      
       <MuscleHeatmap history={history} />
-      <Section title="BIOMETRIA" icon={Activity}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={biometry} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-            <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }} 
-              formatter={(value, name) => [`${value} ${name === 'peso' ? 'kg' : 'cm'}`, name.toUpperCase()]}
-            />
-            <Area type="monotone" dataKey="peso" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
-            <Area type="monotone" dataKey="cintura" stroke={colors.s} fill={colors.s} fillOpacity={0.1} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Section>
+      
+      {/* 🔥 GRÁFICO DE BIOMETRIA FILTRÁVEL 🔥 */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <Activity size={12} className="text-primary" /> PROGRESSÃO BIOMÉTRICA
+            </h3>
+            
+            {/* O Filtro Select */}
+            <div className="relative">
+              <select 
+                value={bioChartFilter} 
+                onChange={(e) => setBioChartFilter(e.target.value)}
+                className="appearance-none bg-input border border-primary/50 text-primary text-[9px] font-black uppercase tracking-widest py-1 pl-2 pr-6 rounded outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="macro">Peso vs M. Magra</option>
+                <option value="arms">Braços (Esq/Dir)</option>
+                <option value="legs">Pernas (Esq/Dir)</option>
+                <option value="calves">Panturrilhas (Esq/Dir)</option>
+                <option value="trunk">Tronco</option>
+              </select>
+              <Filter size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-primary pointer-events-none" />
+            </div>
+        </div>
+
+        <div className="bg-card border border-border p-3 rounded-2xl h-48 w-full min-w-0 backdrop-blur-md relative shadow-inner overflow-hidden">
+          {biometry && biometry.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={biometry} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
+                <YAxis domain={['auto', 'auto']} stroke={colors.t} fontSize={10} tickLine={false} width={30} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.p}`, fontSize: '10px', borderRadius: '8px' }} 
+                  itemStyle={{ fontWeight: 'bold' }}
+                  formatter={(value, name) => [`${value} kg/cm`, name]}
+                />
+                {renderBioChart()}
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50 text-center px-4">
+              Nenhum dado biométrico registrado no Dossiê ainda.
+            </div>
+          )}
+        </div>
+      </section>
 
       <Section title="TONELAGEM (VOLUME)" icon={Flame}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={volume} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
             <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
+            <YAxis stroke={colors.t} fontSize={10} tickLine={false} width={35} />
             <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.p}`, fontSize: '10px' }}
+              contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.p}`, fontSize: '10px' }}
               formatter={(value) => [`${value} kg`, 'Volume']}
             />
             <Area type="stepAfter" dataKey="volume" stroke={colors.p} fill={colors.p} fillOpacity={0.2} />
@@ -227,18 +308,15 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
           {selectedExercise || "SELECIONAR EXERCÍCIO"} <Search size={14} />
         </button>
         
-        {/* 🔥 GRÁFICO DE EVOLUÇÃO DE CARGAS CORRIGIDO (COM KG) 🔥 */}
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
           {selectedExercise && loadData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                 <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-                {/* Eixo Y agora mostra o "kg" */}
                 <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
-                {/* Tooltip agora formata o valor certinho ao clicar */}
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', border: `1px solid ${colors.s}`, fontSize: '10px' }}
+                  contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.s}`, fontSize: '10px' }}
                   itemStyle={{ color: colors.s, fontWeight: 'bold' }}
                   formatter={(value) => [`${value} kg`, 'Carga Máxima']}
                 />
