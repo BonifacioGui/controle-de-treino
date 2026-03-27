@@ -397,3 +397,27 @@ scrollbar-width:thin;
             drop-shadow(0 0 6px rgba(255, 0, 255, 0.3));
   }
 }
+
+@layer utilities {
+  /* Efeito 1 e 2: Respiração Lenta + Flutuação Suave (Eixo Y) */
+  @keyframes breatheAndFloat {
+    0%, 100% { 
+      transform: scale(1) translateY(0); 
+    }
+    50% { 
+      transform: scale(1.02) translateY(-4px); 
+    }
+  }
+
+  /* Efeito 3: Glow Piscando atrás do holograma */
+  @keyframes glow {
+    0%, 100% { 
+      opacity: 0.3; 
+      filter: blur(20px) saturate(100%); 
+    }
+    50% { 
+      opacity: 0.6; 
+      filter: blur(25px) saturate(150%); 
+    }
+  }
+}

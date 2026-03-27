@@ -65,6 +65,7 @@ const WorkoutApp = () => {
   }, [session?.user?.id]);
 
   // --- 3. LÓGICA ORIGINAL ---
+  // --- 3. LÓGICA ORIGINAL ---
   useEffect(() => {
     const checkAndGenerateQuests = () => {
       const today = new Date().toLocaleDateString('pt-BR');
@@ -72,15 +73,20 @@ const WorkoutApp = () => {
       const currentQuests = localStorage.getItem('daily_quests');
 
       if (today !== lastQuestDate || !currentQuests) {
-        console.log("🔄 Gerando novas missões diárias...");
-        const newQuests = getDailyQuests(); 
+        const currentLevel = stats?.level || 1;
+        console.log(`🔄 Gerando novas missões diárias para Nível ${currentLevel}...`);
+        
+        // 🔥 AQUI: Passando o nível real do usuário para o sorteio
+        const newQuests = getDailyQuests(currentLevel); 
+        
         localStorage.setItem('daily_quests', JSON.stringify(newQuests));
         localStorage.setItem('quest_date', today);
         window.dispatchEvent(new Event('storage'));
       }
     };
+    
     checkAndGenerateQuests();
-  }, []);
+  }, [stats?.level]); // 🔥 AQUI: O React agora espera o nível carregar para agir
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
