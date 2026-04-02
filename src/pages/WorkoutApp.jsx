@@ -31,17 +31,18 @@ const WorkoutApp = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
-  // 🔥 ESTADOS ATUALIZADOS AQUI (Tchau CR7)
+  // 🔥 ESTADOS DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [pendingLevelUp, setPendingLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
-  
-  const prevLevelRef = useRef(stats?.level || 1);
-  const hasSavedData = !!localStorage.getItem('workout_plan');
-
-  // 🔥 ESTADO DO BOTÃO DE LOGOUT
   const [confirmLogout, setConfirmLogout] = useState(false);
+  
+  // 🔥 LÓGICA BLINDADA DE LEVEL UP (Usando Refs)
+  const prevLevelRef = useRef(stats?.level || 1);
+  const pendingLevelUpRef = useRef(false); // Ref é imune a closures, sempre tem o valor instantâneo
+  const isInitialLoad = useRef(true); // Escudo contra Level Up falso no login
+  
+  const hasSavedData = !!localStorage.getItem('workout_plan');
 
   // --- 2. MONITORAMENTO DE SESSÃO ---
   useEffect(() => {
@@ -56,7 +57,6 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🔥 NOVO RADAR: Puxar os dados da nuvem assim que confirmar quem é o soldado
   useEffect(() => {
     if (session?.user?.id) {
       actions.fetchCloudData();
@@ -64,8 +64,7 @@ const WorkoutApp = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
-  // --- 3. LÓGICA ORIGINAL ---
-  // --- 3. LÓGICA ORIGINAL ---
+  // --- 3. LÓGICA ORIGINAL E RPG ---
   useEffect(() => {
     const checkAndGenerateQuests = () => {
       const today = new Date().toLocaleDateString('pt-BR');
@@ -76,7 +75,6 @@ const WorkoutApp = () => {
         const currentLevel = stats?.level || 1;
         console.log(`🔄 Gerando novas missões diárias para Nível ${currentLevel}...`);
         
-        // 🔥 AQUI: Passando o nível real do usuário para o sorteio
         const newQuests = getDailyQuests(currentLevel); 
         
         localStorage.setItem('daily_quests', JSON.stringify(newQuests));
@@ -86,7 +84,7 @@ const WorkoutApp = () => {
     };
     
     checkAndGenerateQuests();
-  }, [stats?.level]); // 🔥 AQUI: O React agora espera o nível carregar para agir
+  }, [stats?.level]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -113,12 +111,26 @@ const WorkoutApp = () => {
     }
   }, [state.view, state.workoutData, setters]);
 
+  // 🔥 O NOVO RADAR DE LEVEL UP PADRÃO OURO
   useEffect(() => {
     const currentLevel = stats?.level || 1;
+
+    // Se é o primeiro carregamento da nuvem, só atualiza a memória e não comemora
+    if (isInitialLoad.current) {
+      prevLevelRef.current = currentLevel;
+      // Dá 2 segundos de margem para os dados da nuvem caírem antes de armar o alarme
+      setTimeout(() => { isInitialLoad.current = false; }, 2000);
+      return;
+    }
+
     if (currentLevel > prevLevelRef.current) {
+      console.log(`🚀 LEVEL UP DETECTADO: ${prevLevelRef.current} -> ${currentLevel}`);
+      
       if (showCelebration) {
-        setPendingLevelUp(true);
+        // Se o vídeo de parabéns do treino estiver rodando, agenda o Level Up silenciosamente
+        pendingLevelUpRef.current = true;
       } else {
+        // Se não tem vídeo, joga o Level Up na tela na hora
         setShowLevelUp(true);
       }
       prevLevelRef.current = currentLevel;
@@ -134,18 +146,22 @@ const WorkoutApp = () => {
     setters.setView('workout');
   }, [actions, setters]);
 
-  // 🔥 ATUALIZADO
   const handleFinishWorkoutWrapper = () => {
     setShowCelebration(true);
-    actions.finishWorkout();
+    actions.finishWorkout(); // Isso vai recalcular os stats no background
   };
 
-  // 🔥 ATUALIZADO
+  // 🔥 SOLUÇÃO DA ARMADILHA DE CLOSURE
   const handleVideoComplete = () => {
     setShowCelebration(false);
-    if (pendingLevelUp) {
-      setShowLevelUp(true);
-      setPendingLevelUp(false);
+    
+    // Lemos direto da Ref. É impossível estar desatualizado.
+    if (pendingLevelUpRef.current) {
+      // Pequeno delay de 400ms para o modal de Level Up não atropelar o fade-out do vídeo
+      setTimeout(() => {
+        setShowLevelUp(true);
+      }, 400);
+      pendingLevelUpRef.current = false; // Desarma a armadilha
     }
   };
 
@@ -242,7 +258,7 @@ const WorkoutApp = () => {
             >
               {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
               
-              <span className={`text-3xl font-black tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main'}`}>
+              <span className={`text-3xl font-black tracking-tighter drop-shadow-sm ${isActive ? 'text-black' : 'text-main dark:text-white'}`}>
                 {day}
               </span>
               
@@ -340,7 +356,6 @@ const WorkoutApp = () => {
         <CyberNav currentView={state.view} setView={setters.setView} />
       )}
       
-      {/* 🔥 AQUI ENTRA O COMPONENTE NOVO COM AS VARIÁVEIS */}
       {showCelebration && (
         <WorkoutComplete 
           onClose={handleVideoComplete} 
@@ -383,7 +398,7 @@ const WorkoutApp = () => {
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-[10px] text-muted font-bold uppercase tracking-widest">Soldado Ativo</p>
-                  <p className="text-xs font-black text-main truncate">{session.user.email}</p>
+                  <p className="text-xs font-black text-main dark:text-white truncate">{session.user.email}</p>
                 </div>
               </div>
             )}

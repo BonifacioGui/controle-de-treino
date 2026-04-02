@@ -96,3 +96,27 @@ export const parseDateTimestamp = (dateString) => {
   const parsed = new Date(dateString).getTime();
   return isNaN(parsed) ? new Date().getTime() : parsed;
 };
+
+// Calcula o 1RM Ajustado pelo RPE (Reps in Reserve)
+export const calculateTrue1RM = (weight, reps, rpe) => {
+  const w = parseFloat(weight);
+  const r = parseInt(reps);
+  const effort = parseFloat(rpe);
+
+  if (!w || !r || w <= 0 || r <= 0) return null;
+
+  // Se não tem RPE preenchido, usa a fórmula padrão (Epley)
+  if (!effort || effort < 1 || effort > 10) {
+    return Math.round(w * (1 + r / 30));
+  }
+
+  // Se tem RPE, calculamos quantas repetições sobraram no tanque (RIR)
+  // RPE 10 = 0 sobrando. RPE 8 = 2 sobrando.
+  const rir = 10 - effort;
+  
+  // As repetições "teóricas" que você faria se fosse até a falha
+  const theoreticalReps = r + rir;
+
+  // Calcula o 1RM com o potencial máximo daquela série
+  return Math.round(w * (1 + theoreticalReps / 30));
+};

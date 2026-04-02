@@ -4,13 +4,14 @@ import { calculateStats } from '../utils/rpgSystem';
 import BadgeList from './BadgeList'; 
 import HistoryView from './HistoryView';
 
-// --- COMPONENTE DO ESTADO VAZIO INLINE (Pode separar em outro arquivo se preferir) ---
+// --- COMPONENTE DO ESTADO VAZIO INLINE ---
 const EmptyWorkoutState = ({ onStartWorkout }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 mt-4 bg-card/40 border-2 border-dashed border-primary/40 rounded-3xl text-center relative overflow-hidden">
+    // 🔥 AJUSTE: bg-card/40 já se adapta bem, mas as bordas precisavam de um leve refino para o claro
+    <div className="flex flex-col items-center justify-center p-8 mt-4 bg-card/80 border-2 border-dashed border-border dark:border-primary/40 rounded-3xl text-center relative overflow-hidden transition-colors duration-300">
       
-      {/* Efeito de grade sutil de fundo */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:15px_15px] pointer-events-none"></div>
+      {/* 🔥 AJUSTE PADRÃO OURO: Grade preta no claro (0.05) e branca no escuro (0.02) */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:15px_15px] pointer-events-none"></div>
 
       {/* Ícone Central */}
       <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/30 relative z-10">
@@ -18,8 +19,8 @@ const EmptyWorkoutState = ({ onStartWorkout }) => {
         <div className="absolute inset-0 rounded-full border border-primary animate-ping opacity-20"></div>
       </div>
 
-      {/* Texto Tático */}
-      <h2 className="text-xl font-black text-white tracking-widest uppercase mb-2 relative z-10">
+      {/* 🔥 AJUSTE: text-main no claro, text-white no escuro */}
+      <h2 className="text-xl font-black text-main dark:text-white tracking-widest uppercase mb-2 relative z-10">
         Arsenal Vazio
       </h2>
       <p className="text-muted text-xs mb-8 max-w-[250px] relative z-10 leading-relaxed font-bold uppercase">
@@ -29,7 +30,7 @@ const EmptyWorkoutState = ({ onStartWorkout }) => {
       {/* Botão de Chamada para Ação */}
       <button
         onClick={onStartWorkout}
-        className="flex items-center gap-2 bg-primary text-black font-black uppercase tracking-widest px-6 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)] active:scale-95 relative z-10"
+        className="flex items-center gap-2 bg-primary text-black font-black uppercase tracking-widest px-6 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-lg dark:shadow-[0_0_20px_rgba(var(--primary),0.4)] active:scale-95 relative z-10"
       >
         <PlusCircle size={20} />
         Iniciar Missão 01
@@ -42,7 +43,6 @@ const EmptyWorkoutState = ({ onStartWorkout }) => {
 // --- COMPONENTE PRINCIPAL ---
 const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updateEntry, setView }) => {
   
-  // 🔥 RECUPERANDO O NÍVEL CORRETO DO HISTÓRICO
   const rpgData = useMemo(() => {
     return calculateStats(history || []);
   }, [history]);
@@ -54,25 +54,27 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
   const prevLevelXP = Math.pow(currentLevel - 1, 2) * 3500;
   const progressPercent = Math.min(100, Math.max(0, ((currentXP - prevLevelXP) / (nextLevelXP - prevLevelXP)) * 100));
 
-  // VERIFICA SE O USUÁRIO É NOVO (Histórico Vazio)
   const isNewRecruit = !history || history.length === 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-cyber pb-24">
       
-      {/* STATUS IMPOENTE (Aparece sempre, mesmo para nível 1) */}
-      <div className="bg-card border-b-2 border-primary/30 p-6 relative overflow-hidden shadow-2xl">
+      {/* STATUS IMPONENTE */}
+      <div className="bg-card border-b-2 border-primary/30 p-6 relative overflow-hidden shadow-md dark:shadow-2xl transition-colors duration-300">
         <div className="flex justify-between items-center mb-4">
           <div>
             <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] opacity-70">Operacional Disponível</span>
-            <h2 className="text-4xl font-black text-white leading-none text-glow">NÍVEL {currentLevel}</h2>
+            {/* 🔥 AJUSTE: text-main dark:text-white */}
+            <h2 className="text-4xl font-black text-main dark:text-white leading-none text-glow">NÍVEL {currentLevel}</h2>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-bold text-muted uppercase">XP ACUMULADO</span>
             <p className="text-xl font-black text-secondary ">{currentXP.toLocaleString()}</p>
           </div>
         </div>
-        <div className="h-2.5 bg-black/60 rounded-full border border-white/5 relative overflow-hidden">
+        
+        {/* 🔥 AJUSTE: bg-input no claro para manter o design limpo, bg-black/60 no escuro */}
+        <div className="h-2.5 bg-input dark:bg-black/60 rounded-full border border-border dark:border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary via-secondary to-primary transition-all duration-1000" style={{ width: `${progressPercent}%` }} />
         </div>
         <div className="flex justify-between mt-2 px-1">
@@ -81,19 +83,18 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
         </div>
       </div>
 
-      {/* RENDERIZAÇÃO CONDICIONAL: SE FOR NOVO RECRUTA, MOSTRA O EMPTY STATE */}
       {isNewRecruit ? (
         <div className="px-2">
            <EmptyWorkoutState onStartWorkout={() => setView('add')} />
         </div>
       ) : (
-        /* SE NÃO FOR RECRUTA, MOSTRA O RESTO DO DASHBOARD NORMALMENTE */
         <>
           {/* MISSÕES COM DESCRIÇÃO */}
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-secondary">
               <Scroll size={20} className="text-secondary" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Contratos de Elite</h3>
+              {/* 🔥 AJUSTE: text-main dark:text-white */}
+              <h3 className="text-sm font-black text-main dark:text-white uppercase tracking-widest ">Contratos de Elite</h3>
             </div>
             <div className="grid gap-3">
               {quests.map((quest) => (
@@ -103,7 +104,8 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
                       <Award size={22} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-white uppercase leading-none">{quest.title}</h4>
+                      {/* 🔥 AJUSTE: text-main dark:text-white */}
+                      <h4 className="text-xs font-black text-main dark:text-white uppercase leading-none">{quest.title}</h4>
                       <p className="text-[10px] text-muted font-bold uppercase mt-1 leading-relaxed">
                         {quest.description || "Objetivo: Concluir atividade operacional do dia."}
                       </p>
@@ -119,9 +121,11 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-primary">
               <Star size={20} className="text-primary" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Hall da Fama</h3>
+              {/* 🔥 AJUSTE: text-main dark:text-white */}
+              <h3 className="text-sm font-black text-main dark:text-white uppercase tracking-widest ">Hall da Fama</h3>
             </div>
-            <div className="bg-card/30 p-4 rounded-2xl border border-border/50">
+            {/* 🔥 AJUSTE: bg-input/30 em vez de bg-card/30 evita que "suma" se o fundo da tela já for bg-card no claro */}
+            <div className="bg-input/30 dark:bg-card/30 p-4 rounded-2xl border border-border/50">
                <BadgeList history={history} />
             </div>
           </div>
@@ -130,7 +134,8 @@ const DashboardView = ({ history, quests, stats, bodyHistory, deleteEntry, updat
           <div className="px-1 space-y-4">
             <div className="flex items-center gap-2 px-2 border-l-4 border-success">
               <HistoryIcon size={20} className="text-success" />
-              <h3 className="text-sm font-black text-white uppercase tracking-widest ">Registros de Batalha</h3>
+              {/* 🔥 AJUSTE: text-main dark:text-white */}
+              <h3 className="text-sm font-black text-main dark:text-white uppercase tracking-widest ">Registros de Batalha</h3>
             </div>
             <HistoryView 
                history={history} bodyHistory={bodyHistory} deleteEntry={deleteEntry} 
