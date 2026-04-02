@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { calculateTotalXP, calculateLevel, getRankTitle, getNextLevelProgress } from '../utils/gameLogic';
 import { Trophy, Zap } from 'lucide-react';
 
@@ -13,6 +13,22 @@ const UserLevel = ({ history }) => {
     return { xp, level, title, progress };
   }, [history]);
 
+  // 🔥 ESTADO DE ANIMAÇÃO: Controla a largura da barra
+  const [barWidth, setBarWidth] = useState(0);
+
+  // 🔥 EFEITO GATILHO: Espera a tela renderizar e joga a barra para o valor real
+  useEffect(() => {
+    // Começa no zero
+    setBarWidth(0);
+    
+    // Pequeno atraso (150ms) para o navegador "respirar" e então aplicar a transição
+    const timer = setTimeout(() => {
+      setBarWidth(gameStats.progress.percentage);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [gameStats.progress.percentage]);
+
   return (
     <div className="bg-card border border-primary/50 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(var(--primary),0.15)] group">
       
@@ -24,7 +40,7 @@ const UserLevel = ({ history }) => {
       <div className="flex justify-between items-end mb-2 relative z-10">
         <div>
           <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-1">
-            Status do Operador
+            PROTOCOLO DE EVOLUÇÃO
           </span>
           <h2 className="text-2xl font-black text-main uppercase leading-none drop-shadow-md">
             {gameStats.title}
@@ -48,10 +64,14 @@ const UserLevel = ({ history }) => {
         </div>
         
         <div className="h-4 bg-black/50 rounded-full border border-border overflow-hidden relative">
-          {/* Efeito de preenchimento animado */}
+          {/* 🔥 Efeito de preenchimento animado ajustado para receber o barWidth */}
           <div 
-            className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-1000 ease-out flex items-center justify-end pr-1 shadow-[0_0_15px_rgba(var(--primary),0.5)]"
-            style={{ width: `${gameStats.progress.percentage}%` }}
+            className="h-full bg-gradient-to-r from-primary to-secondary transition-all flex items-center justify-end pr-1 shadow-[0_0_15px_rgba(var(--primary),0.5)]"
+            style={{ 
+              width: `${Math.min(100, barWidth)}%`,
+              transitionDuration: '1500ms', // 1.5 segundos de duração
+              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' // Freia suavemente no final
+            }}
           >
             {/* Brilho na ponta da barra */}
             <div className="h-full w-[2px] bg-white/50 shadow-[0_0_10px_white]"></div>

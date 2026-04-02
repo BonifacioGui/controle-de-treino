@@ -9,6 +9,7 @@ import UserLevel from './UserLevel';
 import QuestBoard from './QuestBoard';
 import BadgeList from './BadgeList';
 import CyberCalendar from './CyberCalendar'; 
+import CharacterSheet from './CharacterSheet'; // 🔥 Adicione aqui
 
 const formatNumberInput = (value) => {
   return value.replace(/[^0-9.]/g, '');
@@ -654,6 +655,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
         </div>
       </div>
 
+      {/* MAPEAMENTO TÁTICO (Gráfico Radar) */}
       <div className="bg-card border-2 border-border rounded-3xl p-5 shadow-lg space-y-4">
         <div className="text-center mb-2">
           <h3 className="text-sm font-black text-primary uppercase tracking-widest">Mapeamento Tático</h3>
@@ -670,24 +672,14 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
             </RadarChart>
           </ResponsiveContainer>
         </div>
-
-        <div className="grid grid-cols-4 gap-2 pt-2 border-t border-border/50">
-          {[
-            { label: 'STR', val: rpgData?.STR?.level || 1, color: 'text-red-500' },
-            { label: 'DEX', val: rpgData?.DEX?.level || 1, color: 'text-blue-500' },
-            { label: 'VIT', val: rpgData?.VIT?.level || 1, color: 'text-green-500' },
-            { label: 'CHA', val: rpgData?.CHA?.level || 1, color: 'text-purple-500' },
-          ].map((attr) => (
-            <div key={attr.label} className="text-center bg-input/50 rounded-xl py-2">
-              <span className={`text-[9px] font-black uppercase tracking-tighter ${attr.color}`}>{attr.label}</span>
-              <p className="text-lg font-black text-white leading-none">{attr.val}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
+      {/* FICHA DE PERSONAGEM (Pluga exatamente aqui) */}
+      <CharacterSheet history={history} />
+      
       <BadgeList history={history} />
       <QuestBoard />
+        
 
       <div className="space-y-3 pt-4">
         <button onClick={() => alert("Compartilhar relatório em breve.")} className="w-full bg-card border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all">

@@ -32,7 +32,8 @@ const BadgeList = ({ history }) => {
       {/* CABEÇALHO DO HALL DA FAMA */}
       <div className="flex justify-between items-end px-4 mb-4">
          <div>
-           <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+           {/* text-main no claro, text-white no escuro */}
+           <h3 className="text-xs font-black text-main dark:text-white uppercase tracking-widest flex items-center gap-2">
              <Crown size={16} className="text-secondary" /> Hall da Fama
            </h3>
            <p className="text-[9px] text-muted font-bold uppercase mt-1">Conquistas de Combate</p>
@@ -43,7 +44,8 @@ const BadgeList = ({ history }) => {
            <span className="text-[10px] font-black text-secondary tracking-wider">
              {unlockedCount} / {totalCount}
            </span>
-           <div className="w-16 h-1.5 bg-black/40 rounded-full overflow-hidden border border-border/50">
+           {/* bg-input se adapta, ao invés do black/40 travado */}
+           <div className="w-16 h-1.5 bg-input dark:bg-black/40 rounded-full overflow-hidden border border-border/50">
              <div 
                className="h-full bg-secondary shadow-[0_0_8px_var(--secondary)] transition-all duration-1000 ease-out" 
                style={{ width: `${progressPercent}%` }}
@@ -52,7 +54,7 @@ const BadgeList = ({ history }) => {
          </div>
       </div>
       
-      {/* CONTAINER COM SCROLL (Padding ajustado para dar pista visual de scroll) */}
+      {/* CONTAINER COM SCROLL */}
       <div className="flex gap-4 overflow-x-auto pb-6 px-4 pt-2 scrollbar-hide snap-x">
         {badges.map((badge) => {
           const IconComponent = ICON_MAP[badge.icon] || Medal;
@@ -62,35 +64,36 @@ const BadgeList = ({ history }) => {
               key={badge.id} 
               className={`relative min-w-[120px] w-[120px] flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all duration-300 snap-center shrink-0
                 ${badge.unlocked 
-                  ? 'bg-card border-secondary shadow-[0_0_20px_rgba(var(--secondary),0.15)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(var(--secondary),0.3)]' 
-                  : 'bg-black/20 border-border/50 opacity-60 grayscale hover:opacity-80'}`}
+                  ? 'bg-card border-secondary shadow-md dark:shadow-[0_0_20px_rgba(var(--secondary),0.15)] hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_25px_rgba(var(--secondary),0.3)]' 
+                  : 'bg-input/50 dark:bg-black/20 border-border/50 opacity-60 grayscale hover:opacity-80'}`}
             >
-              {/* Mini Cadeado de Status (Somente se bloqueado) */}
+              {/* Mini Cadeado de Status */}
               {!badge.unlocked && (
                 <div className="absolute top-2 right-2 text-muted/50">
                   <Lock size={12} />
                 </div>
               )}
 
-              {/* ÍCONE (A silhueta se mantém mesmo bloqueado) */}
+              {/* ÍCONE */}
               <div className={`mb-3 p-3 rounded-full transition-all duration-500 flex items-center justify-center
                 ${badge.unlocked 
-                  ? 'bg-secondary text-white shadow-[0_0_15px_var(--secondary)]' 
-                  : 'bg-black/40 text-muted/50 border border-muted/20'}`}
+                  // Mantive text-white aqui partindo da premissa que o seu "bg-secondary" (cor de sucesso do card) é forte o suficiente para precisar de texto branco/claro em cima
+                  ? 'bg-secondary text-white dark:shadow-[0_0_15px_var(--secondary)]' 
+                  : 'bg-input dark:bg-black/40 text-muted border border-border/50'}`}
               >
                 <IconComponent size={24} />
               </div>
 
               {/* TÍTULO */}
               <h4 className={`text-[11px] font-black uppercase leading-tight mb-1.5 w-full truncate 
-                ${badge.unlocked ? 'text-white' : 'text-muted/70'}`}
+                ${badge.unlocked ? 'text-main dark:text-white' : 'text-muted'}`}
               >
                 {badge.title}
               </h4>
               
               {/* DESCRIÇÃO */}
               <p className={`text-[9px] font-bold leading-tight line-clamp-2 
-                ${badge.unlocked ? 'text-slate-300' : 'text-muted/50'}`}
+                ${badge.unlocked ? 'text-muted dark:text-slate-300' : 'text-muted/50'}`}
               >
                  {badge.desc}
               </p>
