@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
-import { calculateStats } from '../utils/rpgSystem'; // 🔥 IMPORTAÇÃO DO RPG MANTIDA
+import { calculateStats } from '../utils/rpgSystem';
 
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});
@@ -22,13 +22,10 @@ export const useWorkout = () => {
   const [sessionNote, setSessionNote] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [waistInput, setWaistInput] = useState('');
-  const [showMeme, setShowMeme] = useState(false);
   const [view, setView] = useState('workout');
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
 
   const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
-
-  // 🔥 Estado para guardar os dados da sessão que acabou de ser finalizada
   const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
 
   const [workoutTimer, setWorkoutTimer] = useState(() => {
@@ -100,10 +97,7 @@ export const useWorkout = () => {
       const planData = planList && planList.length > 0 ? planList[0] : null;
 
       if (planData && planData.plan_data) {
-        const parsedData = typeof planData.plan_data === 'string' 
-          ? JSON.parse(planData.plan_data) 
-          : planData.plan_data;
-        
+        const parsedData = typeof planData.plan_data === 'string' ? JSON.parse(planData.plan_data) : planData.plan_data;
         setWorkoutData(parsedData);
         setActiveDay(currentDay => parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A'));
         localStorage.setItem('workout_plan', JSON.stringify(parsedData));
@@ -142,7 +136,6 @@ export const useWorkout = () => {
     audio.volume = 0.3; audio.play().catch(() => {});
   }, []);
 
-  // --- PERSISTENCE SYNC E CLOUD BACKUP ---
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
@@ -154,9 +147,7 @@ export const useWorkout = () => {
       if (!isCloudSyncReady) return;
       if (userId && Object.keys(workoutData).length > 0) {
         try {
-          const { error } = await supabase
-            .from('workout_plans')
-            .upsert({ user_id: userId, plan_data: workoutData }, { onConflict: 'user_id' });
+          await supabase.from('workout_plans').upsert({ user_id: userId, plan_data: workoutData }, { onConflict: 'user_id' });
         } catch (err) {
           console.error("Erro na sincronização:", err);
         }
@@ -175,7 +166,6 @@ export const useWorkout = () => {
     return () => clearInterval(interval);
   }, [workoutTimer.isRunning]);
 
-  // --- STABLE UPDATE FUNCTIONS ---
   const updateSetData = useCallback((id, i, f, v) => {
     setProgress(p => {
       const c = p[id] || { sets: [] };
@@ -251,18 +241,15 @@ export const useWorkout = () => {
     },
 
     finishWorkout: async () => {
-      setShowMeme(true); 
       playSound('success');
       
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
-      
       let totalVolume = 0;
 
       const exercisesToSave = workoutData[safeDay].exercises.map((ex, i) => {
         const id = `${selectedDate}-${safeDay}-${i}`;
         const p = progress[id];
         
-        // Calculando apenas o volume bruto para os status visuais
         if (p && p.sets) {
           p.sets.forEach(set => {
             if (set.completed) {
@@ -273,29 +260,15 @@ export const useWorkout = () => {
           });
         }
 
-        return { 
-          name: p?.swappedName || ex.name, 
-          sets: p?.sets || [], 
-          done: p?.done || false,
-          actualSets: p?.actualSets || ex.sets
-        };
+        return { name: p?.swappedName || ex.name, sets: p?.sets || [], done: p?.done || false, actualSets: p?.actualSets || ex.sets };
       });
 
-      // Calcula Duração em minutos
+      // Calcula a duração e o XP bruto só para mostrar no relatório
       const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
-
-      // 🔥 AQUI ESTÁ A MÁGICA: A mesma matemática do seu perfil!
-      // Se ele levantou 4000kg, 4000 * 0.05 = 200 de XP.
       const xpGained = Math.floor(totalVolume * 0.05);
 
-      // Salva os dados no estado para a tela de Celebração ler
-      setLastSessionStats({
-        duration: durationMins,
-        volume: totalVolume,
-        xp: xpGained // <-- Agora o XP real está sendo salvo!
-      });
+      setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
 
-      // Monta o objeto oficial que vai para o banco
       const sessionBase = {
         user_id: userId,
         workout_date: selectedDate,
@@ -304,18 +277,34 @@ export const useWorkout = () => {
         exercises: exercisesToSave
       };
 
+      // 🔥 A MÁGICA FINAL: Comparando maçã com maçã usando o calculateStats
+      // Pegamos o nível ANTES do treino salvar
+      const statsAntes = calculateStats(history);
+      const levelAntes = statsAntes.level || 1;
+      
+      // Simulamos a lista de histórico COM o treino novo e calculamos de novo
+      const newEntry = {...sessionBase, date: selectedDate.split('-').reverse().join('/')};
+      const newHistory = [newEntry, ...history];
+      
+      const statsDepois = calculateStats(newHistory);
+      const levelDepois = statsDepois.level || 1;
+      
+      // Essa comparação agora é 100% blindada e vai bater com o Perfil
+      const subiuDeNivel = levelDepois > levelAntes;
+
+      // Salva os dados
+      setHistory(newHistory);
+
       if (userId) {
-        try { await supabase.from('workout_history').insert([sessionBase]); } catch (err) { console.error(err); }
+        supabase.from('workout_history').insert([sessionBase]).then(() => fetchCloudData());
       }
 
-      setTimeout(() => { 
-        setProgress({}); 
-        setSessionNote(''); 
-        setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
-        setShowMeme(false); 
-        setView('history'); 
-        fetchCloudData(); // Vai forçar atualizar o histórico global
-      }, 3500);
+      setProgress({});
+      setSessionNote('');
+      setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
+
+      // Retorna a verdade absoluta para a tela
+      return subiuDeNivel;
     },
 
     resetWorkoutTimer: () => setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
@@ -328,18 +317,14 @@ export const useWorkout = () => {
     },
 
     manageData: {
-      add: (day) => { 
-        setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] } }));
-      },
+      add: (day) => { setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] } })); },
       addFromCatalog: (day, selectedExercises) => {
         setWorkoutData(prev => {
           const newExercises = selectedExercises.map(exName => ({ name: exName, sets: "3x10", note: "" }));
           return { ...prev, [day]: { ...prev[day], exercises: [...(prev[day]?.exercises || []), ...newExercises] } };
         });
       },
-      remove: (day, i) => { 
-        setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) } }));
-      },
+      remove: (day, i) => { setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) } })); },
       edit: (day, i, f, v) => { 
         setWorkoutData(prev => {
           const n = JSON.parse(JSON.stringify(prev)); 
@@ -361,13 +346,24 @@ export const useWorkout = () => {
         });
       },
     }
-  // 🔥 ADICIONADO 'history' NO ARRAY DE DEPENDÊNCIAS ABAIXO PARA O CÁLCULO FUNCIONAR SEMPRE COM DADOS RECENTES
   }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound, workoutTimer]);
 
+  const globalRPG = useMemo(() => {
+    return calculateStats(history); 
+  }, [history]);
+
   return {
-    state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, showMeme, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },
-    setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setShowMeme, setView, setWorkoutData },
+    state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },
+    setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setView, setWorkoutData },
     actions,
-    stats: { latest: bodyHistory[0] || { weight: '--', waist: '--' }, streak, lastSessionStats }
+    stats: { 
+      latest: bodyHistory[0] || { weight: '--', waist: '--' }, 
+      streak, 
+      lastSessionStats,
+      level: globalRPG.level,
+      xp: globalRPG.xp,
+      title: globalRPG.title,
+      progress: globalRPG.nextLevelProgress 
+    }
   };
 };

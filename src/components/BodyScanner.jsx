@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Scale, X, Plus, CalendarDays, Save, Pencil, Trash2, FileText, Activity } from 'lucide-react';
+import { 
+  Scale, X, Plus, CalendarDays, Save, Pencil, Trash2, 
+  FileText, Archive, ChevronDown, ChevronUp 
+} from 'lucide-react';
 
 const formatNumberInput = (value) => {
   return value.replace(/[^0-9.]/g, '');
@@ -27,12 +30,15 @@ const BodyScanner = ({
   sortedBody, handleEditBio, requestDelete, getBfColorClass
 }) => {
 
-  // 🔥 LÓGICA DE ESCALABILIDADE: Controle de expansão do histórico
-  const [isExpanded, setIsExpanded] = useState(false);
-  const MAX_VISIBLE = 5;
-  const displayHistory = isExpanded ? sortedBody : sortedBody.slice(0, MAX_VISIBLE);
+  // 🔥 ESTADOS DE EXPANSÃO E ARQUIVO
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState(null); 
+  const [expandedCardId, setExpandedCardId] = useState(null); 
+  
+  const RECENT_LIMIT = 3;
+  const recentHistory = sortedBody.slice(0, RECENT_LIMIT);
+  const olderHistoryCount = sortedBody.length - RECENT_LIMIT;
 
-  // 🔥 LÓGICA VISUAL: Decodificador de texto para o BF
   const getBfStatusText = (bfValue) => {
     if (!bfValue || bfValue === '--') return '';
     const val = parseFloat(bfValue);
@@ -43,9 +49,68 @@ const BodyScanner = ({
     return 'ALTO';
   };
 
+  // 🔥 CORRIGIDO: Sub-componente com as Panturrilhas inclusas!
+  const ExpandedStats = ({ b, isCard }) => (
+    <div className={`p-4 bg-black/5 dark:bg-black/20 border-t border-border animate-in slide-in-from-top-2 duration-200 ${isCard ? 'rounded-b-2xl' : ''}`}>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Cintura</span>
+           <span className="text-xs font-black text-main dark:text-white">{b.waist || '--'}cm</span>
+         </div>
+         <div className="flex flex-col items-center p-2 bg-warning/10 rounded-lg border border-warning/20">
+           <span className="text-[8px] text-warning uppercase font-bold tracking-widest">Abdome</span>
+           <span className="text-xs font-black text-main dark:text-white">{b.abdomen || '--'}cm</span>
+         </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-2">
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Peito</span>
+           <span className="text-xs font-black text-main dark:text-white">{b.chest || '--'}cm</span>
+         </div>
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Ombro</span>
+           <span className="text-xs font-black text-main dark:text-white">{b.shoulder || '--'}cm</span>
+         </div>
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Quadril</span>
+           <span className="text-xs font-black text-main dark:text-white">{b.hip || '--'}cm</span>
+         </div>
+      </div>
+      <div className="bg-input/50 rounded-lg border border-border/50 p-2 mb-2">
+         <div className="flex justify-between px-2 mb-1">
+           <span className="text-[7px] text-muted uppercase font-bold w-12">Membro</span>
+           <span className="text-[7px] text-muted uppercase font-bold flex-1 text-center">Esq.</span>
+           <span className="text-[7px] text-muted uppercase font-bold flex-1 text-center">Dir.</span>
+         </div>
+         <div className="flex justify-between items-baseline px-2 py-0.5">
+           <span className="text-[9px] text-main font-bold uppercase w-12">Braço</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.arm_left || '--'}</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.arm_right || '--'}</span>
+         </div>
+         <div className="flex justify-between items-baseline px-2 py-0.5">
+           <span className="text-[9px] text-main font-bold uppercase w-12">Coxa</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_left || '--'}</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_right || '--'}</span>
+         </div>
+         {/* 🔥 A PANTURRILHA ENTROU AQUI */}
+         <div className="flex justify-between items-baseline px-2 py-0.5">
+           <span className="text-[9px] text-main font-bold uppercase w-12">Pantur.</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_left || '--'}</span>
+           <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_right || '--'}</span>
+         </div>
+      </div>
+      {b.note && (
+        <div className="mt-2 p-2 bg-warning/10 rounded-lg border border-warning/20 text-[10px] text-muted flex items-start gap-1.5">
+          <FileText size={12} className="text-warning shrink-0 mt-0.5" />
+          <span className="line-clamp-2 leading-snug">"{b.note}"</span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="shrink-0 space-y-3 pt-2 pb-4 border-b border-border">
-      {/* Cabeçalho do Scanner */}
+      {/* CABEÇALHO */}
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-black text-secondary uppercase tracking-widest flex items-center gap-2">
           <Scale size={14} /> Scanner Corporal
@@ -62,7 +127,6 @@ const BodyScanner = ({
       {/* FORMULÁRIO DE REGISTRO */}
       {showBioForm && (
         <div className="bg-card border-2 border-secondary/30 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-200 shadow-lg space-y-4">
-          
           <div className="flex items-center gap-2 bg-input/50 border border-border rounded-lg p-2">
             <CalendarDays size={16} className="text-secondary" />
             <input 
@@ -127,7 +191,6 @@ const BodyScanner = ({
                 <span className="text-[8px] font-black text-muted uppercase mr-2">Dir.</span>
               </div>
             </div>
-
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <label className="text-[10px] font-bold text-muted uppercase tracking-widest w-16">Braço</label>
@@ -168,17 +231,19 @@ const BodyScanner = ({
         </div>
       )}
 
-      {/* ESTEIRA DOS CARDS DE HISTÓRICO */}
-      <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-1 scrollbar-hide">
-        {displayHistory.length === 0 && !showBioForm && (
+      {/* VITRINE: OS 3 ÚLTIMOS REGISTROS */}
+      <div className="flex gap-4 overflow-x-auto pb-2 pt-1 px-1 scrollbar-hide items-start">
+        {sortedBody.length === 0 && !showBioForm && (
           <div className="text-xs text-muted p-4 w-full text-center border border-dashed border-border rounded-xl font-bold uppercase tracking-widest">
             Nenhum scan corporal registrado.
           </div>
         )}
         
-        {displayHistory.map((b) => (
-          <div key={b.id} className="min-w-[300px] max-w-[320px] bg-card border-2 border-secondary/20 p-4 rounded-2xl shadow-md dark:shadow-xl relative group hover:border-secondary/50 transition-all shrink-0 flex flex-col gap-3 animate-in fade-in slide-in-from-left-4 duration-300">
-            
+        {recentHistory.map((b) => (
+          <div 
+            key={b.id} 
+            className="min-w-[300px] max-w-[320px] bg-card border-2 border-secondary/20 pt-4 px-4 rounded-2xl shadow-md dark:shadow-xl relative group hover:border-secondary/50 transition-all shrink-0 flex flex-col gap-3 animate-in fade-in slide-in-from-left-4 duration-300"
+          >
             <div className="flex justify-between items-center border-b border-border/50 pb-2">
               <span className="font-black text-secondary text-xs tracking-widest flex items-center gap-1.5">
                 <CalendarDays size={14} /> {b.date}
@@ -189,14 +254,11 @@ const BodyScanner = ({
               </div>
             </div>
             
-            {/* Macro Card Info */}
             <div className="grid grid-cols-3 gap-2">
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Peso</span>
                  <span className="text-sm font-black text-success mt-0.5">{b.weight || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">kg</span></span>
                </div>
-               
-               {/* 🔥 NOVO: CARD DO BF COM O SELO DE STATUS */}
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm relative">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">BF</span>
                  <span className={`text-sm font-black mt-0.5 ${getBfColorClass(b.bf)}`}>
@@ -208,103 +270,80 @@ const BodyScanner = ({
                    </span>
                  )}
                </div>
-
                <div className="flex flex-col items-center justify-center p-2 bg-primary/10 rounded-xl border border-primary/30 shadow-sm">
                  <span className="text-[8px] text-primary uppercase font-bold tracking-widest">M. Magra</span>
                  <span className="text-sm font-black text-main dark:text-white mt-0.5">{b.lean_mass || '--'}<span className="text-[8px] text-primary/70 ml-0.5 font-normal">kg</span></span>
                </div>
             </div>
+            
+            <button 
+              onClick={() => setExpandedCardId(expandedCardId === b.id ? null : b.id)}
+              className="mt-2 text-[9px] text-muted hover:text-primary transition-colors py-3 border-t border-border/30 w-full flex items-center justify-center gap-1 uppercase font-black tracking-widest"
+            >
+              {expandedCardId === b.id ? <><ChevronUp size={12} /> Ocultar Medidas</> : <><ChevronDown size={12} /> Ver Medidas Completas</>}
+            </button>
 
-            {/* Tronco Card Info */}
-            <div className="bg-input/50 dark:bg-black/20 rounded-xl border border-border/30 p-2 space-y-2 shadow-sm">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="flex flex-col items-center justify-center bg-input/80 dark:bg-input/30 rounded-lg py-1.5">
-                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Cintura</span>
-                  <span className="text-xs font-black text-main dark:text-white">{b.waist || '--'}<span className="text-[7px] text-muted ml-0.5 font-normal">cm</span></span>
-                </div>
-                <div className="flex flex-col items-center justify-center bg-warning/10 dark:bg-warning/5 rounded-lg py-1.5 border border-warning/20">
-                  <span className="text-[8px] text-warning uppercase font-bold tracking-widest">Abdome</span>
-                  <span className="text-xs font-black text-main dark:text-white">{b.abdomen || '--'}<span className="text-[7px] text-muted ml-0.5 font-normal">cm</span></span>
-                </div>
-                <div className="flex flex-col items-center justify-center bg-input/80 dark:bg-input/30 rounded-lg py-1.5">
-                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Quadril</span>
-                  <span className="text-xs font-black text-main dark:text-white">{b.hip || '--'}<span className="text-[7px] text-muted ml-0.5 font-normal">cm</span></span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-border/30 pt-2">
-                <div className="flex flex-col items-center justify-center bg-input/80 dark:bg-input/30 rounded-lg py-1.5">
-                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Peito</span>
-                  <span className="text-xs font-black text-main dark:text-white">{b.chest || '--'}<span className="text-[7px] text-muted ml-0.5 font-normal">cm</span></span>
-                </div>
-                <div className="flex flex-col items-center justify-center bg-input/80 dark:bg-input/30 rounded-lg py-1.5">
-                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Ombro</span>
-                  <span className="text-xs font-black text-main dark:text-white">{b.shoulder || '--'}<span className="text-[7px] text-muted ml-0.5 font-normal">cm</span></span>
-                </div>
-              </div>
-            </div>
-
-            {/* Membros Card Info */}
-            <div className="bg-input/50 dark:bg-black/20 rounded-xl border border-border/30 p-2 shadow-sm">
-              <div className="flex justify-between px-2 mb-1">
-                <span className="text-[7px] text-muted uppercase font-bold tracking-widest w-12">Membro</span>
-                <span className="text-[7px] text-muted uppercase font-bold tracking-widest flex-1 text-center">Esquerdo</span>
-                <span className="text-[7px] text-muted uppercase font-bold tracking-widest flex-1 text-center">Direito</span>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-baseline bg-input/80 dark:bg-input/40 rounded px-2 py-1">
-                  <span className="text-[9px] text-main font-bold uppercase tracking-widest w-12">Braço</span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.arm_left || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.arm_right || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                </div>
-                <div className="flex justify-between items-baseline bg-input/80 dark:bg-input/40 rounded px-2 py-1">
-                  <span className="text-[9px] text-main font-bold uppercase tracking-widest w-12">Coxa</span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_left || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_right || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                </div>
-                <div className="flex justify-between items-baseline bg-input/80 dark:bg-input/40 rounded px-2 py-1">
-                  <span className="text-[9px] text-main font-bold uppercase tracking-widest w-12">Pantur.</span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_left || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                  <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_right || '--'}<span className="text-[7px] text-muted font-normal ml-0.5">cm</span></span>
-                </div>
-              </div>
-            </div>
-
-            {/* Anotações Card Info */}
-            {b.note && (
-              <div className="mt-auto pt-2 p-2 bg-warning/10 dark:bg-warning/5 rounded-lg border border-warning/20 text-[10px] text-muted flex items-start gap-1.5 shadow-inner">
-                <FileText size={12} className="text-warning shrink-0 mt-0.5" />
-                <span className="line-clamp-3 leading-snug">"{b.note}"</span>
+            {expandedCardId === b.id && (
+              <div className="-mx-4 -mb-0">
+                 <ExpandedStats b={b} isCard={true} />
               </div>
             )}
-            
           </div>
         ))}
-
-        {/* 🔥 CONTROLE DE EXPANSÃO (Ver Mais / Recolher) */}
-        {!isExpanded && sortedBody.length > MAX_VISIBLE && (
-          <button 
-            onClick={() => setIsExpanded(true)}
-            className="min-w-[120px] bg-input/50 dark:bg-black/10 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-muted hover:text-primary hover:border-primary/50 transition-all shrink-0 group shadow-sm"
-          >
-            <Activity size={24} className="mb-2 group-hover:animate-bounce" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-center px-2">
-              Ver Mais<br/>({sortedBody.length - MAX_VISIBLE} Ocultos)
-            </span>
-          </button>
-        )}
-
-        {isExpanded && sortedBody.length > MAX_VISIBLE && (
-          <button 
-            onClick={() => setIsExpanded(false)}
-            className="min-w-[120px] bg-input/50 dark:bg-black/10 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-muted hover:text-red-500 hover:border-red-500/50 transition-all shrink-0 group shadow-sm"
-          >
-            <X size={24} className="mb-2 group-hover:scale-90 transition-transform" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-center px-2">
-              Recolher
-            </span>
-          </button>
-        )}
       </div>
+
+      {/* BOTÃO DO ARQUIVO */}
+      {olderHistoryCount > 0 && (
+        <button 
+          onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+          className={`w-full py-3 mt-2 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${isArchiveOpen ? 'bg-input border-border text-muted' : 'bg-card border-dashed border-primary/40 text-primary hover:bg-primary/5'}`}
+        >
+          <Archive size={14} />
+          {isArchiveOpen ? 'Ocultar Arquivo Antigo' : `Acessar Arquivo Completo (${olderHistoryCount} Ocultos)`}
+        </button>
+      )}
+
+      {/* ARQUIVO EXPANSÍVEL (Extrato Vertical) */}
+      {isArchiveOpen && (
+        <div className="mt-4 space-y-2 animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="flex items-center gap-2 mb-3 px-2">
+            <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Registos Anteriores</h4>
+            <div className="h-px bg-border flex-1"></div>
+          </div>
+
+          {sortedBody.slice(RECENT_LIMIT).map((b) => {
+            const isExpanded = expandedRowId === b.id;
+            return (
+              <div key={b.id} className="bg-card border border-border rounded-xl overflow-hidden transition-all duration-300">
+                <div 
+                  onClick={() => setExpandedRowId(isExpanded ? null : b.id)}
+                  className="p-3 flex items-center justify-between cursor-pointer hover:bg-input/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-16 text-[10px] font-black text-main dark:text-white">{b.date}</span>
+                    <div className="flex gap-3 text-[10px] font-bold">
+                      <span className="text-success">{b.weight}kg</span>
+                      <span className={getBfColorClass(b.bf)}>{b.bf}% BF</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                     <div className="flex gap-2">
+                       <button onClick={(e) => { e.stopPropagation(); handleEditBio(b); }} className="text-muted hover:text-primary transition-colors p-1"><Pencil size={12} /></button>
+                       <button onClick={(e) => { e.stopPropagation(); requestDelete(b.id, 'body'); }} className="text-muted hover:text-red-500 transition-colors p-1"><Trash2 size={12} /></button>
+                     </div>
+                     <div className="text-muted bg-input rounded-full p-1">
+                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                     </div>
+                  </div>
+                </div>
+
+                {isExpanded && <ExpandedStats b={b} isCard={false} />}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

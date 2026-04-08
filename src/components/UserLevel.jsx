@@ -32,8 +32,8 @@ const UserLevel = ({ history }) => {
   return (
     <div className="bg-card border border-primary/50 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(var(--primary),0.15)] group">
       
-      {/* Background Decorativo */}
-      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+      {/* 🔥 AJUSTE: text-primary adicionado para a marca d'água acompanhar o tema neon */}
+      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none text-primary transition-colors">
         <Trophy size={80} />
       </div>
 
@@ -42,7 +42,8 @@ const UserLevel = ({ history }) => {
           <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-1">
             PROTOCOLO DE EVOLUÇÃO
           </span>
-          <h2 className="text-2xl font-black text-main uppercase leading-none drop-shadow-md">
+          {/* 🔥 AJUSTE: text-main dark:text-white para garantir leitura máxima */}
+          <h2 className="text-2xl font-black text-main dark:text-white uppercase leading-none drop-shadow-md">
             {gameStats.title}
           </h2>
         </div>
@@ -63,8 +64,9 @@ const UserLevel = ({ history }) => {
           <span>{gameStats.progress.xpMissing} XP p/ Nvl {gameStats.level + 1}</span>
         </div>
         
-        <div className="h-4 bg-black/50 rounded-full border border-border overflow-hidden relative">
-          {/* 🔥 Efeito de preenchimento animado ajustado para receber o barWidth */}
+        {/* 🔥 AJUSTE: bg-input/80 para o claro, dark:bg-black/50 para o escuro. */}
+        <div className="h-4 bg-input/80 dark:bg-black/50 rounded-full border border-border overflow-hidden relative shadow-inner">
+          {/* O preenchimento dinâmico */}
           <div 
             className="h-full bg-gradient-to-r from-primary to-secondary transition-all flex items-center justify-end pr-1 shadow-[0_0_15px_rgba(var(--primary),0.5)]"
             style={{ 
@@ -77,8 +79,8 @@ const UserLevel = ({ history }) => {
             <div className="h-full w-[2px] bg-white/50 shadow-[0_0_10px_white]"></div>
           </div>
           
-          {/* Texto de % dentro da barra (se couber) ou centralizado */}
-          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white mix-blend-difference z-20">
+          {/* Texto de % com mix-blend. Fica irado! */}
+          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white mix-blend-difference z-20 pointer-events-none">
             {gameStats.progress.percentage}%
           </span>
         </div>

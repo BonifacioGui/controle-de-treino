@@ -23,6 +23,14 @@ const TacticalRadar = ({ radarData, maxStat }) => {
   // Estado para o atributo selecionado (hover ou toque)
   const [activeAttr, setActiveAttr] = useState(null);
 
+  // 🔥 AJUSTE: Sincronização Segura de Cores para SVG
+  const theme = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || 'driver' : 'driver';
+  
+  const colors = {
+    driver: { p: '#22d3ee', s: '#ec4899', t: '#94a3b8' }, // primary, secondary, text/muted
+    light:  { p: '#0284c7', s: '#db2777', t: '#475569' }  
+  }[theme] || { p: '#22d3ee', s: '#ec4899', t: '#94a3b8' };
+
   return (
     <div className="bg-card border-2 border-border rounded-3xl p-5 shadow-sm space-y-4 transition-all duration-500">
       
@@ -51,7 +59,6 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             cy="50%" 
             outerRadius="70%" 
             data={radarData}
-            // 🔥 GATILHO: Detecta a interação com as áreas do gráfico
             onMouseMove={(state) => {
               if (state && state.activePayload) {
                 setActiveAttr(state.activePayload[0].payload.subject);
@@ -59,10 +66,11 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             }}
             onMouseLeave={() => setActiveAttr(null)}
           >
-            <PolarGrid stroke="rgba(var(--primary), 0.2)" />
+            {/* 🔥 AJUSTE: Uso do código HEX seguro em vez de interpolação CSS no SVG */}
+            <PolarGrid stroke={colors.p} strokeOpacity={0.2} />
             <PolarAngleAxis 
               dataKey="subject" 
-              tick={{ fill: '#888888', fontSize: 10, fontWeight: 900 }} 
+              tick={{ fill: colors.t, fontSize: 10, fontWeight: 900 }} // 🔥 AJUSTE: Cor do eixo adaptável
             />
             <PolarRadiusAxis 
               angle={30} 
@@ -73,23 +81,17 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             <Radar 
               name="Nível" 
               dataKey="A" 
-              stroke="rgb(var(--primary))" 
+              stroke={colors.p} // 🔥 AJUSTE: Cor Segura
               strokeWidth={3} 
-              fill="rgb(var(--primary))" 
+              fill={colors.p} // 🔥 AJUSTE: Cor Segura
               fillOpacity={0.3} 
-              // Estilo de ponto tático
-              dot={{ r: 3, fill: 'rgb(var(--primary))', fillOpacity: 1 }}
+              dot={{ r: 3, fill: colors.p, fillOpacity: 1 }}
               activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}
             />
-            <Tooltip 
-              // Customizamos o Tooltip para ser invisível aqui, 
-              // já que estamos usando a "Barra de HUD" lá em cima
-              content={() => null} 
-            />
+            <Tooltip content={() => null} />
           </RadarChart>
         </ResponsiveContainer>
 
-        {/* Legenda de Decodificação Estática no Rodapé (Opcional, para ajudar o usuário) */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 opacity-30 pointer-events-none">
            <span className="text-[6px] font-black text-muted">TAB: INTERAÇÃO PARA DETALHES</span>
         </div>
