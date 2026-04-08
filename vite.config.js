@@ -11,21 +11,23 @@ export default defineConfig({
       manifest: {
         name: 'SOLO',
         short_name: 'SOLO',
-        description: 'Controle de Treino',
-        theme_color: '#000000',
-        background_color: '#000000',
+        description: 'Sistema Tático de Treino',
+        theme_color: '#050B14', // 🔥 Fundo Cyberpunk (Muda a cor da barra do celular)
+        background_color: '#050B14', // 🔥 Fundo da tela de carregamento (Splash Screen)
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: 'logo-solo192.png', // Você precisará adicionar essas imagens na pasta public depois
+            src: 'logo-solo192.png', 
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable' // Garante que o ícone fique perfeito em qualquer Android
           },
           {
             src: 'logo-solo512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }
