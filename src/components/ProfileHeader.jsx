@@ -10,7 +10,8 @@ const ProfileHeader = ({
   goalProgress, 
   isGoalMet, 
   displayClass, 
-  history 
+  history,
+  stats // 🔥 PADRÃO OURO INJETADO AQUI
 }) => {
   return (
     <div className="space-y-6">
@@ -71,8 +72,8 @@ const ProfileHeader = ({
         )}
       </div>
 
-      {/* Nível do Usuário (Continua sendo chamado aqui pois faz parte do "Header" visual) */}
-      <UserLevel history={history} />
+      {/* 🔥 REPASSANDO O PADRÃO OURO PARA O TENENTE REBELDE */}
+      <UserLevel stats={stats} />
     </div>
   );
 };

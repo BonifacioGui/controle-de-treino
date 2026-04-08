@@ -108,20 +108,9 @@ const WorkoutApp = () => {
       
       {/* HEADER TÁTICO */}
       <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20">
-        
-        {/* 🚨 BOTÃO DE TESTE (COMENTE OU APAGUE APÓS TESTAR SE QUISER FORÇAR) */}
-        {/*
-        <button 
-          onClick={() => setShowLevelUp(true)}
-          className="fixed top-24 right-4 z-[999999] bg-red-600 text-white font-black p-4 rounded-xl shadow-[0_0_20px_red]"
-        >
-          FORÇAR LEVEL UP
-        </button>
-        */}
-
         <div className="flex flex-col select-none sm:border-l-2 border-border sm:pl-4 py-1.5">
           <div className="flex items-center gap-3 relative group">
-            <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase">
+            <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
               SOLO
             </h1>
             <div className="relative w-15 h-10 flex items-center justify-center">

@@ -1,5 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { calculateStats } from '../utils/rpgSystem';
+import React, { useState, useEffect } from 'react';
 import { Shield, Zap, Heart, Star, Activity } from 'lucide-react';
 
 // 🔥 CONFIGURAÇÃO EM PORTUGUÊS (Glows blindados para o dark mode)
@@ -14,22 +13,30 @@ const StatCard = ({ statKey, data }) => {
   const Config = STAT_CONFIG[statKey] || { label: statKey, icon: Activity, color: 'text-zinc-500', bgIcon: 'bg-zinc-500/10', bar: 'bg-zinc-500', glow: '' };
   const Icon = Config.icon;
 
-  // 🔥 LÓGICA DE ANIMAÇÃO: Voltando para a que funcionou no seu ambiente
+  // 🔥 LÓGICA DE ANIMAÇÃO
   const [barWidth, setBarWidth] = useState(0);
 
-  const XP_PER_LEVEL = 1000; 
-  const progress = data.progressPercentage !== undefined 
-    ? data.progressPercentage 
-    : ((data.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100;
+  // O divisor base do seu RPG é 100 para a raiz quadrada. 
+  // Para exibir o "resto" na barra, usamos a matemática da fórmula inversa.
+  const currentLevel = data.level || 1;
+  const currentXp = data.xp || 0;
+  
+  // Exemplo: Se Nível 2 precisa de 100 XP e Nível 3 precisa de 400 XP.
+  const xpBaseDoNivelAtual = Math.pow(currentLevel - 1, 2) * 100;
+  const xpNecessarioProProximoNivel = Math.pow(currentLevel, 2) * 100;
+  const xpDentroDoNivel = currentXp - xpBaseDoNivelAtual;
+  const xpGap = xpNecessarioProProximoNivel - xpBaseDoNivelAtual;
+  
+  const progress = Math.min(100, Math.max(0, (xpDentroDoNivel / xpGap) * 100));
 
   useEffect(() => {
-    setBarWidth(0); // Reseta pra 0 ao montar
+    setBarWidth(0); 
     
     let timer;
     requestAnimationFrame(() => {
       timer = setTimeout(() => {
         setBarWidth(progress);
-      }, 1400); // Dá 50ms pro navegador "perceber" o 0 e fazer a mágica
+      }, 400); // Acelerei um pouco a animação para melhor UX
     });
 
     return () => clearTimeout(timer);
@@ -48,14 +55,14 @@ const StatCard = ({ statKey, data }) => {
               {Config.label}
             </span>
             <span className="text-[8px] sm:text-[9px] font-bold text-muted dark:text-zinc-500 uppercase truncate max-w-[70px] sm:max-w-[90px] leading-none">
-              {data.label}
+              {data.label || 'ATRIBUTO'}
             </span>
           </div>
         </div>
 
         <div className="text-right">
           <span className="text-xl sm:text-2xl font-black text-main dark:text-white leading-none drop-shadow-sm dark:drop-shadow-md">
-            {data.level}
+            {currentLevel}
           </span>
         </div>
       </div>
@@ -63,7 +70,7 @@ const StatCard = ({ statKey, data }) => {
       <div className="space-y-1.5">
         <div className="flex justify-between items-end text-[8px] uppercase font-bold text-muted dark:text-zinc-500">
           <span>Progresso</span>
-          <span className="tabular-nums">{Math.floor(data.xp).toLocaleString()} XP</span>
+          <span className="tabular-nums">{Math.floor(currentXp).toLocaleString()} XP</span>
         </div>
         
         {/* Fundo da barra */}
@@ -78,8 +85,19 @@ const StatCard = ({ statKey, data }) => {
   );
 };
 
-const CharacterSheet = ({ history }) => {
-  const stats = useMemo(() => calculateStats(history), [history]);
+// 🔥 PADRÃO OURO: O CharacterSheet agora APENAS RECEBE o rpgData já calculado pelo ProfileView.
+// Removida a propriedade 'history' desnecessária.
+const CharacterSheet = ({ rpgData }) => {
+  // Se por acaso o rpgData não for passado, temos um fallback de segurança
+  const safeData = rpgData || {
+    STR: { xp: 0, level: 1, label: "FORÇA" },
+    DEX: { xp: 0, level: 1, label: "TÉCNICA" },
+    VIT: { xp: 0, level: 1, label: "RESISTÊNCIA" },
+    CHA: { xp: 0, level: 1, label: "ESTÉTICA" }
+  };
+
+  // Filtramos as chaves que não são atributos (ex: level global, xp global)
+  const attributeKeys = ['STR', 'DEX', 'VIT', 'CHA'];
 
   return (
     <div className="bg-card dark:bg-zinc-950/80 border border-border dark:border-zinc-800/50 rounded-2xl p-4 sm:p-5 shadow-xl relative overflow-hidden backdrop-blur-sm mt-4">
@@ -96,9 +114,11 @@ const CharacterSheet = ({ history }) => {
       </h3>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 relative z-10">
-        {Object.entries(stats).map(([key, data]) => (
-          <StatCard key={key} statKey={key} data={data} />
-        ))}
+        {attributeKeys.map(key => {
+          // Garante que se o dado faltar, o StatCard não quebre
+          const statData = safeData[key] || { xp: 0, level: 1, label: key };
+          return <StatCard key={key} statKey={key} data={statData} />;
+        })}
       </div>
     </div>
   );

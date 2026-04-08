@@ -64,6 +64,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
     return '--';
   }, [bioWeight, bioBf]);
 
+  // 🔥 Calculando os atributos (STR, DEX, etc) usando a mesma função síncrona atualizada
   const rpgData = useMemo(() => {
     try { return calculateStats(history || []); } catch (e) { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
   }, [history]);
@@ -187,11 +188,12 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative px-1">
       
-      {/* 1. CABEÇALHO */}
+      {/* 🔥 INJETANDO STATS NO CABEÇALHO */}
       <ProfileHeader 
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
         setIsEditing={setIsEditing} goalProgress={goalProgress} isGoalMet={isGoalMet} 
         displayClass={displayClass} history={history} 
+        stats={stats}
       />
 
       {/* 2. BIOMETRIA MACRO (IMC, RCQ, DONUT) */}
@@ -216,9 +218,9 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
       {/* 4. RADAR TÁTICO RPG */}
       <TacticalRadar radarData={radarData} maxStat={maxStat} />
 
-      {/* 5. MÓDULOS DE RPG RESTANTES */}
-      <CharacterSheet history={history} />
-      <BadgeList history={history} />
+      {/* 🔥 INJETANDO STATS NOS MÓDULOS DE RPG */}
+      <CharacterSheet history={history} stats={stats} rpgData={rpgData} />
+      <BadgeList history={history} stats={stats} rpgData={rpgData} />
       <QuestBoard />
 
       {/* 6. BOTÕES DE AÇÃO GERAIS */}
