@@ -10,7 +10,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'SOLO',
-        short_name: 'SOLO.App',
+        short_name: 'SOLO',
         description: 'Controle de Treino',
         theme_color: '#000000',
         background_color: '#000000',

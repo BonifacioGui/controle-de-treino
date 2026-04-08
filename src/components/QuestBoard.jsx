@@ -33,7 +33,8 @@ const QuestBoard = () => {
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <Scroll className="text-primary" size={20} />
-        <h3 className="font-black text-main uppercase tracking-wider text-sm">Contratos Diários</h3>
+        {/* 🔥 AJUSTE: text-main dark:text-white */}
+        <h3 className="font-black text-main dark:text-white uppercase tracking-wider text-sm">Contratos Diários</h3>
       </div>
 
       <div className="space-y-3 relative z-10">
@@ -43,7 +44,7 @@ const QuestBoard = () => {
             className={`p-3 rounded-xl border transition-all duration-500 flex items-center justify-between gap-3
               ${quest.completed 
                 ? 'bg-primary/10 border-primary shadow-[0_0_15px_rgba(var(--primary),0.2)]' 
-                : 'bg-black/20 border-white/5 opacity-80'
+                : 'bg-input/80 dark:bg-black/20 border-border/50 dark:border-white/5 opacity-80' // 🔥 AJUSTE: Dinâmico claro/escuro
               }`}
           >
             <div className="flex items-center gap-3">
@@ -52,10 +53,11 @@ const QuestBoard = () => {
               </div>
 
               <div>
-                <span className={`text-xs font-black uppercase tracking-wide block ${quest.completed ? 'text-primary' : 'text-main'}`}>
+                {/* 🔥 AJUSTE: text-main dark:text-white quando não completado */}
+                <span className={`text-xs font-black uppercase tracking-wide block ${quest.completed ? 'text-primary' : 'text-main dark:text-white'}`}>
                   {quest.title}
                 </span>
-                <span className="text-[10px] text-muted font-bold block leading-tight">
+                <span className="text-[10px] text-muted font-bold block leading-tight mt-0.5">
                   {quest.desc}
                 </span>
               </div>
@@ -64,7 +66,7 @@ const QuestBoard = () => {
             <div className={`px-2 py-1 rounded text-[9px] font-black border uppercase whitespace-nowrap
               ${quest.completed 
                 ? 'bg-primary text-black border-primary' 
-                : 'bg-black text-warning border-warning/30'
+                : 'bg-warning/10 dark:bg-black text-warning border-warning/30' // 🔥 AJUSTE: Evitando fundo preto fixo no modo claro
               }`}>
               +{quest.reward} XP
             </div>

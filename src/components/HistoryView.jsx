@@ -70,7 +70,7 @@ const ExerciseItemView = ({ exercise }) => {
         {Array.isArray(exercise.sets) && exercise.sets.length > 0 ? (
           <div className="flex gap-1 flex-wrap justify-end">
              {exercise.sets.map((set, k) => (
-                <div key={k} className="flex items-center gap-0.5 bg-card border border-border px-1.5 py-0.5 rounded">
+                <div key={k} className="flex items-center gap-0.5 bg-card border border-border px-1.5 py-0.5 rounded shadow-sm">
                   <span className="text-[10px] font-black text-success">{set.weight}</span>
                   <span className="text-[8px] text-muted">kg</span>
                   <span className="text-[8px] text-muted mx-0.5">•</span>
@@ -79,7 +79,7 @@ const ExerciseItemView = ({ exercise }) => {
              ))}
           </div>
         ) : (
-          <span className="text-[10px] text-muted">Concluído</span>
+          <span className="text-[10px] text-muted font-bold uppercase">Concluído</span>
         )}
       </div>
     </div>
@@ -103,13 +103,15 @@ const ExerciseItemEdit = ({ exercise, index, updateExercise }) => {
             <input 
               type="number" inputMode="decimal" value={set.weight} 
               onChange={(e) => handleSetChange(k, 'weight', e.target.value)}
-              className="w-14 bg-input border border-border rounded p-1 text-xs text-center font-bold focus:border-primary outline-none"
+              // 🔥 AJUSTE: text-main dark:text-white
+              className="w-14 bg-input border border-border rounded p-1 text-xs text-center font-bold text-main dark:text-white focus:border-primary outline-none"
               placeholder="KG"
             />
             <input 
               type="number" inputMode="numeric" value={set.reps} 
               onChange={(e) => handleSetChange(k, 'reps', e.target.value)}
-              className="w-10 bg-input border border-border rounded p-1 text-xs text-center font-bold focus:border-secondary outline-none"
+              // 🔥 AJUSTE: text-main dark:text-white
+              className="w-10 bg-input border border-border rounded p-1 text-xs text-center font-bold text-main dark:text-white focus:border-secondary outline-none"
               placeholder="Reps"
             />
           </div>
@@ -155,7 +157,7 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
     <div className="mb-2">
       <div 
         onClick={() => !isEditing && setIsOpen(!isOpen)}
-        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isOpen || isEditing ? 'bg-input border-primary/50 shadow-sm' : 'bg-card border-border hover:border-primary/30'}`}
+        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isOpen || isEditing ? 'bg-input border-primary/50 shadow-sm' : 'bg-card border-border hover:border-primary/30 shadow-sm'}`}
       >
         <div className="flex items-center gap-3">
           <div className={`transition-transform duration-300 ${isOpen ? 'rotate-90 text-primary' : 'text-muted'}`}>
@@ -173,13 +175,14 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
           {isEditing ? (
             <>
               <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-1.5 bg-success text-black rounded hover:brightness-110"><Save size={14} /></button>
-              <button onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="p-1.5 bg-card border border-border text-muted rounded hover:text-white"><X size={14} /></button>
+              {/* 🔥 AJUSTE: text-main no lugar de text-white no hover claro */}
+              <button onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="p-1.5 bg-card border border-border text-muted rounded hover:text-main dark:hover:text-white hover:bg-input"><X size={14} /></button>
             </>
           ) : (
             <>
               <button 
                 onClick={(e) => { e.stopPropagation(); openReport(session); }} 
-                className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-black rounded transition-colors flex items-center gap-1"
+                className="p-1.5 text-primary bg-primary/10 border border-primary/30 hover:bg-primary hover:text-black rounded transition-colors flex items-center gap-1 shadow-sm"
                 title="Relatório"
               >
                 <FileText size={14} />
@@ -194,11 +197,11 @@ const DayAccordion = ({ session, deleteEntry, updateEntry, openReport }) => {
       {(isOpen || isEditing) && (
         <div className="ml-1 pl-3 border-l border-primary/20 mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
           {isEditing ? (
-             <textarea value={editedSession.note || ''} onChange={(e) => setEditedSession({...editedSession, note: e.target.value})} className="w-full bg-card border border-warning/50 rounded-lg p-2 text-xs text-warning font-medium outline-none h-16" placeholder="Editar observações..." />
+             <textarea value={editedSession.note || ''} onChange={(e) => setEditedSession({...editedSession, note: e.target.value})} className="w-full bg-card border border-warning/50 rounded-lg p-2 text-xs text-warning font-medium outline-none h-16 shadow-inner" placeholder="Editar observações..." />
           ) : (
             session.note && <div className="text-[10px] text-warning p-2 bg-warning/5 rounded border border-warning/20">"{session.note}"</div>
           )}
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
             {isEditing 
               ? editedSession.exercises.map((ex, i) => <ExerciseItemEdit key={i} index={i} exercise={ex} updateExercise={updateExercise} />)
               : consolidatedExercises.map((ex, i) => <ExerciseItemView key={i} exercise={ex} />)
@@ -258,7 +261,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
       <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
         <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
           <h2 className="text-lg font-black flex items-center gap-2 text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
-            <Database size={20} className="text-primary" /> Arquivo Confidencial
+            <Database size={20} className="text-primary" /> Histórico de treinos
           </h2>
           <span className="text-[8px] font-black text-muted tracking-[0.2em]">LOGS.SYS</span>
         </div>
@@ -271,9 +274,10 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
             <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
           </div>
 
+          {/* O scroll invisível mas funcional */}
           <div className="overflow-y-auto pr-1 pb-8 max-h-[75vh]">
             {history.length === 0 && (
-              <div className="bg-card/20 border border-dashed border-border p-6 rounded-xl text-center">
+              <div className="bg-card/40 border border-dashed border-border p-6 rounded-xl text-center">
                 <p className="text-muted text-xs font-black uppercase tracking-widest ">Buffer Vazio.</p>
               </div>
             )}
@@ -289,9 +293,9 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
       {/* 🔥 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO 🔥 */}
       {itemToDelete && createPortal(
         <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setItemToDelete(null)}></div>
+          <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setItemToDelete(null)}></div>
           
-          <div className="bg-card border-2 border-red-500/50 w-full max-w-xs rounded-3xl shadow-[0_0_50px_rgba(239,68,68,0.2)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-card border-2 border-red-500/50 w-full max-w-xs rounded-3xl shadow-2xl dark:shadow-[0_0_50px_rgba(239,68,68,0.2)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/30">
                 <AlertTriangle size={32} className="text-red-500" />
@@ -307,7 +311,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
               <div className="flex gap-3 pt-4 border-t border-border/50">
                 <button 
                   onClick={() => setItemToDelete(null)} 
-                  className="flex-1 py-3 rounded-xl border border-border text-muted font-black uppercase text-xs hover:bg-input hover:text-white transition-all active:scale-95"
+                  // 🔥 AJUSTE: text-main dark:text-white para o hover funcionar no claro
+                  className="flex-1 py-3 rounded-xl border border-border text-muted font-black uppercase text-xs hover:bg-input hover:text-main dark:hover:text-white transition-all active:scale-95 shadow-sm"
                 >
                   Cancelar
                 </button>
@@ -316,7 +321,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
                     deleteEntry(itemToDelete.id, itemToDelete.type);
                     setItemToDelete(null);
                   }} 
-                  className="flex-1 py-3 rounded-xl bg-red-600/20 border border-red-500 text-red-500 font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] active:scale-95"
+                  className="flex-1 py-3 rounded-xl bg-red-600/20 border border-red-500 text-red-500 font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all shadow-md dark:shadow-[0_0_15px_rgba(220,38,38,0.2)] active:scale-95"
                 >
                   Confirmar
                 </button>
@@ -330,10 +335,11 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
       {/* 🔥 MODAL DE RELATÓRIO DO TREINO (PORTAL) 🔥 */}
       {reportData && createPortal(
         <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReportData(null)}></div>
+          <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setReportData(null)}></div>
           
-          <div className="bg-card border-2 border-primary w-full max-w-sm rounded-3xl shadow-[0_0_40px_rgba(var(--primary),0.3)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-card border-2 border-primary w-full max-w-sm rounded-3xl shadow-2xl dark:shadow-[0_0_40px_rgba(var(--primary),0.3)] relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
             
+            {/* Header Amarelo/Primário é seguro em ambos os temas */}
             <div className="bg-primary text-black p-6 text-center relative">
               <button onClick={() => setReportData(null)} className="absolute right-4 top-4 text-black/50 hover:text-black transition-colors">
                 <X size={24} />
@@ -350,28 +356,30 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-input border border-border p-4 rounded-2xl text-center">
+                <div className="bg-input border border-border p-4 rounded-2xl text-center shadow-inner">
                   <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Exercícios</p>
-                  <p className="text-2xl font-black text-white">
+                  {/* 🔥 AJUSTE: text-main dark:text-white */}
+                  <p className="text-2xl font-black text-main dark:text-white">
                     {reportData.exercises?.filter(e => e.done).length || 0}
                     <span className="text-sm text-muted">/{reportData.exercises?.length || 0}</span>
                   </p>
                 </div>
-                <div className="bg-input border border-border p-4 rounded-2xl text-center">
+                <div className="bg-input border border-border p-4 rounded-2xl text-center shadow-inner">
                   <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-1">Carga Movida</p>
-                  <p className="text-2xl font-black text-primary">{calculateVolume(reportData.exercises || [])} <span className="text-sm">kg</span></p>
+                  <p className="text-2xl font-black text-primary">{calculateVolume(reportData.exercises || [])} <span className="text-sm text-muted">kg</span></p>
                 </div>
               </div>
 
               {reportData.note && (
-                <div className="bg-black/30 p-4 rounded-2xl border border-border text-center text-sm text-muted">
+                // 🔥 AJUSTE: bg-input e dark:bg-black/30 para limpar o visual de dia
+                <div className="bg-input dark:bg-black/30 p-4 rounded-2xl border border-border text-center text-sm text-muted shadow-sm">
                   "{reportData.note.split('|')[0].trim()}"
                 </div>
               )}
 
               <button 
                 onClick={() => alert("Função de screenshot/compartilhamento em desenvolvimento!")}
-                className="w-full bg-primary/10 border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all"
+                className="w-full bg-primary/10 border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all shadow-sm"
               >
                 <Share2 size={20} /> Compartilhar Feito
               </button>
