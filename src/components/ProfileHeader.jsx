@@ -11,7 +11,7 @@ const ProfileHeader = ({
   isGoalMet, 
   displayClass, 
   history,
-  stats // 🔥 PADRÃO OURO INJETADO AQUI
+  stats
 }) => {
   return (
     <div className="space-y-6">
@@ -19,10 +19,10 @@ const ProfileHeader = ({
         {/* Brilho de Fundo */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[50px]"></div>
         
-        {/* Botão de Configuração */}
+        {/* Botão de Configuração (Afastado) */}
         <button 
           onClick={() => setIsEditing(true)} 
-          className="absolute top-4 right-4 z-30 p-2 bg-input/80 border border-primary/50 text-primary rounded-xl hover:bg-primary hover:text-black transition-all shadow-md"
+          className="absolute top-3 right-3 z-30 p-2 bg-input/80 border border-primary/50 text-primary rounded-xl hover:bg-primary hover:text-black transition-all shadow-md"
         >
           <Settings size={20} />
         </button>
@@ -43,17 +43,19 @@ const ProfileHeader = ({
             </label>
           </div>
 
-          <div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-sm dark:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] pr-8 line-clamp-1">
+          {/* 🔥 CORREÇÃO: pr-2 devolve o espaço do seu nome. Fonte ajustada para encaixar 9 letras no mobile. */}
+          <div className="flex-1 min-w-0 pr-2">
+            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-sm dark:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] truncate">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
+            
             <span className="text-primary text-[10px] font-black uppercase tracking-widest block mt-1">
               Classe: {displayClass}
             </span>
           </div>
         </div>
 
-        {/* Barra de Operação (Progresso de Peso) */}
+        {/* Barra de Operação */}
         {userMetadata?.target_weight && (
           <div className="relative z-10 pt-4 border-t border-primary/20">
             <div className="flex justify-between items-end mb-1">
@@ -72,7 +74,6 @@ const ProfileHeader = ({
         )}
       </div>
 
-      {/* 🔥 REPASSANDO O PADRÃO OURO PARA O TENENTE REBELDE */}
       <UserLevel stats={stats} />
     </div>
   );

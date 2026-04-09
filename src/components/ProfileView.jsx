@@ -36,6 +36,8 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
   const sortedBody = [...bodyHistory].reverse();
   const latestBio = sortedBody[0] || null;
 
@@ -135,73 +137,92 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   // ================= FUNÇÕES DE AÇÃO =================
 
   // 🔥 UPLOAD LOCAL DA IMAGEM PARA PREVIEW
-  const handleImageUpload = (e) => {
+  // 🔥 UPLOAD IMEDIATO E LIMPEZA DE LIXO TÁTICO
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file); // Guarda o arquivo real para quando for salvar o perfil
-      const reader = new FileReader();
-      reader.onloadend = () => { 
-        setAvatarUrl(reader.result); // Atualiza o preview na tela instantaneamente
-        // Removemos o localStorage.setItem daqui para evitar falsos positivos
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // 1. Mostra o preview instantâneo na tela (UX perfeita)
+    const reader = new FileReader();
+    reader.onloadend = () => setAvatarUrl(reader.result);
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error("Usuário não autenticado.");
+
+      // 2. EXTERMÍNIO DA FOTO ANTIGA (Para não gastar memória)
+      const oldAvatarUrl = userMetadata?.avatar_url;
+      if (oldAvatarUrl && oldAvatarUrl.includes('avatars/')) {
+        // Pega só o nome do arquivo velho no final da URL
+        const oldFileName = oldAvatarUrl.split('avatars/')[1];
+        if (oldFileName) {
+          await supabase.storage.from('avatars').remove([oldFileName]);
+        }
+      }
+
+      // 3. UPLOAD DA FOTO NOVA
+      // Usamos Date.now() em vez de random para evitar cache do navegador
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 4. ATUALIZA O PERFIL AUTOMATICAMENTE
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const newUrl = data.publicUrl;
+
+      const { error: updateError } = await supabase.auth.updateUser({ 
+        data: { avatar_url: newUrl } 
+      });
+
+      if (updateError) throw updateError;
+      
+      // Operação concluída sem precisar abrir a engrenagem!
+      window.location.reload(); 
+
+    } catch (error) {
+      alert("🚨 Falha na comunicação via satélite: " + error.message);
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
-  // 🔥 SALVAR PERFIL (Com Upload pro Supabase Storage)
+  // 🔥 SALVAR PERFIL (Apenas Dados de Texto)
+  // 🔥 SALVAR PERFIL BLINDADO
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      let finalAvatarUrl = avatarUrl; // Se não mudou a foto, mantém a URL antiga
-
-      // Se o usuário selecionou uma nova foto...
-      if (avatarFile) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
-        
-        if (!userId) throw new Error("Autenticação não encontrada.");
-
-        // Gera nome único para o arquivo
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${userId}-${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        // 1. Faz o upload da imagem pro bucket 'avatars'
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, avatarFile, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        // 2. Pega a URL pública dessa imagem hospedada
-        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        finalAvatarUrl = data.publicUrl; // Substitui o base64 pela URL real
-      }
-
-      // 3. Salva os dados no auth do usuário
       const payload = { 
         username: editForm.username, 
         birthdate: editForm.birthdate, 
         height: editForm.height ? parseFloat(editForm.height) : null, 
         goal: editForm.goal, 
-        target_weight: editForm.target_weight ? parseFloat(editForm.target_weight) : null, 
-        avatar_url: finalAvatarUrl 
+        target_weight: editForm.target_weight ? parseFloat(editForm.target_weight) : null
       };
 
       const { error } = await supabase.auth.updateUser({ data: payload });
       
-      if (error) { 
-        alert("🚨 Erro ao atualizar: " + error.message); 
-        setIsSaving(false); 
-        return; 
-      }
+      if (error) throw error;
       
-      setIsEditing(false); 
-      setAvatarFile(null); // Limpa o arquivo da memória
-      window.location.reload(); 
+      setIsEditing(false); // Fecha o modal imediatamente
+      
+      // Dá um refresh suave sem travar o botão
+      setTimeout(() => {
+        window.location.reload(); 
+      }, 300);
+
     } catch (error) { 
-      alert("Erro na operação: " + error.message); 
-      setIsSaving(false); 
+      alert("🚨 Erro na operação: " + error.message); 
+    } finally {
+      setIsSaving(false); // 🔥 ISSO IMPEDE O BOTÃO DE FICAR CARREGANDO PARA SEMPRE
     }
   };
 
