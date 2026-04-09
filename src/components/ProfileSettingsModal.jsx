@@ -37,6 +37,7 @@ const ProfileSettingsModal = ({
             <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Codinome</label>
             <input 
               type="text" 
+              maxLength={15} // 
               value={editForm.username} 
               onChange={(e) => setEditForm({...editForm, username: e.target.value})}
               className="w-full bg-input border border-border p-3 rounded-xl text-main dark:text-white font-bold focus:border-primary focus:outline-none placeholder-muted/50 transition-colors"
