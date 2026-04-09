@@ -180,7 +180,7 @@ const AuthView = () => {
             {/* CABEÇALHO LOGIN - IDENTIDADE SOLO */}
             <div className="flex flex-col items-center text-center mb-10 mt-2">
               <div className="flex items-center gap-4">
-                <h1 className="font-sans font-black text-4xl md:text-5xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase">
+                <h1 className="font-sans font-black text-4xl md:text-5xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
                   SOLO
                 </h1>
                 
