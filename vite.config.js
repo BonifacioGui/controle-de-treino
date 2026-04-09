@@ -18,13 +18,13 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'logo-solo192.png', 
+            src: 'logo-solo192-fundopreto.png', 
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable' // Garante que o ícone fique perfeito em qualquer Android
           },
           {
-            src: 'logo-solo512.png',
+            src: 'logo-solo512-fundopreto.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
