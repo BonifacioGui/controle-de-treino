@@ -212,7 +212,11 @@ const WorkoutApp = () => {
           sessionDuration={`${stats.lastSessionStats?.duration || 0} min`} 
           sessionVolume={`${stats.lastSessionStats?.volume || 0} kg`} 
           sessionPoints={`+${stats.lastSessionStats?.xp || 0} XP`} 
-          history={state.history} 
+          history={state.history}
+          bossName={state.workoutData?.[state.activeDay]?.title || "ALVO ELIMINADO"} 
+          streak={stats?.streak || 0}
+          currentLevel={stats?.level || 1}
+          totalXp={stats?.xp || 0}
         />
       )}
       
