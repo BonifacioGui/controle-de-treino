@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'SOLO',
         short_name: 'SOLO',
         description: 'Sistema Tático de Treino',
-        theme_color: '#050B14', // 🔥 Fundo Cyberpunk (Muda a cor da barra do celular)
-        background_color: '#050B14', // 🔥 Fundo da tela de carregamento (Splash Screen)
+        theme_color: '#000000', 
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
         icons: [

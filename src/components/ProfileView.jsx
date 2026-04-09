@@ -18,6 +18,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   
   // ================= ESTADOS =================
   const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || localStorage.getItem('soldier_avatar') || null);
+  const [avatarFile, setAvatarFile] = useState(null); // 🔥 NOVO: Guarda o arquivo real para enviar pro Supabase
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
@@ -64,7 +65,6 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
     return '--';
   }, [bioWeight, bioBf]);
 
-  // 🔥 Calculando os atributos (STR, DEX, etc) usando a mesma função síncrona atualizada
   const rpgData = useMemo(() => {
     try { return calculateStats(history || []); } catch (e) { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
   }, [history]);
@@ -133,23 +133,76 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   }, [latestBio]);
 
   // ================= FUNÇÕES DE AÇÃO =================
+
+  // 🔥 UPLOAD LOCAL DA IMAGEM PARA PREVIEW
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setAvatarFile(file); // Guarda o arquivo real para quando for salvar o perfil
       const reader = new FileReader();
-      reader.onloadend = () => { setAvatarUrl(reader.result); localStorage.setItem('soldier_avatar', reader.result); };
+      reader.onloadend = () => { 
+        setAvatarUrl(reader.result); // Atualiza o preview na tela instantaneamente
+        // Removemos o localStorage.setItem daqui para evitar falsos positivos
+      };
       reader.readAsDataURL(file);
     }
   };
 
+  // 🔥 SALVAR PERFIL (Com Upload pro Supabase Storage)
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const payload = { username: editForm.username, birthdate: editForm.birthdate, height: editForm.height ? parseFloat(editForm.height) : null, goal: editForm.goal, target_weight: editForm.target_weight ? parseFloat(editForm.target_weight) : null, avatar_url: avatarUrl };
+      let finalAvatarUrl = avatarUrl; // Se não mudou a foto, mantém a URL antiga
+
+      // Se o usuário selecionou uma nova foto...
+      if (avatarFile) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        
+        if (!userId) throw new Error("Autenticação não encontrada.");
+
+        // Gera nome único para o arquivo
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${userId}-${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        // 1. Faz o upload da imagem pro bucket 'avatars'
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // 2. Pega a URL pública dessa imagem hospedada
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        finalAvatarUrl = data.publicUrl; // Substitui o base64 pela URL real
+      }
+
+      // 3. Salva os dados no auth do usuário
+      const payload = { 
+        username: editForm.username, 
+        birthdate: editForm.birthdate, 
+        height: editForm.height ? parseFloat(editForm.height) : null, 
+        goal: editForm.goal, 
+        target_weight: editForm.target_weight ? parseFloat(editForm.target_weight) : null, 
+        avatar_url: finalAvatarUrl 
+      };
+
       const { error } = await supabase.auth.updateUser({ data: payload });
-      if (error) { alert("🚨 Erro: " + error.message); setIsSaving(false); return; }
-      setIsEditing(false); window.location.reload(); 
-    } catch (error) { alert("Erro: " + error.message); setIsSaving(false); }
+      
+      if (error) { 
+        alert("🚨 Erro ao atualizar: " + error.message); 
+        setIsSaving(false); 
+        return; 
+      }
+      
+      setIsEditing(false); 
+      setAvatarFile(null); // Limpa o arquivo da memória
+      window.location.reload(); 
+    } catch (error) { 
+      alert("Erro na operação: " + error.message); 
+      setIsSaving(false); 
+    }
   };
 
   const handleToggleForm = () => {
@@ -188,7 +241,6 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative px-1">
       
-      {/* 🔥 INJETANDO STATS NO CABEÇALHO */}
       <ProfileHeader 
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
         setIsEditing={setIsEditing} goalProgress={goalProgress} isGoalMet={isGoalMet} 
@@ -196,14 +248,12 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
         stats={stats}
       />
 
-      {/* 2. BIOMETRIA MACRO (IMC, RCQ, DONUT) */}
       <BiometricsDashboard 
         age={age} currentWeight={currentWeight} latestBio={latestBio} imc={imc} 
         imcClassification={imcClassification} rcq={rcq} rcqClass={rcqClass} 
         bfColorClass={bfColorClass} donutData={donutData} 
       />
 
-      {/* 3. FORMULÁRIO E HISTÓRICO DE MEDIDAS */}
       <BodyScanner 
         showBioForm={showBioForm} handleToggleForm={handleToggleForm} bioDate={bioDate} setBioDate={setBioDate}
         bioWeight={bioWeight} setBioWeight={setBioWeight} bioBf={bioBf} setBioBf={setBioBf} calculatedLeanMass={calculatedLeanMass}
@@ -215,15 +265,12 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
         handleEditBio={handleEditBio} requestDelete={requestDelete} getBfColorClass={getBfColorClass}
       />
 
-      {/* 4. RADAR TÁTICO RPG */}
       <TacticalRadar radarData={radarData} maxStat={maxStat} />
 
-      {/* 🔥 INJETANDO STATS NOS MÓDULOS DE RPG */}
       <CharacterSheet history={history} stats={stats} rpgData={rpgData} />
       <BadgeList history={history} stats={stats} rpgData={rpgData} />
       <QuestBoard />
 
-      {/* 6. BOTÕES DE AÇÃO GERAIS */}
       <div className="space-y-3 pt-4">
         <button onClick={() => alert("Compartilhar relatório em breve.")} className="w-full bg-card border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all shadow-sm">
           <Shield size={18} /> Compartilhar Ficha
@@ -233,7 +280,6 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
         </button>
       </div>
 
-      {/* 7. MODAIS */}
       <ProfileSettingsModal 
         isEditing={isEditing} setIsEditing={setIsEditing} editForm={editForm} setEditForm={setEditForm} 
         showCalendar={showCalendar} setShowCalendar={setShowCalendar} handleSaveProfile={handleSaveProfile} isSaving={isSaving} 
