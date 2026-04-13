@@ -4,7 +4,7 @@ import { Skull, Zap, Trophy, Flame, Target, ChevronUp, Clock, Activity, Terminal
 const ShareCard = ({ 
   stats, bossName, streak, xp, cardRef, selfieUrl, 
   currentLevel = 1, totalXp = 0, bossHp = 10000,
-  variant = 'rpg' // 🔥 NOVA PROP: 'rpg' ou 'data'
+  variant = 'rpg' 
 }) => {
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -37,16 +37,19 @@ const ShareCard = ({
         style={{ width: '1080px', height: '1920px', backgroundColor: '#050B14' }}
         className="flex flex-col justify-between font-cyber relative overflow-hidden"
       >
-        {/* FUNDO DA IMAGEM / TEXTURA */}
+        {/* FUNDO CORRIGIDO: TEXTURA NATIVA CSS */}
         {selfieUrl ? (
           <img src={selfieUrl} className="absolute inset-0 w-full h-full object-cover z-0" />
         ) : (
-          <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+          <div 
+            className="absolute inset-0 z-0 opacity-10" 
+            style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} 
+          />
         )}
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
         {/* ========================================== */}
-        {/* VARIANTE 1: RPG TÁTICO (Original) */}
+        {/* VARIANTE 1: RPG TÁTICO */}
         {/* ========================================== */}
         {variant === 'rpg' && (
           <>
@@ -103,21 +106,24 @@ const ShareCard = ({
         )}
 
         {/* ========================================== */}
-        {/* ========================================== */}
         {/* VARIANTE 2: RAW DATA (Dashboard Analítico) */}
         {/* ========================================== */}
         {variant === 'data' && (
           <>
-            <div className="relative z-30 pt-32 px-20 border-b-2 border-cyan-500/50 pb-12">
-              <div className="flex items-center gap-4 mb-4">
-                <Terminal size={64} className="text-cyan-400" />
-                <h1 className="text-6xl font-mono font-black text-cyan-400 tracking-widest uppercase">
-                  LOG_DO_SISTEMA_
+            {/* 🔥 CABEÇALHO REDUZIDO E ELEGANTE */}
+            <div className="relative z-30 pt-24 px-20 border-b border-cyan-500/30 pb-8 flex items-end justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Terminal size={32} className="text-cyan-400" />
+                  <h2 className="text-2xl font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
+                    SYS.LOG //
+                  </h2>
+                </div>
+                <h1 className="text-[70px] font-black text-white leading-none tracking-tighter uppercase">
+                  REGISTRO <span className="text-fuchsia-500">TÁTICO</span>
                 </h1>
               </div>
-              <h1 className="text-[100px] font-black text-white leading-none tracking-tighter uppercase">
-                REGISTRO<br/><span className="text-fuchsia-500">TÁTICO</span>
-              </h1>
+              <Activity size={64} className="text-white/10" />
             </div>
 
             <div className="relative z-30 px-20 space-y-8 flex-1 flex flex-col justify-center">
