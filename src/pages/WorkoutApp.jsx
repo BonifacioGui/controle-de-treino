@@ -6,7 +6,7 @@ import { useWorkout } from '../hooks/useWorkout';
 import logoSolo from '../assets/logo-solo.svg';
 
 // Componentes
-import LoadingScreen from '../components/LoadingScreen'; // 🔥 1. IMPORTE A TELA AQUI
+import LoadingScreen from '../components/LoadingScreen'; 
 import WorkoutView from '../components/WorkoutView';
 import HistoryView from '../components/HistoryView';
 import ManageView from '../components/ManageView';
@@ -26,6 +26,8 @@ const WorkoutApp = () => {
 
   const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState(null);
+  const [isSessionLoading, setIsSessionLoading] = useState(true); // 🔥 Estado que bloqueia o flash branco
+
   const { state, setters, actions, stats } = useWorkout();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,12 +35,13 @@ const WorkoutApp = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
-  // 🔥 ESTADOS DE FLUXO DE CELEBRAÇÃO
+  // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
   const [confirmLogout, setConfirmLogout] = useState(false);
 
+  // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
     // Mantém a animação rodando por pelo menos 2.5 segundos para dar aquele efeito "Premium"
     const timer = setTimeout(() => {
@@ -47,17 +50,20 @@ const WorkoutApp = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (showSplash) return <LoadingScreen logo={logoSolo} />;
-
-  // Se passou do splash, mas não tem sessão, vai pro Auth
-  if (!session) return <AuthView />;
-
+  // 2. BUSCA DA SESSÃO (SUPABASE)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsSessionLoading(false); // Só libera quando a nuvem responder
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsSessionLoading(false);
+    });
     return () => subscription.unsubscribe();
   }, []);
 
+  // 3. BUSCA DE DADOS AO LOGAR
   useEffect(() => {
     if (session?.user?.id) actions.fetchCloudData();
   }, [session?.user?.id]);
@@ -102,9 +108,6 @@ const WorkoutApp = () => {
     setTimeout(() => setShowCelebration(true), 400); 
   };
 
-  // ==========================================
-
-
   const getFlameStyle = (streak) => {
     if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
     if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
@@ -114,8 +117,20 @@ const WorkoutApp = () => {
 
   const flameStyle = getFlameStyle(stats?.streak || 0);
 
+  // ==========================================
+  // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
+  // ==========================================
+  
+  // Portão 1: Tela de animação
+  if (showSplash) return <LoadingScreen logo={logoSolo} />;
+  
+  // Portão 2: Evita o piscar branco enquanto o Supabase pensa
+  if (isSessionLoading) return <div className="min-h-screen bg-black" />;
+  
+  // Portão 3: Sem sessão = Login
   if (!session) return <AuthView />;
 
+  // Portão 4: Sistema Carregado
   return (
     <div className="min-h-screen bg-page text-main font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
@@ -230,8 +245,8 @@ const WorkoutApp = () => {
           bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
           streak={stats?.streak || 0}
           currentLevel={stats?.level || 1}
-          xpRemaining={stats?.xpRemaining || 0} // 🔥 AGORA VAI PUXAR CORRETAMENTE!
-          progressPercent={stats?.progress || 0} // Ajustado para bater com o export
+          xpRemaining={stats?.xpRemaining || 0}
+          progressPercent={stats?.progress || 0} 
         />
       )}
       
@@ -274,7 +289,7 @@ const WorkoutApp = () => {
         </div>
       )}
 
-      {/* 🔥 REST TIMER: DE VOLTA PARA O COMPORTAMENTO PADRÃO */}
+      {/* 🔥 REST TIMER */}
       <div className="relative z-[9999]">
         {(state.timerState?.active || restTimerConfig.isOpen) && (
           <RestTimer 

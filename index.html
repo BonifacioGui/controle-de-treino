@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo-solo192.png" />
+    <link rel="icon" type="image/png" href="/logo-solo512px.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -12,10 +12,104 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <title>Solo</title>
+
+    <style>
+      body {
+        margin: 0;
+        background-color: #000000;
+        overflow: hidden;
+      }
+
+      .splash-preloader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #000000;
+        z-index: 9999;
+      }
+
+      /* Logo com animação de respiração e drop-shadow dinâmico */
+      .loader-logo {
+        width: 180px;
+        animation: pulseGlow 2s infinite ease-in-out;
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% { 
+          transform: scale(0.95); 
+          filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.4)); 
+        }
+        50% { 
+          transform: scale(1.05); 
+          filter: drop-shadow(0 0 25px rgba(255, 0, 255, 0.6)); 
+        }
+      }
+
+      /* Título SOLO com o gradiente animado de 200% idêntico ao AuthView */
+      .loader-title {
+        margin-top: 20px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 3.5rem;
+        font-weight: 900;
+        
+        /* 🔥 GRADIENTE IGUAL AO AUTHVIEW */
+        background: linear-gradient(to right, #00ffff, #ff00ff, #00ffff);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        
+        animation: gradientMove 3s linear infinite;
+        letter-spacing: 0.3rem;
+        text-transform: uppercase;
+        margin-bottom: 40px;
+      }
+
+      /* Animação que faz o gradiente "correr" pelo texto */
+      @keyframes gradientMove {
+        to { background-position: 200% center; }
+      }
+
+      /* Barra de carregamento */
+      .loading-bar-container {
+        width: 200px;
+        height: 4px;
+        background-color: #222;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .loading-bar {
+        height: 100%;
+        width: 50%;
+        background: linear-gradient(90deg, #00ffff, #ff00ff);
+        position: absolute;
+        animation: loadingScan 1.5s infinite ease-in-out;
+        border-radius: 4px;
+      }
+
+      @keyframes loadingScan {
+        0% { left: -50%; }
+        100% { left: 100%; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="splash-preloader">
+        <img src="/logo-solo512px.png" class="loader-logo" alt="Logo SOLO" />
+        <h1 class="loader-title">SOLO</h1>
+        <div class="loading-bar-container">
+          <div class="loading-bar"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
