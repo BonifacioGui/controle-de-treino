@@ -32,9 +32,43 @@ const WorkoutComplete = ({
   const handleSelfieCapture = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setSelfieUrl(ev.target.result);
-      reader.readAsDataURL(file);
+      setIsGenerating(true); // Trava a tela enquanto processa
+      
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        // Cria um canvas temporário só para encolher a foto
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Define o limite máximo de largura (1080px é o limite do nosso card)
+        const MAX_WIDTH = 1080;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Desenha a imagem redimensionada
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // PADRÃO OURO: Converte para JPEG com 70% de qualidade (derruba o peso de 10MB para ~200kb)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        // Libera a memória da imagem original
+        URL.revokeObjectURL(objectUrl);
+        
+        // Passa a imagem otimizada para o sistema
+        setSelfieUrl(compressedBase64); 
+      };
+
+      img.src = objectUrl;
     }
   };
 
