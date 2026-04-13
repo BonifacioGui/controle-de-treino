@@ -1,4 +1,3 @@
-
 // Converte a data do seu histórico (DD/MM/YYYY ou ISO) para um objeto Date real
 const parseSessionDate = (session) => {
   if (session.created_at) return new Date(session.created_at);
@@ -8,19 +7,6 @@ const parseSessionDate = (session) => {
   }
   return new Date();
 };
-
-const DIFFICULTY_FACTOR = 0.02; 
-
-export const RANKS = [
-  { level: 1, title: "NOOB" },
-  { level: 5, title: "PILATES" },
-  { level: 10, title: "SABOR TREINO" },
-  { level: 20, title: "BESTA ENJAULADA" },
-  { level: 35, title: "MONSTRO" },
-  { level: 50, title: "TOJI" },
-  { level: 75, title: "GOD OF WAR" },
-  { level: 100, title: "CRISTIANO RONALDO" }
-];
 
 // ============================================================================
 // --- FUNÇÕES DE CÁLCULO E LÓGICA CORE ---
@@ -39,13 +25,6 @@ export const calculateTotalXP = (history) => {
   return history.reduce((total, session) => total + calculateSessionVolume(session), 0);
 };
 
-export const calculateLevel = (xp) => {
-  const level = Math.floor(DIFFICULTY_FACTOR * Math.sqrt(xp)) || 1;
-  return level;
-};
-
-// --- LÓGICA DE STREAK (OFENSIVA BIOLÓGICA) ---
-// O usuário pode descansar até 2 dias seguidos sem perder a ofensiva.
 // --- LÓGICA DE STREAK (OFENSIVA BIOLÓGICA) ---
 // O usuário pode descansar até 2 dias seguidos sem perder a ofensiva.
 export const calculateStreak = (history) => {
@@ -182,25 +161,6 @@ export const BADGES_LIST = [
 // ============================================================================
 // --- FUNÇÕES DE EXPORTAÇÃO DE DADOS ---
 // ============================================================================
-
-export const getRankTitle = (level) => {
-  const rank = [...RANKS].reverse().find(r => level >= r.level);
-  return rank ? rank.title : "NOOB";
-};
-
-export const getNextLevelProgress = (xp, currentLevel) => {
-  const currentLevelXP = Math.pow(currentLevel / DIFFICULTY_FACTOR, 2);
-  const nextLevelXP = Math.pow((currentLevel + 1) / DIFFICULTY_FACTOR, 2);
-  const xpInThisLevel = xp - currentLevelXP;
-  const xpNeededForNext = nextLevelXP - currentLevelXP;
-  const percentage = Math.min(100, Math.max(0, (xpInThisLevel / xpNeededForNext) * 100));
-  
-  return {
-    percentage: percentage.toFixed(1),
-    xpMissing: Math.max(0, Math.ceil(nextLevelXP - xp)),
-    nextLevelXP: Math.ceil(nextLevelXP)
-  };
-};
 
 export const getUnlockedBadges = (history) => {
   return BADGES_LIST.map(badge => ({

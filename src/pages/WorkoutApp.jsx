@@ -209,14 +209,16 @@ const WorkoutApp = () => {
       {showCelebration && (
         <WorkoutComplete 
           onClose={() => setShowCelebration(false)} 
-          sessionDuration={`${stats.lastSessionStats?.duration || 0} min`} 
+          sessionDuration={`${stats.lastSessionStats?.duration || '00:00'} min`} 
           sessionVolume={`${stats.lastSessionStats?.volume || 0} kg`} 
           sessionPoints={`+${stats.lastSessionStats?.xp || 0} XP`} 
           history={state.history}
           bossName={state.workoutData?.[state.activeDay]?.title || "ALVO ELIMINADO"} 
+          bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
           streak={stats?.streak || 0}
           currentLevel={stats?.level || 1}
-          totalXp={stats?.xp || 0}
+          xpRemaining={stats?.xpRemaining || 0} // 🔥 AGORA VAI PUXAR CORRETAMENTE!
+          progressPercent={stats?.progress || 0} // Ajustado para bater com o export
         />
       )}
       

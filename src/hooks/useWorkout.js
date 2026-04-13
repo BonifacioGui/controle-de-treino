@@ -363,7 +363,8 @@ export const useWorkout = () => {
       level: globalRPG.level,
       xp: globalRPG.xp,
       title: globalRPG.title,
-      progress: globalRPG.nextLevelProgress 
+      progress: globalRPG.nextLevelProgress,
+      xpRemaining: globalRPG.xpRemaining // 🔥 ADICIONE ESTA LINHA AQUI!
     }
   };
 };
