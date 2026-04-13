@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Check, Camera, Download, Loader2, Share2, Target, Zap, Clock, X } from 'lucide-react';
+import { Check, Camera, Download, Loader2, Share2, Target, Zap, Clock, X, Activity, Skull } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard'; 
 
@@ -19,6 +19,9 @@ const WorkoutComplete = ({
   const [selfieUrl, setSelfieUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
+  const [cardVariant, setCardVariant] = useState('rpg'); // 🔥 Corrigido
+  const [imageFile, setImageFile] = useState(null); // 🔥 Guarda o arquivo real para envio
+
   const cardRef = useRef(null);
 
   const handleSelfieCapture = (e) => {
@@ -40,6 +43,9 @@ const WorkoutComplete = ({
         backgroundColor: '#050B14',
         filter: (node) => node.tagName === 'IMG' ? node.complete : true
       });
+      const file = new File([blob], 'SOLO_RELATORIO.png', { type: 'image/png' });
+      setImageFile(file); // Salva no estado novo
+
       setGeneratedImage(URL.createObjectURL(blob));
     } catch (err) {
       alert("Falha de renderização visual.");
@@ -65,6 +71,22 @@ const WorkoutComplete = ({
     return getLocalDateString(d);
   });
 
+  const handleShareToSocials = async () => {
+    if (navigator.share && navigator.canShare && imageFile) {
+      try {
+        await navigator.share({
+          title: 'Relatório Tático SOLO',
+          text: 'Missão cumprida no sistema SOLO. Acompanhe meu progresso.',
+          files: [imageFile] // O segredo tá aqui, enviamos a imagem como anexo
+        });
+      } catch (err) {
+        console.log("Compartilhamento abortado pelo recruta.", err);
+      }
+    } else {
+      alert("Comando: Seu dispositivo não suporta compartilhamento direto. Salve a imagem na galeria.");
+    }
+  };
+
   const earnedXp = parseInt(sessionPoints.replace(/\D/g, '')) || 0;
   const volumeNumber = parseInt(sessionVolume.replace(/\D/g, '')) || 0;
   const hpTarget = parseInt(String(bossHp).replace(/\D/g, '')) || 1;
@@ -87,9 +109,10 @@ const WorkoutComplete = ({
         cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: 0 }} 
         bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl}
         currentLevel={currentLevel} progressPercent={progressPercent} xpRemaining={xpRemaining}
+        variant={cardVariant} // 🔥 Passando a variante pro componente filho
       />
 
-      {/* CAIXA PRINCIPAL: Comportamento perfeito para PC e Mobile */}
+      {/* CAIXA PRINCIPAL */}
       <div className="w-full max-w-[450px] bg-card border border-border rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
         
         {/* CABEÇALHO FIXO COM O BOTÃO DE X */}
@@ -98,7 +121,6 @@ const WorkoutComplete = ({
            <h2 className="font-mono text-primary tracking-[0.2em] text-[11px] font-black uppercase flex items-center gap-2 z-10">
             <Target size={16} /> Relatório de Batalha
           </h2>
-          {/* 🔥 O BOTÃO DE FECHAR VOLTOU */}
           <button onClick={onClose} className="text-muted hover:text-red-500 transition-colors z-10 p-1">
             <X size={24} />
           </button>
@@ -115,7 +137,9 @@ const WorkoutComplete = ({
             <div className="space-y-2">
               <div className="flex justify-between items-end">
                 <span className="text-[11px] font-black text-secondary uppercase tracking-widest">Nível {currentLevel}</span>
-                <span className="text-[10px] text-muted font-mono uppercase">Faltam {xpRemaining} XP</span>
+                <span className="text-[10px] text-muted font-mono uppercase text-right">
+                  Faltam <span className="text-primary font-bold">{xpRemaining} XP</span> para o próximo nível
+                </span>
               </div>
               <div className="w-full h-2 bg-black rounded-full overflow-hidden border border-border">
                 <div 
@@ -160,30 +184,61 @@ const WorkoutComplete = ({
               <p className="text-xl font-black text-primary">{sessionPoints}</p>
             </div>
           </div>
-
         </div>
 
         {/* RODAPÉ FIXO DE AÇÕES */}
         <div className="p-6 border-t border-border/50 shrink-0 bg-card space-y-4">
           
           {!generatedImage ? (
-            <div className="flex gap-3">
-              <label className="flex-1 h-14 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-center gap-2 text-primary text-[11px] font-black uppercase cursor-pointer hover:bg-primary/20 transition-colors">
-                <Camera size={16} /> {selfieUrl ? "TROCAR FOTO" : "TIRAR SELFIE"}
-                <input type="file" accept="image/*" capture="user" className="hidden" onChange={handleSelfieCapture} />
-              </label>
-              <button onClick={generateShareCard} disabled={isGenerating} className="flex-1 h-14 bg-white text-black text-[11px] font-black uppercase rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-gray-200 transition-colors">
-                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <><Share2 size={16} /> GERAR CARD</>}
-              </button>
-            </div>
+            <>
+              {/* 🔥 SELETOR DE ESTILO DO CARD */}
+              <div className="flex bg-black/50 p-1 rounded-xl border border-border/50">
+                <button 
+                  onClick={() => setCardVariant('rpg')}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all ${cardVariant === 'rpg' ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted hover:text-white'}`}
+                >
+                  <Skull size={14} /> Modo Batalha
+                </button>
+                <button 
+                  onClick={() => setCardVariant('data')}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all ${cardVariant === 'data' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-muted hover:text-white'}`}
+                >
+                  <Activity size={14} /> Modo Dados
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <label className="flex-1 h-14 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-center gap-2 text-primary text-[11px] font-black uppercase cursor-pointer hover:bg-primary/20 transition-colors">
+                  <Camera size={16} /> {selfieUrl ? "TROCAR FOTO" : "TIRAR SELFIE"}
+                  <input type="file" accept="image/*" capture="user" className="hidden" onChange={handleSelfieCapture} />
+                </label>
+                <button onClick={generateShareCard} disabled={isGenerating} className="flex-1 h-14 bg-white text-black text-[11px] font-black uppercase rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-gray-200 transition-colors">
+                  {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <><Share2 size={16} /> GERAR CARD</>}
+                </button>
+              </div>
+            </>
           ) : (
             <div className="flex flex-col gap-3">
               <div className="w-full max-h-[180px] overflow-hidden border border-primary/50 rounded-xl bg-black">
                 <img src={generatedImage} className="w-full h-full object-contain" />
               </div>
-              <button onClick={() => { const a = document.createElement('a'); a.href = generatedImage; a.download="SOLO_TREINO.png"; a.click(); }} className="w-full h-14 bg-success text-white text-[12px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
-                <Download size={18} /> SALVAR IMAGEM
-              </button>
+              
+              {/* 🔥 DIVISÃO TÁTICA DOS BOTÕES */}
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleShareToSocials} 
+                  className="flex-[2] h-14 bg-primary text-black text-[12px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-primary/80 transition-all shadow-[0_0_15px_rgba(var(--primary),0.4)] active:scale-95"
+                >
+                  <Share2 size={18} /> COMPARTILHAR
+                </button>
+                
+                <button 
+                  onClick={() => { const a = document.createElement('a'); a.href = generatedImage; a.download="SOLO_TREINO.png"; a.click(); }} 
+                  className="flex-1 h-14 bg-card border border-border text-white text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-input transition-colors active:scale-95"
+                >
+                  <Download size={16} /> SALVAR
+                </button>
+              </div>
             </div>
           )}
 

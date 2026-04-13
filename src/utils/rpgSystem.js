@@ -127,8 +127,8 @@ export const calculateStats = (history) => {
   });
   
   // STATUS GLOBAL (Blindado)
-  stats.xp = Math.floor(totalXp);
-  stats.level = getLevelFromXp(totalXp);
+  stats.xp = Math.floor(totalXp); // 1. Arredonda o XP logo de cara e trava o valor
+  stats.level = getLevelFromXp(stats.xp); // 2. Usa o XP arredondado para definir o nível
 
   let title = "Recruta";
   if (stats.level >= 5) title = "Soldado";
@@ -140,8 +140,13 @@ export const calculateStats = (history) => {
 
   const currentLevelXp = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
   const nextLevelXp = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
-  const progress = ((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
+  
+  // 3. Usa APENAS o 'stats.xp' (que já é inteiro) na matemática da barra
+  const progress = ((stats.xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
   stats.nextLevelProgress = Math.min(100, Math.max(0, progress));
+  
+  // 4. A conta de padaria perfeita (sem Math.floor aqui, pois ambos já são inteiros)
+  stats.xpRemaining = nextLevelXp - stats.xp;
   
   return stats;
 };
