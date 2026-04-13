@@ -72,9 +72,6 @@ const WorkoutApp = () => {
   const handleFinishWorkoutWrapper = async () => {
     // 1. Dispara o final do treino e pega a resposta imediata se upou de nível
     const upouDeNivel = await actions.finishWorkout();
-    
-    console.log("O HOOK DISSE QUE UPOU?:", upouDeNivel);
-
     // 2. Orquestra a UI com base na resposta
     if (upouDeNivel) {
       setShowLevelUp(true); // UPOU DE NÍVEL: Mostra a glória!
