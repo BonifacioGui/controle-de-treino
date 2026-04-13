@@ -6,6 +6,7 @@ import { useWorkout } from '../hooks/useWorkout';
 import logoSolo from '../assets/logo-solo.svg';
 
 // Componentes
+import LoadingScreen from '../components/LoadingScreen'; // 🔥 1. IMPORTE A TELA AQUI
 import WorkoutView from '../components/WorkoutView';
 import HistoryView from '../components/HistoryView';
 import ManageView from '../components/ManageView';
@@ -22,6 +23,8 @@ import WorkoutComplete from '../components/WorkoutComplete';
 import LevelUpModal from '../components/LevelUpModal';
 
 const WorkoutApp = () => { 
+
+  const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState(null);
   const { state, setters, actions, stats } = useWorkout();
   
@@ -35,6 +38,19 @@ const WorkoutApp = () => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  useEffect(() => {
+    // Mantém a animação rodando por pelo menos 2.5 segundos para dar aquele efeito "Premium"
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) return <LoadingScreen logo={logoSolo} />;
+
+  // Se passou do splash, mas não tem sessão, vai pro Auth
+  if (!session) return <AuthView />;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));

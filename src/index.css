@@ -422,3 +422,74 @@ scrollbar-width:thin;
   }
 }
 
+/* Container que ocupa a tela toda com fundo preto */
+.splash-container {
+  background-color: #000000;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+/* Animação maneira de pulsação e brilho neon para a logo */
+.splash-logo {
+  width: 220px; /* Logo grandona */
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0% { 
+    transform: scale(0.95); 
+    filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.4)); /* Ciano */
+  }
+  50% { 
+    transform: scale(1.05); 
+    filter: drop-shadow(0 0 25px rgba(255, 0, 234, 0.6)); /* Magenta/Rosa */
+  }
+  100% { 
+    transform: scale(0.95); 
+    filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.4)); 
+  }
+}
+
+/* Texto SOLO com as cores reais (gradiente ciano e rosa) */
+.splash-title {
+  margin-top: 20px;
+  font-size: 3.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #00f2ff, #ff00ea);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.3rem;
+  margin-bottom: 40px;
+}
+
+/* Barrinha de carregamento estilo Cyberpunk/PWA moderno */
+.loading-bar-container {
+  width: 200px;
+  height: 4px;
+  background-color: #222;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-bar {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, #00f2ff, #ff00ea);
+  position: absolute;
+  animation: loadingScan 1.5s infinite ease-in-out;
+  border-radius: 4px;
+}
+
+@keyframes loadingScan {
+  0% { left: -50%; }
+  100% { left: 100%; }
+}
