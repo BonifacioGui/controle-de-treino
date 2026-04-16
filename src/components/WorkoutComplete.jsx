@@ -76,12 +76,12 @@ const WorkoutComplete = ({
     if (!cardRef.current) return;
     setIsGenerating(true);
     try {
-      // Dá um tempo maior para o React renderizar o componente invisível
       await new Promise(r => setTimeout(r, 100)); 
       
       const blob = await toBlob(cardRef.current, { 
         pixelRatio: 1, 
         backgroundColor: '#050B14',
+        skipFonts: true, // 🔥 ISSO MATA O ERRO DE SECURITY DA FONTE
         filter: (node) => node.tagName === 'IMG' ? node.complete : true
       });
       
@@ -91,7 +91,6 @@ const WorkoutComplete = ({
       
     } catch (err) {
       console.error("Falha ao gerar prévia:", err);
-      // fallback gracioso se falhar
     } finally {
       setIsGenerating(false);
     }
@@ -118,8 +117,14 @@ const WorkoutComplete = ({
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
       
-      {/* CARD INVISÍVEL (Apenas para o toBlob capturar a arte final) */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+      {/* CARD INVISÍVEL COM TAMANHO FIXO PARA O GRÁFICO FUNCIONAR */}
+      <div style={{ 
+        position: 'absolute', 
+        left: '-9999px', 
+        top: '-9999px',
+        width: '400px', // 🔥 Dá uma largura para o Recharts não espremer
+        height: '700px'  // 🔥 Dá uma altura padrão
+      }}>
         <ShareCard 
           cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: 0 }} 
           bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl}

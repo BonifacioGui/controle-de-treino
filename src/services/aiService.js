@@ -8,121 +8,108 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-const SYSTEM_PROMPT = `Você é um robô extrator de dados. Converta o treino abaixo ESTRITAMENTE para um objeto JSON.
+class AIError extends Error {
+  constructor(message, type = "UNKNOWN") {
+    super(message);
+    this.type = type;
+  }
+}
 
-NÃO use blocos de código. NÃO explique nada. Retorne apenas JSON válido.
+const cache = new Map();
 
-Formato obrigatório:
+const SYSTEM_PROMPT_SMART = `Você é um especialista em musculação.
+
+Corrija e melhore o treino:
+- normalize nomes
+- complete séries
+- defina foco
+
+Retorne JSON válido no formato:
 {
   "A": {
     "title": "TREINO A",
-    "focus": "Foco do dia",
+    "focus": "Grupo muscular",
     "exercises": [
-      { "name": "Nome", "sets": "3x10", "note": "Notas" }
+      { "name": "Nome", "sets": "3x10", "note": "" }
     ]
   }
-}
-`;
+}`;
 
-// 🔧 Converte arquivo → formato Gemini
-async function fileToGenerativePart(file) {
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+const SYSTEM_PROMPT_RAW = `Converta exatamente o texto para JSON sem modificar conteúdo.`;
 
-  return {
-    inlineData: {
-      data: base64,
-      mimeType: file.type,
-    },
-  };
-}
-
-// 🧠 Validação forte do JSON
-function validateWorkoutJson(data) {
-  if (!data || typeof data !== "object") {
-    throw new Error("Resposta não é um objeto JSON");
-  }
-
-  for (const key of Object.keys(data)) {
-    const treino = data[key];
-
-    if (!treino.title || !treino.exercises) {
-      throw new Error("Formato inválido: faltando campos");
-    }
-
-    if (!Array.isArray(treino.exercises)) {
-      throw new Error("Exercises deve ser um array");
-    }
-
-    treino.exercises.forEach((ex, i) => {
-      if (!ex.name || !ex.sets) {
-        throw new Error(`Exercício inválido na posição ${i}`);
-      }
-    });
-  }
-
-  return data;
-}
-
-// 🔁 Fallback (caso IA retorne lixo)
 function safeJsonParse(text) {
   try {
     return JSON.parse(text);
   } catch {
-    // tentativa de recuperação
-    const cleaned = text
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
-
+    const cleaned = text.replace(/```json|```/g, "").trim();
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
-
     if (start !== -1 && end !== -1) {
-      return JSON.parse(cleaned.substring(start, end + 1));
+      return JSON.parse(cleaned.slice(start, end + 1));
     }
-
-    throw new Error("Não foi possível extrair JSON");
+    throw new AIError("Erro ao interpretar resposta da IA", "INVALID_JSON");
   }
 }
 
-// 🚀 Função principal
-export const parseWorkoutWithAI = async (rawText, file = null) => {
+function validate(data) {
+  if (!data || typeof data !== "object") {
+    throw new AIError("Formato inválido", "INVALID_FORMAT");
+  }
+  return data;
+}
+
+async function retry(fn, times = 2) {
+  let last;
+  for (let i = 0; i <= times; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last;
+}
+
+export const parseWorkoutWithAI = async (rawText, file, autoFix = true) => {
+  const key = JSON.stringify({ rawText, autoFix });
+
+  if (cache.has(key)) return cache.get(key);
+
   try {
     const model = genAI.getGenerativeModel({
       model: "gemini-3-flash-preview",
       generationConfig: {
         responseMimeType: "application/json",
-        temperature: 0.2, // mais determinístico
+        temperature: 0.2,
       },
     });
 
-    const parts = [SYSTEM_PROMPT];
+    const prompt = autoFix ? SYSTEM_PROMPT_SMART : SYSTEM_PROMPT_RAW;
 
-    if (rawText) {
-      parts.push(`\n[TREINO]:\n${rawText}`);
+    const run = async () => {
+      const result = await model.generateContent([
+        prompt,
+        `TREINO:\n${rawText}`,
+      ]);
+
+      const text = result.response.text();
+      const parsed = safeJsonParse(text);
+
+      return validate(parsed);
+    };
+
+    const final = await retry(run, 2);
+
+    cache.set(key, final);
+    return final;
+
+  } catch (err) {
+    if (err instanceof AIError) throw err;
+
+    if (err.message.includes("fetch")) {
+      throw new AIError("Erro de conexão com IA", "API_ERROR");
     }
 
-    if (file) {
-      parts.push(await fileToGenerativePart(file));
-    }
-
-    const result = await model.generateContent(parts);
-    const text = result.response.text();
-
-    const parsed = safeJsonParse(text);
-
-    return validateWorkoutJson(parsed);
-
-  } catch (error) {
-    console.error("Erro na IA:", error);
-
-    throw new Error(
-      "Falha ao processar treino. Verifique o formato ou tente novamente."
-    );
+    throw new AIError("Erro inesperado", "UNKNOWN");
   }
 };

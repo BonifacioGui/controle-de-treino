@@ -8,12 +8,14 @@ const ShareCard = ({
 }) => {
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  // --- LÓGICA DE RPG REAL ---
   const earnedXp = xp; 
   const volumeNumber = parseInt(String(stats.volume).replace(/\D/g, '')) || 0;
   const hpTarget = parseInt(String(bossHp).replace(/\D/g, '')) || 1; 
   const damagePercent = (volumeNumber / hpTarget) * 100;
   
+  // 🔥 Limpa o "kg" que vem do sistema para não duplicar
+  const cleanVolume = String(stats.volume).replace(/[^0-9.,]/g, '');
+
   let battleReport = "";
   if (volumeNumber >= hpTarget && stats.prs > 0) {
     battleReport = `Aniquilação total. O alvo foi obliterado e ${stats.prs} recorde(s) absoluto(s) de força foram estabelecidos.`;
@@ -35,163 +37,192 @@ const ShareCard = ({
       <div 
         ref={cardRef}
         style={{ width: '1080px', height: '1920px', backgroundColor: '#050B14' }}
-        className="font-cyber relative overflow-hidden"
+        className="font-cyber relative overflow-hidden flex flex-col"
       >
         {/* ========================================== */}
-        {/* CAMADA 0: FUNDO (SELFIE OU PADRÃO) */}
+        {/* CAMADA 0: FUNDO (SELFIE OU MATRIX) */}
         {/* ========================================== */}
         {selfieUrl ? (
           <img src={selfieUrl} alt="Selfie de Fundo" className="absolute inset-0 w-full h-full object-cover z-0" />
         ) : (
           <div 
-            className="absolute inset-0 z-0 opacity-10 bg-black" 
-            style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} 
+            className="absolute inset-0 z-0 opacity-15" 
+            style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '40px 40px', backgroundColor: '#02040a' }} 
           />
         )}
         
-        {/* ========================================== */}
-        {/* CAMADA 1: OVERLAY DE LEITURA (GRADIENTE ESCURO) */}
-        {/* ========================================== */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/50 to-black/20" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/80 to-black/30" />
+        <div className="absolute inset-6 z-15 border-2 border-white/10 rounded-[40px] pointer-events-none" />
 
         {/* ========================================== */}
-        {/* CAMADA 2: CONTEÚDO TÁTICO (HUD/DADOS) */}
+        {/* CAMADA 2: CONTEÚDO PRINCIPAL */}
         {/* ========================================== */}
-        <div className="absolute inset-0 z-20 flex flex-col justify-between">
+        <div className="absolute inset-0 z-20 flex flex-col p-[80px]">
           
+          {/* ======================================================== */}
+          {/* MODO BATALHA (MANTIDO INTACTO) */}
+          {/* ======================================================== */}
           {variant === 'rpg' && (
-            <>
-              <div className="pt-32 px-20 border-b-8 border-primary/20 pb-12">
-                <h1 className="text-[130px] font-black text-white leading-[0.85] tracking-tighter uppercase drop-shadow-2xl">
-                  MISSÃO<br/><span className="text-primary drop-shadow-[0_0_20px_rgba(var(--primary),0.6)]">CUMPRIDA</span>
+            <div className="flex flex-col h-full">
+              <div className="border-b-4 border-primary/30 pb-10 mb-12 shrink-0">
+                <h1 style={{ fontSize: '120px', lineHeight: '0.9', letterSpacing: '-0.02em' }} className="font-black text-white uppercase drop-shadow-2xl">
+                  MISSÃO<br/><span className="text-primary">CUMPRIDA</span>
                 </h1>
-                <div className="mt-8 flex items-center gap-4 bg-black/60 backdrop-blur-sm inline-block px-6 py-3 rounded-2xl border border-white/10">
-                  <p className="text-3xl font-bold text-primary tracking-[0.4em] uppercase">
+                <div className="mt-8 inline-flex items-center gap-4 bg-primary/10 px-8 py-3 rounded-2xl border border-primary/20">
+                  <span className="w-4 h-4 rounded-full bg-primary animate-pulse" />
+                  <p style={{ fontSize: '32px' }} className="font-bold text-primary tracking-[0.3em] uppercase">
                     HORA: {horaAtual}
                   </p>
                 </div>
               </div>
 
-              <div className="px-20 space-y-10 flex-1 flex flex-col justify-center">
-                <div className="bg-black/60 backdrop-blur-md p-10 rounded-[30px] border border-white/20 shadow-2xl">
-                  <div className="flex items-center gap-6 mb-8">
-                    <div className="w-24 h-24 bg-red-500/20 rounded-2xl flex items-center justify-center border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                      <Skull size={48} className="text-red-500" />
+              <div className="flex-1 flex flex-col justify-center gap-10">
+                <div className="bg-black/80 p-12 rounded-[40px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                  <div className="flex items-center gap-8 mb-10">
+                    <div className="w-32 h-32 bg-red-900/30 rounded-3xl flex items-center justify-center border border-red-500/40 shrink-0">
+                      <Skull size={64} className="text-red-500" />
                     </div>
                     <div className="overflow-hidden flex-1">
-                      <p className="text-2xl font-bold text-red-500 uppercase tracking-widest truncate">
+                      <p style={{ fontSize: '28px' }} className="font-bold text-red-500 uppercase tracking-widest mb-2">
                         {volumeNumber >= hpTarget ? "Alvo Neutralizado" : "Alvo Sobreviveu"}
                       </p>
-                      <h2 className="text-7xl font-black text-white uppercase tracking-tighter truncate drop-shadow-lg">{bossName}</h2>
+                      <h2 style={{ fontSize: '80px', lineHeight: '1' }} className="font-black text-white uppercase tracking-tighter truncate">{bossName}</h2>
                     </div>
                   </div>
-                  <div className="bg-white/10 border border-white/20 p-6 rounded-2xl mb-8">
-                    <p className="text-3xl text-white italic leading-relaxed font-medium">"{battleReport}"</p>
+                  <div className="bg-white/5 border border-white/10 p-8 rounded-3xl mb-10">
+                    <p style={{ fontSize: '36px', lineHeight: '1.4' }} className="text-white/90 italic font-medium">"{battleReport}"</p>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="flex justify-between items-end">
-                      <span className="text-4xl font-black text-fuchsia-400 uppercase tracking-widest drop-shadow-md">Nível {currentLevel}</span>
-                      <span className="text-3xl font-bold text-fuchsia-400/80">Progresso</span>
+                      <span style={{ fontSize: '48px' }} className="font-black text-fuchsia-400 uppercase tracking-widest">Nível {currentLevel}</span>
+                      <span style={{ fontSize: '32px' }} className="font-bold text-fuchsia-400/80">Progresso</span>
                     </div>
-                    <div className="w-full h-6 bg-black/50 rounded-full overflow-hidden border border-white/20 shadow-[inner_0_2px_4px_rgba(0,0,0,0.8)]">
-                      <div className="h-full bg-fuchsia-500 shadow-[0_0_20px_#ff00ff]" style={{ width: `${progressPercent}%` }} />
+                    <div className="w-full h-8 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                      <div className="h-full bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.5)]" style={{ width: `${progressPercent}%` }} />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6 bg-black/60 backdrop-blur-md p-8 rounded-[30px] border border-white/20 divide-x divide-white/20 shadow-2xl">
-                  <StatBox icon={Clock} label="Duração" value={stats.duration} color="text-purple-400" first={true} />
-                  <StatBox icon={Zap} label="Volume" value={`${stats.volume}`} color="text-cyan-400" />
-                  <StatBox icon={Trophy} label="Recordes" value={stats.prs || 0} color="text-yellow-400" />
+                <div className="grid grid-cols-3 gap-8 bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0">
+                  <StatBox icon={Clock} label="Duração" value={stats.duration} color="text-purple-400" />
+                  <StatBox icon={Zap} label="Volume" value={`${stats.volume}`} color="text-cyan-400" border />
+                  <StatBox icon={Trophy} label="Recordes" value={stats.prs || 0} color="text-yellow-400" border />
                 </div>
                 
-                <div className="grid grid-cols-3 gap-6 bg-black/60 backdrop-blur-md p-8 rounded-[30px] border border-white/20 divide-x divide-white/20 shadow-2xl">
-                  <StatBox icon={ChevronUp} label="XP Ganho" value={`+${earnedXp}`} color="text-fuchsia-500" first={true} />
-                  <StatBox icon={Flame} label="Streak" value={`${streak} Dias`} color="text-orange-500" />
-                  <StatBox icon={Target} label="Foco" value="100%" color="text-green-400" />
+                <div className="grid grid-cols-3 gap-8 bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0">
+                  <StatBox icon={ChevronUp} label="XP Ganho" value={`+${earnedXp}`} color="text-fuchsia-500" />
+                  <StatBox icon={Flame} label="Streak" value={`${streak}`} suffix="Dias" color="text-orange-500" border />
+                  <StatBox icon={Target} label="Foco" value="100%" color="text-green-400" border />
                 </div>
               </div>
-            </>
+            </div>
           )}
 
+          {/* ======================================================== */}
+          {/* MODO DADOS (AJUSTADO PARA CABER NA TELA) */}
+          {/* ======================================================== */}
           {variant === 'data' && (
-            <>
-              <div className="pt-24 px-20 border-b border-cyan-500/50 pb-8 flex items-end justify-between bg-black/40 backdrop-blur-sm">
+            <div className="flex flex-col h-full">
+              
+              {/* HEADER DATA */}
+              <div className="flex justify-between items-end border-b-4 border-cyan-500/40 pb-6 mb-8 shrink-0">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Terminal size={32} className="text-cyan-400" />
-                    <h2 className="text-2xl font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                  <div className="flex items-center gap-4 mb-3">
+                    <Terminal size={40} className="text-cyan-400" />
+                    <h2 style={{ fontSize: '30px' }} className="font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
                       SYS.LOG //
                     </h2>
                   </div>
-                  <h1 className="text-[70px] font-black text-white leading-none tracking-tighter uppercase drop-shadow-2xl">
-                    REGISTRO <span className="text-fuchsia-500 drop-shadow-[0_0_15px_rgba(217,70,239,0.5)]">TÁTICO</span>
+                  <h1 style={{ fontSize: '85px', lineHeight: '0.9' }} className="font-black text-white uppercase tracking-tighter">
+                    REGISTRO<br/><span className="text-cyan-500">TÁTICO</span>
                   </h1>
                 </div>
-                <Activity size={64} className="text-white/30" />
+                <Activity size={80} className="text-cyan-500/20 mb-2" />
               </div>
 
-              <div className="px-20 space-y-8 flex-1 flex flex-col justify-center">
-                <div className="bg-black/70 backdrop-blur-xl p-12 rounded-[20px] border-l-8 border-cyan-500 shadow-[0_0_40px_rgba(6,182,212,0.3)] flex flex-col items-center justify-center py-20">
-                  <Dumbbell size={80} className="text-cyan-500/70 mb-6 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                  <p className="text-4xl text-cyan-400 font-mono tracking-[0.3em] uppercase mb-2">Volume Total</p>
-                  <p className="text-[140px] font-black text-white leading-none tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-                    {stats.volume} <span className="text-6xl text-cyan-500">KG</span>
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="bg-black/70 backdrop-blur-xl p-10 rounded-[20px] border border-white/20 flex flex-col items-start justify-center relative overflow-hidden shadow-xl">
-                    <div className="absolute top-0 right-0 p-6 opacity-30"><Clock size={100} className="text-white" /></div>
-                    <p className="text-2xl text-white/70 font-mono uppercase tracking-widest mb-4">Duração</p>
-                    <p className="text-7xl font-black text-white tracking-tighter relative z-10 drop-shadow-md">{stats.duration}</p>
+              {/* MIOLO: Reduzimos o gap e o padding para caber tudo */}
+              <div className="flex-1 flex flex-col justify-center gap-6">
+                
+                {/* GRANDE PAINEL CENTRAL (VOLUME) */}
+                <div className="bg-[#0a101a] border border-cyan-500/30 rounded-[30px] flex flex-col justify-center items-center relative overflow-hidden shadow-2xl py-14">
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
+                    <Dumbbell size={350} className="text-cyan-500" />
                   </div>
                   
-                  <div className="bg-black/70 backdrop-blur-xl p-10 rounded-[20px] border border-white/20 flex flex-col items-start justify-center relative overflow-hidden shadow-xl">
-                    <div className="absolute top-0 right-0 p-6 opacity-30"><Flame size={100} className="text-orange-500" /></div>
-                    <p className="text-2xl text-orange-500 font-mono uppercase tracking-widest mb-4 drop-shadow-[0_0_5px_rgba(249,115,22,0.5)]">Streak Ativa</p>
-                    <p className="text-7xl font-black text-white tracking-tighter relative z-10 drop-shadow-md">{streak} <span className="text-4xl text-white/70">Dias</span></p>
+                  <p style={{ fontSize: '32px' }} className="text-cyan-500 font-mono tracking-[0.4em] uppercase mb-4 z-10">
+                    Volume Total
+                  </p>
+                  <div className="flex items-baseline gap-4 z-10">
+                    <p style={{ fontSize: '130px', lineHeight: '0.8' }} className="font-black text-white tracking-tighter">
+                      {cleanVolume || "0"}
+                    </p>
+                    <span style={{ fontSize: '46px' }} className="font-black text-cyan-500 uppercase">KG</span>
                   </div>
                 </div>
 
-                <div className="bg-fuchsia-900/40 backdrop-blur-md border border-fuchsia-500/50 p-8 rounded-[20px] flex items-center justify-between shadow-[0_0_30px_rgba(217,70,239,0.2)]">
-                  <div className="flex items-center gap-4">
-                    <Activity size={40} className="text-fuchsia-400" />
+                {/* GRID INFERIOR */}
+                <div className="grid grid-cols-2 gap-6 shrink-0">
+                  <div className="bg-[#0a101a] border border-white/10 rounded-[30px] p-8 flex flex-col items-center justify-center text-center shadow-xl">
+                    <Clock size={56} className="text-purple-400 mb-4" />
+                    <p style={{ fontSize: '26px' }} className="text-white/50 font-mono uppercase tracking-widest mb-2">Duração</p>
+                    <p style={{ fontSize: '64px', lineHeight: '1' }} className="font-black text-white tracking-tighter">{stats.duration}</p>
+                  </div>
+                  
+                  <div className="bg-[#0a101a] border border-white/10 rounded-[30px] p-8 flex flex-col items-center justify-center text-center shadow-xl">
+                    <Flame size={56} className="text-orange-500 mb-4" />
+                    <p style={{ fontSize: '26px' }} className="text-white/50 font-mono uppercase tracking-widest mb-2">Streak</p>
+                    <div className="flex items-baseline gap-2">
+                      <p style={{ fontSize: '64px', lineHeight: '1' }} className="font-black text-white tracking-tighter">{streak}</p>
+                      <span style={{ fontSize: '28px' }} className="font-bold text-orange-500 uppercase">Dias</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PAINEL DE XP */}
+                <div className="bg-[#1a0820] border border-fuchsia-500/40 rounded-[30px] p-8 flex items-center justify-between shadow-2xl shrink-0">
+                  <div className="flex items-center gap-6">
+                    <Target size={48} className="text-fuchsia-500" />
                     <div>
-                      <p className="text-xl text-fuchsia-300 font-mono uppercase tracking-widest">Status Atual</p>
-                      <p className="text-4xl font-black text-white uppercase tracking-tighter drop-shadow-md">Nível {currentLevel}</p>
+                      <p style={{ fontSize: '24px' }} className="text-fuchsia-400/80 font-mono uppercase tracking-widest mb-1">Status Atual</p>
+                      <p style={{ fontSize: '42px', lineHeight: '1' }} className="font-black text-white uppercase tracking-tighter">Nível {currentLevel}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-4xl font-black text-fuchsia-400 drop-shadow-[0_0_10px_rgba(217,70,239,0.6)]">+{earnedXp} XP</p>
+                    <p style={{ fontSize: '56px', lineHeight: '1' }} className="font-black text-fuchsia-400">+{earnedXp} XP</p>
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* --- FOOTER UNIFICADO --- */}
-          <div className="px-20 pb-24 flex justify-between items-end mt-auto bg-gradient-to-t from-black/80 to-transparent pt-10">
-            <p className="text-3xl font-black text-white/50 tracking-tighter uppercase italic drop-shadow-md">
+          {/* ========================================== */}
+          {/* FOOTER UNIFICADO */}
+          {/* ========================================== */}
+          <div className="pt-8 mt-auto flex justify-between items-end border-t border-white/10 shrink-0">
+            <p style={{ fontSize: '32px' }} className="font-black text-white/40 tracking-widest uppercase italic">
               SOLO OS // {variant === 'data' ? 'DADOS_BRUTOS' : 'REDE_DE_BATALHA'}
             </p>
-            <p className="text-4xl font-mono text-white/80 bg-black/70 px-6 py-2 rounded-xl border border-white/20 backdrop-blur-sm shadow-lg">
+            <p style={{ fontSize: '32px' }} className="font-mono font-bold text-white/60">
               {new Date().toLocaleDateString('pt-BR')}
             </p>
           </div>
+          
         </div>
       </div>
     </div>
   );
 };
 
-const StatBox = ({ icon: Icon, label, value, color, first }) => (
-  <div className={`flex flex-col items-center text-center ${first ? 'pl-0' : 'pl-6'}`}>
-    <div className="flex items-center gap-3 mb-2">
-      <Icon size={28} className={color} />
-      <span className="text-xl font-bold text-white/60 uppercase tracking-widest truncate">{label}</span>
+const StatBox = ({ icon: Icon, label, value, suffix, color, border }) => (
+  <div className={`flex flex-col items-center justify-center text-center ${border ? 'border-l border-white/10' : ''}`}>
+    <div className="flex items-center justify-center gap-3 mb-4">
+      <Icon size={36} className={`${color}`} />
+      <span style={{ fontSize: '26px' }} className="font-bold text-white/60 uppercase tracking-widest">{label}</span>
     </div>
-    <p className={`text-5xl font-black ${color} truncate w-full drop-shadow-[0_0_10px_currentColor]`}>{value}</p>
+    <div className="flex items-baseline justify-center gap-2">
+      <p style={{ fontSize: '72px', lineHeight: '1' }} className={`font-black ${color} truncate`}>{value}</p>
+      {suffix && <span style={{ fontSize: '28px' }} className={`font-bold ${color} uppercase`}>{suffix}</span>}
+    </div>
   </div>
 );
 
