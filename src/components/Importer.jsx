@@ -1,233 +1,178 @@
-import React, { useState } from 'react';
-import { supabase } from '../services/supabaseClient';
-import { Database, Loader2, Upload, Merge, Wand2, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Terminal, Cpu, Check, AlertTriangle, Loader2, Trash2, UploadCloud, FileText, Image as ImageIcon, X } from 'lucide-react';
+import { parseWorkoutWithAI } from '../services/aiService';
 
-const Importer = () => {
-  const [status, setStatus] = useState('idle');
-  const [logs, setLogs] = useState([]);
+const Importer = ({ setWorkoutData, setView }) => {
+  const [rawText, setRawText] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [parsedPreview, setParsedPreview] = useState(null);
+  const [error, setError] = useState(null);
+  
+  const fileInputRef = useRef(null);
 
-  // --- MAPA DE CORREÇÕES (AQUI É O SEGREDO) ---
-  const correctionMap = {
-    // Erros de Digitação
-    'panturilha sentado': 'Panturrilha Sentado',
-    
-    // Padronização de Nomes (Juntando duplicatas)
-    'tríceps na polia com corda': 'Tríceps na Polia (Corda)',
-    'triceps na polia (corda)': 'Tríceps na Polia (Corda)',
-    'supino inclinado': 'Supino Inclinado (Halter)',
-    'supino reto': 'Supino Reto (Barra)', // Assume que se não tem nada escrito, é barra
-    
-    // Padronização de Acentos comuns
-    'maca peruana': 'Maca Peruana',
-    'albumina': 'Albumina',
-    'creatina': 'Creatina'
-  };
-
-  // --- PARSER DE CSV ---
-  const parseCSV = (text) => {
-    const rows = [];
-    let currentRow = [];
-    let currentField = '';
-    let insideQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"') {
-        if (insideQuotes && text[i + 1] === '"') {
-          currentField += '"'; i++;
-        } else {
-          insideQuotes = !insideQuotes;
-        }
-      } else if (char === ',' && !insideQuotes) {
-        currentRow.push(currentField.trim());
-        currentField = '';
-      } else if ((char === '\n' || char === '\r') && !insideQuotes) {
-        if (char === '\r' && text[i + 1] === '\n') i++;
-        currentRow.push(currentField.trim());
-        if (currentRow.some(c => c)) rows.push(currentRow);
-        currentRow = [];
-        currentField = '';
-      } else {
-        currentField += char;
-      }
-    }
-    if (currentField || currentRow.length > 0) {
-      currentRow.push(currentField.trim());
-      rows.push(currentRow);
-    }
-    return rows;
-  };
-
-  // --- PARSER DE DATA ---
-  const parseDate = (dateStr) => {
-    if (!dateStr) return null;
-    const cleanStr = dateStr.replace(/\s+/g, ' ').trim().toLowerCase();
-    const regex = /^(\d{1,2})\s+de\s+([a-zçã]+)\s+de\s+(\d{4})/i;
-    const match = cleanStr.match(regex);
-
-    if (match) {
-      const day = match[1].padStart(2, '0');
-      const monthName = match[2];
-      const year = match[3];
-
-      const months = {
-        'janeiro': '01', 'fevereiro': '02', 'março': '03', 'marco': '03',
-        'abril': '04', 'maio': '05', 'junho': '06', 'julho': '07',
-        'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
-      };
-
-      if (months[monthName]) {
-        return `${year}-${months[monthName]}-${day}`;
-      }
-    }
-    return null;
-  };
-
-  const cleanNumber = (val) => {
-    if (!val) return '0';
-    let cleaned = val.replace(/[^\d.,]/g, '');
-    cleaned = cleaned.replace(',', '.');
-    return cleaned || '0';
-  };
-
-  const cleanText = (txt) => {
-    if (!txt) return '';
-    return txt.replace(/^"|"$/g, '').trim();
-  };
-
-  // --- 🔥 FORMATAÇÃO INTELIGENTE COM MAPA ---
-  const formatName = (txt) => {
-    if (!txt) return '';
-    
-    // 1. Limpa básico
-    let clean = txt.replace(/^"|"$/g, '').trim().toLowerCase();
-    
-    // 2. VERIFICA NO MAPA DE CORREÇÃO
-    // Se o nome "ruim" estiver no mapa, retorna o nome "bom" imediatamente
-    if (correctionMap[clean]) {
-        return correctionMap[clean];
-    }
-
-    // 3. Se não estiver no mapa, padroniza com Maiúsculas (Title Case)
-    return clean.replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const processFile = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
-    setStatus('processing');
-    setLogs(['Lendo CSV e aplicando Correções Automáticas...']);
-
-    const reader = new FileReader();
-    reader.readAsText(file, 'ISO-8859-1'); 
-
-    reader.onload = async (event) => {
-      try {
-        const text = event.target.result;
-        const allRows = parseCSV(text);
-        const dataRows = allRows.slice(1);
-        
-        setLogs(prev => [...prev, `${dataRows.length} linhas encontradas.`]);
-
-        const sessionsMap = {};
-        let skipped = 0;
-        let correctedCount = 0;
-
-        dataRows.forEach((cols) => {
-          if (cols.length < 5) return;
-
-          const rawName = cols[0];
-          const finalName = formatName(rawName); // <--- AQUI A MÁGICA ACONTECE
-          
-          // Conta quantas correções foram feitas para logar depois
-          if (rawName && finalName !== rawName && correctionMap[rawName.toLowerCase()]) {
-             correctedCount++;
-          }
-
-          const weight = cleanNumber(cols[1]); 
-          const reps = cleanNumber(cols[2]);
-          
-          const dateRaw = cols[4];
-          const noteRaw = cleanText(cols[5]);
-          const categoryRaw = cleanText(cols[6]) || 'TREINO';
-
-          if (!finalName || !dateRaw) return;
-
-          const isoDate = parseDate(dateRaw);
-          
-          if (!isoDate) {
-            skipped++;
-            return;
-          }
-
-          const key = isoDate; 
-          
-          if (!sessionsMap[key]) {
-            sessionsMap[key] = {
-              workout_date: isoDate,
-              workout_name: categoryRaw.toUpperCase(),
-              note: noteRaw || 'Importado',
-              exercises: []
-            };
-          } else {
-            const currentName = sessionsMap[key].workout_name;
-            const newName = categoryRaw.toUpperCase();
-            if (newName && !currentName.includes(newName) && newName !== 'TREINO IMPORTADO') {
-                sessionsMap[key].workout_name = `${currentName} + ${newName}`;
-            }
-          }
-          
-          let ex = sessionsMap[key].exercises.find(e => e.name === finalName);
-          if (!ex) {
-            ex = { name: finalName, sets: [], done: true };
-            sessionsMap[key].exercises.push(ex);
-          }
-          
-          ex.sets.push({ weight: weight, reps: reps });
-        });
-
-        const sessions = Object.values(sessionsMap);
-        setLogs(prev => [...prev, `${sessions.length} dias processados.`]);
-        setLogs(prev => [...prev, `✨ ${correctedCount} nomes corrigidos automaticamente!`]);
-
-        if (sessions.length === 0) {
-            setStatus('error');
-            setLogs(prev => [...prev, "Nenhum treino válido."]);
-            return;
-        }
-
-        let errors = 0;
-        for (const session of sessions) {
-          const { error } = await supabase.from('workout_history').insert([session]);
-          if (error) errors++;
-        }
-
-        setStatus('success');
-        setLogs(prev => [...prev, `SUCESSO! Importação finalizada.`]);
-
-      } catch (err) {
-        setStatus('error');
-        setLogs(prev => [...prev, 'Erro: ' + err.message]);
+    if (file) {
+      if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
+        setSelectedFile(file);
+        setError(null);
+      } else {
+        setError("Formato inválido. Envie um PDF ou uma Imagem.");
       }
-    };
+    }
+  };
+
+  const handleAIProcess = async () => {
+    if (!rawText.trim() && !selectedFile) return;
+    
+    setIsProcessing(true);
+    setError(null);
+    
+    try {
+      const result = await parseWorkoutWithAI(rawText, selectedFile);
+      setParsedPreview(result);
+    } catch (err) {
+      setError("Falha na decodificação. Verifique o arquivo/texto e tente novamente.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const confirmImport = () => {
+    if (!parsedPreview) return;
+    
+    setWorkoutData(prev => ({ ...prev, ...parsedPreview }));
+    localStorage.setItem('workout_plan', JSON.stringify({ ...parsedPreview }));
+    setView('workout'); 
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
-    <div className="p-6 bg-card border border-primary/30 rounded-xl max-w-md mx-auto mt-10">
-      <h2 className="text-xl font-black text-primary mb-4 flex items-center gap-2">
-        <ShieldCheck /> IMPORTADOR CORRETOR
-      </h2>
-      <div className={`border-2 border-dashed rounded-xl p-8 text-center relative ${status === 'processing' ? 'border-warning text-warning' : 'border-border text-muted hover:border-primary'}`}>
-        <input type="file" accept=".csv" onChange={processFile} disabled={status === 'processing'} className="absolute inset-0 opacity-0 cursor-pointer" />
-        <div className="flex flex-col items-center gap-2">
-          {status === 'processing' ? <Loader2 className="animate-spin" /> : <Upload />}
-          <span className="text-xs font-bold uppercase tracking-widest">ARRASTE O CSV</span>
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 font-cyber">
+      
+      <div className="flex items-center gap-4 mb-2">
+        <div className="p-3 bg-primary/20 rounded-xl border border-primary/30">
+          <Cpu className="text-primary animate-pulse" size={24} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Scanner Neural</h2>
+          <p className="text-[10px] font-mono text-muted uppercase tracking-[0.2em]">Texto // PDF // Imagem</p>
         </div>
       </div>
-      <div className="mt-4 space-y-1 max-h-40 overflow-y-auto text-[10px] font-mono bg-black/30 p-3 rounded">
-        {logs.map((log, i) => <div key={i} className="text-primary/80 border-b border-white/5 pb-1">&gt; {log}</div>)}
-      </div>
+
+      {!parsedPreview ? (
+        <div className="space-y-4">
+          
+          {/* ÁREA DE UPLOAD TÁTICO */}
+          <div 
+            onClick={() => !selectedFile && fileInputRef.current.click()}
+            className={`relative w-full border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${selectedFile ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/50 cursor-pointer'}`}
+          >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="application/pdf, image/png, image/jpeg" 
+              onChange={handleFileChange} 
+            />
+            
+            {selectedFile ? (
+              <div className="flex items-center gap-4 w-full bg-black/50 p-4 rounded-xl border border-white/10">
+                {selectedFile.type === 'application/pdf' ? <FileText className="text-fuchsia-500" size={32} /> : <ImageIcon className="text-cyan-500" size={32} />}
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-white font-bold text-sm truncate">{selectedFile.name}</p>
+                  <p className="text-muted text-[10px] uppercase font-mono tracking-widest">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB Pronto para extração
+                  </p>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+            ) : (
+              <div className="text-center space-y-2 opacity-70">
+                <UploadCloud size={48} className="mx-auto text-primary" />
+                <p className="font-bold text-white uppercase text-sm">Upload de Ficha</p>
+                <p className="font-mono text-muted text-[10px] uppercase tracking-widest">Toque para selecionar PDF ou Imagem</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 py-2">
+            <div className="h-[1px] flex-1 bg-border"></div>
+            <span className="text-muted font-black text-[10px] uppercase tracking-widest">OU COLE O TEXTO</span>
+            <div className="h-[1px] flex-1 bg-border"></div>
+          </div>
+
+          <textarea
+            value={rawText}
+            onChange={(e) => setRawText(e.target.value)}
+            disabled={!!selectedFile}
+            placeholder={selectedFile ? "Arquivo selecionado. Texto desabilitado." : "Cole aqui seu treino bruto do WhatsApp..."}
+            className="w-full h-32 bg-card border border-border rounded-2xl p-4 text-white font-mono text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-muted/50 disabled:opacity-50"
+          />
+
+          <button
+            onClick={handleAIProcess}
+            disabled={isProcessing || (!rawText && !selectedFile)}
+            className="w-full h-16 bg-primary text-black font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-3 hover:bg-primary/80 transition-all disabled:opacity-50 active:scale-95 shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+          >
+            {isProcessing ? (
+              <><Loader2 className="animate-spin" /> Analisando Documento...</>
+            ) : (
+              <><Terminal size={20} /> Iniciar Extração</>
+            )}
+          </button>
+        </div>
+      ) : (
+        /* VISUALIZAÇÃO DA EXTRAÇÃO (O MESMO CÓDIGO DE ANTES) */
+        <div className="space-y-4 animate-in zoom-in-95 duration-300">
+          <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-xl flex items-center gap-3">
+            <Check className="text-green-500" size={20} />
+            <span className="text-xs font-black text-green-500 uppercase tracking-widest">Ficha Decodificada</span>
+          </div>
+
+          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+            {Object.keys(parsedPreview).map(day => (
+              <div key={day} className="bg-card border border-border p-5 rounded-2xl">
+                <div className="flex justify-between items-start mb-4 border-b border-border pb-3">
+                  <h3 className="text-xl font-black text-primary uppercase italic">{parsedPreview[day].title}</h3>
+                  <span className="text-[10px] font-bold text-muted uppercase bg-white/5 px-3 py-1 rounded-full">{parsedPreview[day].focus}</span>
+                </div>
+                <ul className="space-y-2">
+                  {parsedPreview[day].exercises.map((ex, idx) => (
+                    <li key={idx} className="flex justify-between items-center text-sm border-l-2 border-primary/30 pl-3 py-1">
+                      <span className="text-white font-bold">{ex.name}</span>
+                      <span className="text-primary font-mono font-bold">{ex.sets}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => setParsedPreview(null)} className="flex-1 h-14 bg-card border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-red-500 hover:border-red-500/50 transition-all">
+              <Trash2 size={16} className="inline mr-2" /> Descartar
+            </button>
+            <button onClick={confirmImport} className="flex-[2] h-14 bg-primary text-black font-black uppercase text-[12px] tracking-widest rounded-xl hover:bg-primary/80 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)]">
+              Confirmar Injeção
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-500 animate-bounce">
+          <AlertTriangle size={20} />
+          <p className="text-[10px] font-black uppercase tracking-widest">{error}</p>
+        </div>
+      )}
     </div>
   );
 };

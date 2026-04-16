@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'SOLO',
-        short_name: 'SOLO',
+        name: 'Solo',
+        short_name: 'Solo',
         description: 'Sistema Tático de Treino',
         theme_color: '#000000', 
         background_color: '#000000',
@@ -21,7 +21,7 @@ export default defineConfig({
             src: 'logo-solo192px.png', 
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable' // Garante que o ícone fique perfeito em qualquer Android
+            purpose: 'any maskable' 
           },
           {
             src: 'logo-solo512px.png',

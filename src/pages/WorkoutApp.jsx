@@ -211,6 +211,13 @@ const WorkoutApp = () => {
             </div>
           )
         )}
+
+        {state.view === 'importer' && (
+          <Importer 
+            setWorkoutData={setters.setWorkoutData} 
+            setView={setters.setView} 
+          />
+        )}
         
         {state.view === 'manage' && (
           <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay}
