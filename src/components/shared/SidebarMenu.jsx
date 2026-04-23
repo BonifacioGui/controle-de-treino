@@ -84,7 +84,7 @@ const SidebarMenu = ({ isOpen, onClose, theme, setTheme, setView }) => {
           <button onClick={() => navigateTo('profile')} className="w-full p-3 rounded-xl border border-border bg-card hover:bg-input hover:border-primary/50 text-muted hover:text-main dark:hover:text-white transition-all flex items-center gap-3 active:scale-95">
             <User size={16} /> <span className="font-bold text-xs uppercase tracking-widest">Biometria & Classe</span>
           </button>
-
+          
           <button onClick={handleBackup} className="w-full p-3 rounded-xl border border-border bg-card hover:bg-input hover:border-primary/50 text-muted hover:text-main dark:hover:text-white transition-all flex items-center gap-3 active:scale-95">
             <DownloadCloud size={16} /> <span className="font-bold text-xs uppercase tracking-widest">Baixar Backup Local</span>
           </button>

@@ -20,7 +20,6 @@ const MuscleHeatmap = ({ history }) => {
 
   // Analisa os últimos 7 dias
   const heatData = useMemo(() => {
-    // 🔥 TRADUZIDO
     const data = { peito: 0, costas: 0, ombros: 0, braços: 0, core: 0, quadríceps: 0, posteriores: 0, panturrilhas: 0 };
     if (!history) return data;
 
@@ -52,16 +51,15 @@ const MuscleHeatmap = ({ history }) => {
   // Funções de Estilo Tático
   const getHeatColor = (sets, target = 12) => {
     const percentage = Math.min(100, (sets / target) * 100);
-    // 🔥 AJUSTE: Cor inativa mais suave para não parecer "sujo" no modo claro
     if (percentage === 0) return 'rgba(100, 116, 139, 0.2)'; 
-    if (percentage < 50) return 'rgba(var(--primary), 0.4)'; // Azul fraco
-    if (percentage < 100) return 'rgba(var(--primary), 0.8)'; // Azul forte
-    return 'rgba(239, 68, 68, 0.9)'; // Vermelho (Sobrecarga)
+    if (percentage < 50) return 'rgba(var(--primary), 0.4)'; 
+    if (percentage < 100) return 'rgba(var(--primary), 0.8)'; 
+    return 'rgba(239, 68, 68, 0.9)'; 
   };
 
   const getGlowClass = (sets, target = 12) => {
-    if (sets >= target) return 'neon-pulse-red'; // Classe para pulsar vermelho
-    if (sets > 0) return 'neon-pulse-blue'; // Classe para brilho azul constante
+    if (sets >= target) return 'neon-pulse-red'; 
+    if (sets > 0) return 'neon-pulse-blue'; 
     return '';
   };
 
@@ -74,7 +72,6 @@ const MuscleHeatmap = ({ history }) => {
   });
 
   return (
-    // 🔥 AJUSTE: Sombra adaptável
     <div className="bg-card border-2 border-border p-5 rounded-3xl shadow-lg dark:shadow-[0_0_30px_rgba(0,0,0,0.5)] mt-6 relative overflow-hidden transition-colors duration-300">
       
       {/* Efeito de fundo de grid tático - Dinâmico para claro/escuro */}
@@ -89,7 +86,6 @@ const MuscleHeatmap = ({ history }) => {
         <div className="flex items-center gap-1 bg-input/80 p-1 rounded-lg border border-border">
           <button 
             onClick={() => setGender('male')}
-            // 🔥 AJUSTE: text-main no escuro/claro
             className={`p-1.5 rounded-md transition-all ${gender === 'male' ? 'bg-primary text-black shadow-sm dark:shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'text-muted hover:text-main dark:hover:text-primary'}`}
           >
             <User size={16} />
@@ -109,7 +105,6 @@ const MuscleHeatmap = ({ history }) => {
           {/* Definições de Efeitos Visuais */}
           <defs>
             <pattern id="scanlines" patternUnits="userSpaceOnUse" width="4" height="4">
-              {/* 🔥 AJUSTE: Linhas mais suaves para não sujar o fundo claro */}
               <line x1="0" y1="0" x2="200" y2="0" stroke="rgba(0,0,0,0.15)" strokeWidth="2" className="dark:stroke-[rgba(0,0,0,0.4)]"/>
             </pattern>
             <linearGradient id="hologram-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -125,58 +120,39 @@ const MuscleHeatmap = ({ history }) => {
           {/* Renderização Condicional dos Biotipos */}
           {gender === 'male' ? (
             <g className="male-wireframe">
-               {/* CABEÇA */}
-               {/* 🔥 AJUSTE: stroke dinâmico e fill mais suave */}
                <polygon points="90,20 110,20 115,40 100,50 85,40" fill="rgba(100,116,139,0.3)" stroke="rgba(var(--primary),0.4)"/>
-               {/* OMBROS */}
                <polygon points="65,55 135,55 145,75 135,85 65,85 55,75" {...polyProps('ombros')}/>
-               {/* PEITO */}
                <polygon points="70,60 130,60 125,100 100,110 75,100" {...polyProps('peito')}/>
-               {/* COSTAS */}
                <polygon points="60,80 70,80 75,120 60,120" {...polyProps('costas')}/>
                <polygon points="140,80 130,80 125,120 140,120" {...polyProps('costas')}/>
-               {/* CORE */}
                <polygon points="77,115 123,115 118,155 100,165 82,155" {...polyProps('core')}/>
-               {/* BRAÇOS */}
                <rect x="40" y="80" width="18" height="45" rx="4" {...polyProps('braços')}/>
                <rect x="142" y="80" width="18" height="45" rx="4" {...polyProps('braços')}/>
                <rect x="35" y="130" width="15" height="40" rx="3" {...polyProps('braços')}/>
                <rect x="150" y="130" width="15" height="40" rx="3" {...polyProps('braços')}/>
-               {/* QUADRÍCEPS */}
                <polygon points="78,170 98,170 95,230 73,230" {...polyProps('quadríceps')}/>
                <polygon points="102,170 122,170 127,230 105,230" {...polyProps('quadríceps')}/>
-               {/* POSTERIORES */}
                <polygon points="68,175 76,175 71,225 63,220" {...polyProps('posteriores')}/>
                <polygon points="132,175 124,175 129,225 137,220" {...polyProps('posteriores')}/>
-               {/* PANTURRILHAS */}
                <polygon points="76,240 92,240 88,290 73,290" {...polyProps('panturrilhas')}/>
                <polygon points="108,240 124,240 127,290 112,290" {...polyProps('panturrilhas')}/>
             </g>
           ) : (
             <g className="female-wireframe">
-              {/* CABEÇA */}
               <polygon points="92,25 108,25 112,42 100,50 88,42" fill="rgba(100,116,139,0.3)" stroke="rgba(var(--primary),0.4)"/>
-              {/* OMBROS */}
               <polygon points="75,55 125,55 132,70 125,80 75,80 68,70" {...polyProps('ombros')}/>
-              {/* PEITO */}
               <polygon points="80,60 120,60 115,85 100,95 85,85" {...polyProps('peito')}/>
-              {/* COSTAS */}
               <polygon points="70,75 78,75 82,110 70,110" {...polyProps('costas')}/>
               <polygon points="130,75 122,75 118,110 130,110" {...polyProps('costas')}/>
-              {/* CORE */}
               <polygon points="80,105 120,105 125,145 100,155 75,145" {...polyProps('core')}/>
-              {/* BRAÇOS */}
               <rect x="52" y="75" width="14" height="42" rx="4" {...polyProps('braços')}/>
               <rect x="134" y="75" width="14" height="42" rx="4" {...polyProps('braços')}/>
               <rect x="48" y="122" width="12" height="38" rx="3" {...polyProps('braços')}/>
               <rect x="140" y="122" width="12" height="38" rx="3" {...polyProps('braços')}/>
-              {/* QUADRÍCEPS */}
               <polygon points="73,160 98,160 94,225 70,225" {...polyProps('quadríceps')}/>
               <polygon points="102,160 127,160 130,225 106,225" {...polyProps('quadríceps')}/>
-              {/* POSTERIORES */}
               <polygon points="65,165 73,165 69,220 60,215" {...polyProps('posteriores')}/>
               <polygon points="135,165 127,165 131,220 140,215" {...polyProps('posteriores')}/>
-              {/* PANTURRILHAS */}
               <polygon points="74,235 90,235 86,285 70,285" {...polyProps('panturrilhas')}/>
               <polygon points="110,235 126,235 130,285 114,285" {...polyProps('panturrilhas')}/>
             </g>
@@ -190,7 +166,6 @@ const MuscleHeatmap = ({ history }) => {
         </svg>
 
         {/* LEGENDA FLUTUANTE HUD MELHORADA */}
-        {/* 🔥 AJUSTE: bg-card/80 dark:bg-black/40 para não ficar uma mancha preta no dia */}
         <div className="absolute right-2 top-16 flex flex-col gap-2 text-[8px] font-mono uppercase tracking-widest text-muted text-right bg-card/80 dark:bg-black/40 p-2 rounded-lg border border-border shadow-sm backdrop-blur-md z-20 transition-colors">
           <div className="flex items-center gap-1 justify-end text-red-500 font-bold drop-shadow-sm">
             <Activity size={10} className="animate-pulse" /> Sobrecarga (+100%)
@@ -209,7 +184,6 @@ const MuscleHeatmap = ({ history }) => {
         {Object.entries(heatData).map(([muscle, sets]) => {
           const isOverload = sets >= 12;
           return (
-          // 🔥 AJUSTE: bg-input e bg-red-500/10 no claro para leitura
           <div key={muscle} className={`text-center rounded-lg py-1.5 border transition-colors ${isOverload ? 'bg-red-500/10 border-red-500/50 shadow-sm' : 'bg-input/50 dark:bg-input/20 border-border/50'}`}>
             <p className="text-[7px] font-black text-muted uppercase leading-tight mb-0.5">{muscle}</p>
             <p className={`text-[11px] font-black leading-none ${isOverload ? 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.3)] animate-pulse' : 'text-primary'}`}>
@@ -219,8 +193,8 @@ const MuscleHeatmap = ({ history }) => {
         )})}
       </div>
       
-      {/* ESTILOS CSS INJETADOS PARA ANIMAÇÃO */}
-      <style jsx>{`
+      {/* 🔥 AQUI ESTÁ O SEGREDO: APENAS <style> SEM O 'jsx' */}
+      <style>{`
         .neon-pulse-blue {
           filter: drop-shadow(0 0 6px rgba(var(--primary), 0.6));
         }

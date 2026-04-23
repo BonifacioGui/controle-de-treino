@@ -150,3 +150,11 @@ export const calculateStats = (history) => {
   
   return stats;
 };
+
+// Adicione no final do src/utils/rpgSystem.js:
+export const getFlameStyle = (streak) => {
+    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
+    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
+    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
+    return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
+};

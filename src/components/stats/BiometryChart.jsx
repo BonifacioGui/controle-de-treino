@@ -5,51 +5,46 @@ import { Activity, Filter } from 'lucide-react';
 const BiometryChart = ({ data }) => {
   const [bioChartFilter, setBioChartFilter] = useState('macro');
 
-  // Detecta o tema atual para ajustar as cores do gráfico (Recharts não lê classes do Tailwind diretamente)
-  const theme = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || 'driver' : 'driver';
-  const colors = {
-    driver: { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' }, 
-    light:  { p: '#0284c7', s: '#db2777', t: '#475569', bg: '#ffffff', w: '#000000', g: '#16a34a' }  
-  }[theme] || { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' };
+  // 🔥 Lixo jogado fora: O gráfico agora é 100% blindado com CSS nativo!
 
   const renderBioChart = () => {
     switch (bioChartFilter) {
       case 'arms':
         return (
           <>
-            <Area type="monotone" dataKey="arm_l" name="Braço Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
-            <Area type="monotone" dataKey="arm_r" name="Braço Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="arm_l" name="Braço Esq." stroke="rgb(var(--primary))" fill="rgb(var(--primary))" fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="arm_r" name="Braço Dir." stroke="rgb(var(--secondary))" fill="rgb(var(--secondary))" fillOpacity={0.2} connectNulls />
           </>
         );
       case 'legs':
         return (
           <>
-            <Area type="monotone" dataKey="leg_l" name="Perna Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
-            <Area type="monotone" dataKey="leg_r" name="Perna Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="leg_l" name="Perna Esq." stroke="rgb(var(--primary))" fill="rgb(var(--primary))" fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="leg_r" name="Perna Dir." stroke="rgb(var(--secondary))" fill="rgb(var(--secondary))" fillOpacity={0.2} connectNulls />
           </>
         );
       case 'calves':
         return (
           <>
-            <Area type="monotone" dataKey="calf_l" name="Panturrilha Esq." stroke={colors.p} fill={colors.p} fillOpacity={0.2} connectNulls />
-            <Area type="monotone" dataKey="calf_r" name="Panturrilha Dir." stroke={colors.s} fill={colors.s} fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="calf_l" name="Panturrilha Esq." stroke="rgb(var(--primary))" fill="rgb(var(--primary))" fillOpacity={0.2} connectNulls />
+            <Area type="monotone" dataKey="calf_r" name="Panturrilha Dir." stroke="rgb(var(--secondary))" fill="rgb(var(--secondary))" fillOpacity={0.2} connectNulls />
           </>
         );
       case 'trunk':
         return (
           <>
-            <Line type="monotone" dataKey="peito" name="Peito" stroke={colors.p} strokeWidth={2} dot={{ r: 2 }} connectNulls />
-            <Line type="monotone" dataKey="ombro" name="Ombro" stroke={colors.w} strokeWidth={2} dot={{ r: 2 }} connectNulls />
-            <Line type="monotone" dataKey="cintura" name="Cintura" stroke={colors.s} strokeWidth={2} dot={{ r: 2 }} connectNulls />
-            <Line type="monotone" dataKey="quadril" name="Quadril" stroke="#eab308" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="peito" name="Peito" stroke="rgb(var(--primary))" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="ombro" name="Ombro" stroke="var(--text-main)" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="cintura" name="Cintura" stroke="rgb(var(--secondary))" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            <Line type="monotone" dataKey="quadril" name="Quadril" stroke="rgb(var(--warning))" strokeWidth={2} dot={{ r: 2 }} connectNulls />
           </>
         );
       case 'macro':
       default:
         return (
           <>
-            <Area type="monotone" dataKey="peso" name="Peso Bruto" stroke={colors.t} fill={colors.t} fillOpacity={0.1} connectNulls />
-            <Line type="monotone" dataKey="lean_mass" name="Massa Magra" stroke={colors.g} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+            <Area type="monotone" dataKey="peso" name="Peso Bruto" stroke="var(--text-muted)" fill="var(--text-muted)" fillOpacity={0.1} connectNulls />
+            <Line type="monotone" dataKey="lean_mass" name="Massa Magra" stroke="rgb(var(--success))" strokeWidth={3} dot={{ r: 3 }} connectNulls />
           </>
         );
     }
@@ -78,22 +73,23 @@ const BiometryChart = ({ data }) => {
           </div>
       </div>
 
-      <div className="bg-card border border-border p-3 rounded-2xl h-48 w-full min-w-0 backdrop-blur-md relative shadow-inner overflow-hidden">
+      {/* Aumentamos para h-56 para manter o padrão e evitar sumiço no celular */}
+      <div className="bg-card border border-border p-3 rounded-2xl h-56 w-full min-w-0 backdrop-blur-md relative shadow-inner overflow-hidden">
         {data && data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-              <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-              <YAxis domain={['auto', 'auto']} stroke={colors.t} fontSize={10} tickLine={false} width={30} />
+              <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+              <YAxis domain={['auto', 'auto']} stroke="var(--text-muted)" fontSize={10} tickLine={false} width={30} />
               <Tooltip 
-                contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.p}`, fontSize: '10px', borderRadius: '8px' }} 
-                itemStyle={{ fontWeight: 'bold', color: colors.w }}
+                contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid rgba(var(--primary), 0.5)', fontSize: '10px', borderRadius: '8px' }} 
+                itemStyle={{ fontWeight: 'bold', color: 'var(--text-main)' }}
                 formatter={(value, name) => [`${value} kg/cm`, name]}
               />
               {renderBioChart()}
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50 text-center px-4">
+          <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50 text-center px-4 border-2 border-dashed border-border rounded-xl">
             Nenhum dado biométrico registrado no Dossiê ainda.
           </div>
         )}

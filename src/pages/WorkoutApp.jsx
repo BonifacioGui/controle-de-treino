@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Menu, X, Flame, Sun, Moon, Wifi, WifiOff, LogOut 
+  Menu, Flame, Wifi, WifiOff,  
 } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
-
 import { supabase } from '../services/supabaseClient';
 
 // 1. Shared & Layout (Globais)
@@ -16,40 +15,23 @@ import LoadingScreen from '../components/shared/LoadingScreen';
 import AuthView from '../components/auth/AuthView';
 
 // 3. Dashboard (Visão Geral)
-import DashboardView from '../components/dashboard/DashboardView';
-import CyberCalendar from '../components/dashboard/CyberCalendar';
 import HistoryView from '../components/dashboard/HistoryView';
 
 // 4. Workout (O Treino Ativo)
 import WorkoutView from '../components/workout/WorkoutView';
-import WorkoutHeader from '../components/workout/WorkoutHeader';
-import BossSection from '../components/workout/BossSection';
 import RestTimer from '../components/workout/RestTimer';
-import EmptyWorkoutState from '../components/workout/EmptyWorkoutState';
-import ExerciseCard from '../components/workout/ExerciseCard';
-import ExerciseSearchModal from '../components/workout/ExerciseSearchModal';
+
 
 // 5. RPG (Gamificação do SOLO)
-import CharacterSheet from '../components/rpg/CharacterSheet';
-import QuestBoard from '../components/rpg/QuestBoard';
 import LevelUpModal from '../components/rpg/LevelUpModal';
-import UserLevel from '../components/rpg/UserLevel';
-import BadgeList from '../components/rpg/BadgeList';
+import QuestLogView from '../components/rpg/QuestLogView';
+import { getFlameStyle } from '../utils/rpgSystem';
 
 // 6. Profile (Identidade e Corpo)
 import ProfileView from '../components/profile/ProfileView';
-import ProfileHeader from '../components/profile/ProfileHeader';
-import ProfileSettingsModal from '../components/profile/ProfileSettingsModal';
-import BiometricsDashboard from '../components/profile/BiometricsDashboard';
-import BodyScanner from '../components/profile/BodyScanner';
-import MuscleHeatmap from '../components/profile/MuscleHeatmap';
 
 // 7. Stats (Inteligência Tática)
 import StatsView from '../components/stats/StatsView';
-import TacticalRadar from '../components/stats/TacticalRadar';
-import VolumeChart from '../components/stats/VolumeChart';
-import BiometryChart from '../components/stats/BiometryChart';
-import TopRecords from '../components/stats/TopRecords';
 
 // 8. Admin (Gestão de Dados)
 import ManageView from '../components/admin/ManageView';
@@ -69,13 +51,15 @@ const WorkoutApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
-
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
-  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  const isAnyModalOpen = showCelebration || showLevelUp || isMenuOpen;
+  
+  // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
+  const flameStyle = getFlameStyle(stats?.streak || 0);
 
   // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
@@ -100,9 +84,11 @@ const WorkoutApp = () => {
   }, []);
 
   // 3. BUSCA DE DADOS AO LOGAR
+  // 3. BUSCA DE DADOS AO LOGAR
   useEffect(() => {
     if (session?.user?.id) actions.fetchCloudData();
-  }, [session?.user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]); // 🚨 Tiramos o 'actions' daqui!
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -117,10 +103,6 @@ const WorkoutApp = () => {
       window.removeEventListener('offline', handleStatus); 
     };
   }, []);
-
-  useEffect(() => {
-    setIsAnyModalOpen(showCelebration || showLevelUp || isMenuOpen);
-  }, [showCelebration, showLevelUp, isMenuOpen]);
 
 
   // ==========================================
@@ -143,15 +125,6 @@ const WorkoutApp = () => {
     setShowLevelUp(false);
     setTimeout(() => setShowCelebration(true), 400); 
   };
-
-  const getFlameStyle = (streak) => {
-    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
-    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
-    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
-    return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
-  };
-
-  const flameStyle = getFlameStyle(stats?.streak || 0);
 
   // ==========================================
   // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
@@ -235,6 +208,17 @@ const WorkoutApp = () => {
 
       {/* ROTEADOR DE VIEWS */}
       <div className="relative z-10 min-h-[50vh] px-4">
+
+         {state.view === 'dashboard' && (
+            <QuestLogView 
+              history={state.history} 
+              quests={[]} // Aqui depois ligaremos as quests reais
+              stats={stats} 
+              bodyHistory={state.bodyHistory} 
+              setView={setters.setView} 
+            />
+          )}
+
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
@@ -263,7 +247,7 @@ const WorkoutApp = () => {
         )}
 
         {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
-        {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} setIsModalOpen={setIsAnyModalOpen} />}
+        {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
       
@@ -293,44 +277,14 @@ const WorkoutApp = () => {
         />
       )}
       
-      {/* MENU LATERAL */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsMenuOpen(false); setConfirmLogout(false); }}></div>
-          <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col text-main dark:text-white">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">COMANDO</h2>
-              <button onClick={() => { setIsMenuOpen(false); setConfirmLogout(false); }} className="text-muted hover:text-red-500 transition-colors">
-                <X size={32} />
-              </button>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Interface Tática</span>
-              <button onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} 
-                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600' : 'bg-black/50 border-primary text-primary'}`}>
-                <span className="font-black uppercase tracking-widest text-sm">{theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}</span>
-                {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </div>
-            
-            {!confirmLogout ? (
-              <button onClick={() => setConfirmLogout(true)} className="mt-auto w-full py-4 rounded-xl border border-red-500/30 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95">
-                <LogOut size={18} /> ENCERRAR SESSÃO
-              </button>
-            ) : (
-              <div className="mt-auto space-y-3 animate-in fade-in zoom-in duration-200 bg-red-950/20 p-3 rounded-xl border border-red-500/30">
-                <p className="text-center text-xs font-black text-red-400 uppercase tracking-widest">Abandonar a base?</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setConfirmLogout(false)} className="flex-1 py-3 rounded-lg border border-border text-muted font-black uppercase text-xs hover:bg-card transition-all active:scale-95">CANCELAR</button>
-                  <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); window.location.reload(); }} 
-                    className="flex-1 py-3 rounded-lg bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-all shadow-lg">CONFIRMAR</button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* MENU LATERAL MODULARIZADO */}
+      <SidebarMenu 
+        isOpen={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)} 
+        theme={theme} 
+        setTheme={setTheme} 
+        setView={setters.setView} 
+      />
 
       {/* 🔥 REST TIMER */}
       <div className="relative z-[9999]">

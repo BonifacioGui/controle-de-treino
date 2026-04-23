@@ -174,25 +174,29 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         </button>
         
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
-          {selectedExercise && loadData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-                <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.s}`, fontSize: '10px' }}
-                  itemStyle={{ color: colors.s, fontWeight: 'bold' }}
-                  formatter={(value) => [`${value} kg`, 'Carga Máxima']}
-                />
-                <Line type="monotone" dataKey="carga" stroke={colors.s} strokeWidth={3} dot={{ fill: colors.s, r: 3 }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50">
-              Aguardando seleção...
-            </div>
-          )}
+          {/* 🔥 O SEGREDO: Caixa com altura definida (h-56) garante que o gráfico saiba seu tamanho */}
+          <div className="w-full h-56 mt-4">
+            {selectedExercise && loadData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                  <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
+                  <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.s}`, fontSize: '10px', borderRadius: '8px' }}
+                    itemStyle={{ color: colors.s, fontWeight: 'bold' }}
+                    formatter={(value) => [`${value} kg`, 'Carga Máxima']}
+                  />
+                  {/* Se tiver apenas 1 ponto, a bolinha vai aparecer graças a esse "dot" */}
+                  <Line type="monotone" dataKey="carga" stroke={colors.s} strokeWidth={3} dot={{ fill: colors.s, r: 4 }} activeDot={{ r: 6, stroke: colors.bg, strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50 border-2 border-dashed border-border rounded-xl">
+                {selectedExercise ? "DADOS INSUFICIENTES PARA O GRÁFICO" : "AGUARDANDO SELEÇÃO..."}
+              </div>
+            )}
+          </div>
         </Section>
       </section>
 
