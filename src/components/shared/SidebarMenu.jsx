@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sun, Moon, LogOut, User, Database, Settings, ShieldAlert, DownloadCloud } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 
 // 🔥 Note que adicionamos o `setView` nas propriedades (props) recebidas
 const SidebarMenu = ({ isOpen, onClose, theme, setTheme, setView }) => {

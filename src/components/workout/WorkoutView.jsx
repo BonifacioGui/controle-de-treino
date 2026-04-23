@@ -4,8 +4,8 @@ import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
-import ShareCard from './ShareCard';
-import { formatTime, safeParseFloat } from '../utils/workoutUtils';
+import ShareCard from '../export/ShareCard';
+import { formatTime, safeParseFloat } from '../../utils/workoutUtils';
 
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 

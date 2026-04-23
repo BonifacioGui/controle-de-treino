@@ -1,18 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom'; 
 import { LogOut, Shield, AlertTriangle } from 'lucide-react'; 
-import { supabase } from '../services/supabaseClient';
-import { calculateStats } from '../utils/rpgSystem';
+import { supabase } from '../../services/supabaseClient';
+import { calculateStats } from '../../utils/rpgSystem';
 
 // Importando o exército de componentes que criamos:
 import ProfileHeader from './ProfileHeader';
 import BiometricsDashboard from './BiometricsDashboard';
 import BodyScanner from './BodyScanner';
-import TacticalRadar from './TacticalRadar';
+import TacticalRadar from '../stats/TacticalRadar';
 import ProfileSettingsModal from './ProfileSettingsModal';
-import CharacterSheet from './CharacterSheet'; 
-import BadgeList from './BadgeList';
-import QuestBoard from './QuestBoard';
+import CharacterSheet from '../rpg/CharacterSheet'; 
+import BadgeList from '../rpg/BadgeList';
+import QuestBoard from '../rpg/QuestBoard';
 
 const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], deleteEntry }) => {
   

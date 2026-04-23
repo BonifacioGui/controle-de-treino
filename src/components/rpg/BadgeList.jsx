@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { getUnlockedBadges } from '../utils/gameLogic';
+import { getUnlockedBadges } from '../../utils/gameLogic';
 import { 
   Sword, CalendarCheck, Medal, Dumbbell, Zap, Lock, 
   Truck, Accessibility, Flame, Crown 

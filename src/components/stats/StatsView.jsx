@@ -3,14 +3,15 @@ import { ChevronLeft, CalendarCheck, Shield, Target, Search } from 'lucide-react
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 🛠️ Importando as lógicas pesadas
-import { getCanonicalName, getMuscleGroup } from '../utils/exerciseParser';
+import { getCanonicalName, getMuscleGroup } from '../../utils/exerciseParser';
 
 // 🧩 Importando os Módulos (Nossos novos soldados)
-import MuscleHeatmap from './MuscleHeatmap';
-import BiometryChart from './stats/BiometryChart';
-import VolumeChart from './stats/VolumeChart';
-import TopRecords from './stats/TopRecords';
-import ExerciseSearchModal from './stats/ExerciseSearchModal';
+import MuscleHeatmap from '../profile/MuscleHeatmap';
+import BiometryChart from './BiometryChart';
+import VolumeChart from './VolumeChart';
+import TopRecords from './TopRecords';
+import ExerciseSearchModal from '../workout/ExerciseSearchModal';
+
 
 // Componente auxiliar de Seção (mantido para padronizar blocos internos)
 const Section = ({ title, icon: Icon, children, h = "h-48" }) => (

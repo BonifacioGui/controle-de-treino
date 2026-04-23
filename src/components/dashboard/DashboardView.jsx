@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Shield, Zap, Target, Award, Scroll, Star, History as HistoryIcon, ChevronRight, PlusCircle } from 'lucide-react';
-import { calculateStats } from '../utils/rpgSystem'; 
-import BadgeList from './BadgeList'; 
+import { calculateStats } from '../../utils/rpgSystem'; 
+import BadgeList from '../rpg/BadgeList'; 
 import HistoryView from './HistoryView';
 
 // --- COMPONENTE DO ESTADO VAZIO INLINE ---

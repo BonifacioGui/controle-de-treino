@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Ghost, Target, Zap, Sword, Circle, Trophy, RefreshCcw, Flame, Settings2 } from 'lucide-react';
-import { safeParseFloat, calculateTrue1RM, getSmartSuggestion, isSameExercise } from '../utils/workoutUtils';
+import { safeParseFloat, calculateTrue1RM, getSmartSuggestion, isSameExercise } from '../../utils/workoutUtils';
 
 const ExerciseCard = ({
   ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal, Cpu, Check, AlertTriangle, Loader2, Trash2, RefreshCw, ArrowLeft, Send } from 'lucide-react';
-import { parseWorkoutWithAI } from '../services/aiService';
+import { parseWorkoutWithAI } from '../../services/aiService';
 
 const steps = [
   "Analisando protocolos...",

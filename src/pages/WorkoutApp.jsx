@@ -5,22 +5,58 @@ import {
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 
-// Componentes
-import LoadingScreen from '../components/LoadingScreen'; 
-import WorkoutView from '../components/WorkoutView';
-import HistoryView from '../components/HistoryView';
-import ManageView from '../components/ManageView';
-import StatsView from '../components/StatsView';
-import CyberNav from '../components/CyberNav';
-import Importer from '../components/Importer';
-import AuthView from '../components/AuthView';
-import ProfileView from '../components/ProfileView'; 
-import RestTimer from '../components/RestTimer'; 
 import { supabase } from '../services/supabaseClient';
 
-// Celebrações
-import WorkoutComplete from '../components/WorkoutComplete'; 
-import LevelUpModal from '../components/LevelUpModal';
+// 1. Shared & Layout (Globais)
+import CyberNav from '../components/shared/CyberNav';
+import SidebarMenu from '../components/shared/SidebarMenu';
+import LoadingScreen from '../components/shared/LoadingScreen';
+
+// 2. Auth (Acesso)
+import AuthView from '../components/auth/AuthView';
+
+// 3. Dashboard (Visão Geral)
+import DashboardView from '../components/dashboard/DashboardView';
+import CyberCalendar from '../components/dashboard/CyberCalendar';
+import HistoryView from '../components/dashboard/HistoryView';
+
+// 4. Workout (O Treino Ativo)
+import WorkoutView from '../components/workout/WorkoutView';
+import WorkoutHeader from '../components/workout/WorkoutHeader';
+import BossSection from '../components/workout/BossSection';
+import RestTimer from '../components/workout/RestTimer';
+import EmptyWorkoutState from '../components/workout/EmptyWorkoutState';
+import ExerciseCard from '../components/workout/ExerciseCard';
+import ExerciseSearchModal from '../components/workout/ExerciseSearchModal';
+
+// 5. RPG (Gamificação do SOLO)
+import CharacterSheet from '../components/rpg/CharacterSheet';
+import QuestBoard from '../components/rpg/QuestBoard';
+import LevelUpModal from '../components/rpg/LevelUpModal';
+import UserLevel from '../components/rpg/UserLevel';
+import BadgeList from '../components/rpg/BadgeList';
+
+// 6. Profile (Identidade e Corpo)
+import ProfileView from '../components/profile/ProfileView';
+import ProfileHeader from '../components/profile/ProfileHeader';
+import ProfileSettingsModal from '../components/profile/ProfileSettingsModal';
+import BiometricsDashboard from '../components/profile/BiometricsDashboard';
+import BodyScanner from '../components/profile/BodyScanner';
+import MuscleHeatmap from '../components/profile/MuscleHeatmap';
+
+// 7. Stats (Inteligência Tática)
+import StatsView from '../components/stats/StatsView';
+import TacticalRadar from '../components/stats/TacticalRadar';
+import VolumeChart from '../components/stats/VolumeChart';
+import BiometryChart from '../components/stats/BiometryChart';
+import TopRecords from '../components/stats/TopRecords';
+
+// 8. Admin (Gestão de Dados)
+import ManageView from '../components/admin/ManageView';
+import Importer from '../components/admin/Importer';
+
+// 9. Export (Relatórios)
+import WorkoutComplete from '../components/export/WorkoutComplete';
 
 const WorkoutApp = () => { 
 

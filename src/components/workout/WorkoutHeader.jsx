@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Play, Pause, Trash2, Timer as TimerIcon, X, AlertTriangle } from 'lucide-react';
-import CyberCalendar from './CyberCalendar';
-import { formatTime } from '../utils/workoutUtils';
+import CyberCalendar from '../dashboard/CyberCalendar';
+import { formatTime } from '../../utils/workoutUtils';
 
 const WorkoutHeader = ({ 
   selectedDate, setSelectedDate, isCalendarOpen, setIsCalendarOpen,

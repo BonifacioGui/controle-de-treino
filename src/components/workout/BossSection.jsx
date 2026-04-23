@@ -1,13 +1,12 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Trophy, Zap, Award, Target } from 'lucide-react';
-import { isSameExercise, parseDateTimestamp, safeParseFloat } from '../utils/workoutUtils';
-
+import { isSameExercise, parseDateTimestamp, safeParseFloat } from '../../utils/workoutUtils';
 // 🔥 IMPORTAÇÕES WEBP SEM ERRO 🔥
-import scavengerImg from '../assets/scavenger.webp';
-import t800Img from '../assets/t-800.webp'; 
-import mechagodzillaImg from '../assets/mechagodzilla.webp';
-import irontitanImg from '../assets/irontitan.webp'; 
-import adamsmasherImg from '../assets/adamsmasher.webp';
+import scavengerImg from '../../assets/scavenger.webp';
+import t800Img from '../../assets/t-800.webp'; 
+import mechagodzillaImg from '../../assets/mechagodzilla.webp';
+import irontitanImg from '../../assets/irontitan.webp'; 
+import adamsmasherImg from '../../assets/adamsmasher.webp';
 
 const BOSS_ROSTER = [
   { name: "SCAVENGER UNIT", image: scavengerImg, aura: "rgba(156, 163, 175, 0.8)" },

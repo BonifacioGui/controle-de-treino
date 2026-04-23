@@ -1,6 +1,6 @@
 import React from 'react';
 import { Settings, User, Camera, Crosshair } from 'lucide-react';
-import UserLevel from './UserLevel';
+import UserLevel from '../rpg/UserLevel';
 
 const ProfileHeader = ({ 
   userMetadata, 
