@@ -156,9 +156,12 @@ const WorkoutApp = () => {
             <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
               SOLO
             </h1>
-            <div className="relative w-15 h-10 flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary blur-md opacity-20"></div>
-              <img src={logoSolo} alt="SOLO Logo" className="logo-respirando object-contain relative z-10" />
+            <div className="relative h-10 w-auto flex items-center justify-center p-1">
+              <img 
+                src={logoSolo} 
+                alt="SOLO Logo" 
+                className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] hover:drop-shadow-[0_0_12px_rgba(0,243,255,1)] transition-all duration-300 relative z-10" 
+              />
             </div>
           </div>
           <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-muted uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-border">

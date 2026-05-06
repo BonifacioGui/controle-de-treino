@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Calendar, Play, Pause, Trash2, Timer as TimerIcon, X, AlertTriangle, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom'; // 🔥 A ARMA SECRETA IMPORTADA AQUI
+import { Calendar, Play, Pause, Trash2, Timer as TimerIcon, X, AlertTriangle, Zap, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar';
 import QuestBoard from '../rpg/QuestBoard'; 
 import { formatTime } from '../../utils/workoutUtils';
@@ -11,6 +12,8 @@ const WorkoutHeader = ({
 }) => {
   
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [showQuests, setShowQuests] = useState(false); 
+  const [hasQuests, setHasQuests] = useState(false);   
 
   const dateObj = new Date(selectedDate + 'T00:00:00');
   const hasStarted = workoutTimer?.elapsed > 0 || workoutTimer?.isRunning;
@@ -20,10 +23,20 @@ const WorkoutHeader = ({
     setIsResetModalOpen(false);
   };
 
+  useEffect(() => {
+    const checkQuests = () => {
+      const quests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+      setHasQuests(quests.length > 0);
+    };
+
+    checkQuests();
+    window.addEventListener('quest_update', checkQuests);
+    return () => window.removeEventListener('quest_update', checkQuests);
+  }, []);
+
   return (
     <div className="bg-card dark:bg-[#050B14] border border-[#00f3ff]/30 p-4 rounded-2xl relative overflow-hidden group shadow-[0_0_15px_rgba(0,243,255,0.05)] z-10 transition-colors">
       
-      {/* Detalhes sutis no fundo */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
       
       <div className="flex flex-col relative z-10">
@@ -44,12 +57,32 @@ const WorkoutHeader = ({
         
         {!isTutorialDay && (
           <>
-            {/* O QuestBoard fica invisível aqui se não tiver missões, sem quebrar o layout */}
-            <QuestBoard />
+            {/* SEÇÃO RETRÁTIL DO QUESTBOARD */}
+            {hasQuests && (
+              <div className="mb-3">
+                <button
+                  onClick={() => setShowQuests(!showQuests)}
+                  className="w-full flex items-center justify-between p-2.5 bg-card/50 dark:bg-[#0a0f16]/50 border border-[#00f3ff]/20 rounded-xl hover:bg-[#00f3ff]/10 hover:border-[#00f3ff]/40 transition-all group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Crosshair size={14} className={`text-[#00f3ff] transition-transform duration-300 ${showQuests ? 'rotate-90' : ''}`} />
+                    <span className="text-[10px] font-mono font-black text-[#00f3ff] uppercase tracking-widest drop-shadow-[0_0_2px_rgba(0,243,255,0.8)]">
+                      Intel: Missões Diárias
+                    </span>
+                  </div>
+                  {showQuests ? <ChevronUp size={16} className="text-[#00f3ff]" /> : <ChevronDown size={16} className="text-[#00f3ff]" />}
+                </button>
+
+                {showQuests && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <QuestBoard />
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* SEÇÃO DO CRONÔMETRO DE TREINO */}
             {!hasStarted ? (
-              /* 🔥 BOTÃO Fiel à Print: Sem chanfros exagerados, borda ciano e arredondado */
               <button 
                 onClick={toggleWorkoutTimer} 
                 className="w-full py-3.5 mt-1 rounded-xl bg-transparent border-2 border-[#00f3ff] text-[#00f3ff] transition-all duration-300 group flex items-center justify-center gap-3 shadow-[0_0_10px_rgba(0,243,255,0.1)] hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] hover:bg-[#00f3ff]/10 active:scale-95"
@@ -60,7 +93,6 @@ const WorkoutHeader = ({
                   </span>
               </button>
             ) : (
-              /* CRONÔMETRO ATIVO */
               <div className="flex items-center justify-between bg-[#0a0f16] border border-[#00f3ff]/40 p-3 rounded-xl shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] mt-1">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg transition-colors ${workoutTimer.isRunning ? 'bg-[#00f3ff] text-black shadow-[0_0_10px_rgba(0,243,255,0.5)] animate-pulse' : 'bg-input text-muted'}`}>
@@ -85,20 +117,21 @@ const WorkoutHeader = ({
         )}
       </div>
 
-      {/* MODAL DO CALENDÁRIO */}
-      {isCalendarOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6" onClick={() => setIsCalendarOpen(false)}>
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setIsCalendarOpen(false)} className="absolute -top-12 right-0 p-2 text-[#00f3ff] hover:text-red-500 hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all">
+      {/* 🔥 MODAIS TELETRANSPORTADOS VIA PORTAL PARA O BODY DO HTML */}
+      {isCalendarOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setIsCalendarOpen(false)}>
+          {/* Removi o w-full max-w-sm daqui. Agora ele abraça o calendário e fica 100% no meio! */}
+          <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setIsCalendarOpen(false)} className="absolute -top-12 right-0 p-2 text-[#00f3ff] hover:text-red-500 hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all z-10">
               <X size={32} />
             </button>
             <CyberCalendar selectedDate={selectedDate} onSelect={setSelectedDate} onClose={() => setIsCalendarOpen(false)} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO DE ZERAR */}
-      {isResetModalOpen && (
+      {isResetModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsResetModalOpen(false)}></div>
           <div className="bg-[#050B14] border-2 border-red-500 w-full max-w-sm p-8 rounded-3xl shadow-[0_0_40px_rgba(239,68,68,0.3)] relative z-10 animate-in zoom-in-95 duration-200 text-center">
@@ -125,7 +158,8 @@ const WorkoutHeader = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
