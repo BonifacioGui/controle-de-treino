@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Terminal } from 'lucide-react';
 
 // 🔥 PADRÃO OURO: Recebe 'stats' direto, sem recalcular nada!
 const UserLevel = ({ stats }) => {
   
   // Cálculo rápido apenas para fins visuais da interface (XP que falta)
-  // Como sabemos que a base é 100, é uma matemática simples:
+  // Nota: Certifique-se de que essa matemática (x 100) bate com a regra do seu rpgSystem!
   const nextLevelXp = Math.pow((stats?.level || 1), 2) * 100;
   const xpMissing = nextLevelXp - (stats?.xp || 0);
 
@@ -28,26 +28,37 @@ const UserLevel = ({ stats }) => {
   if (!stats) return null; // Prevenção contra carregamento fantasma
 
   return (
-    <div className="bg-card border border-primary/50 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(var(--primary),0.15)] group">
+    <div 
+      className="bg-[#050B14] border border-yellow-500/40 p-5 relative shadow-[0_0_20px_rgba(250,204,21,0.1)] mt-2 group"
+      style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}
+    >
+      {/* Scanlines Táticas */}
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(250,204,21,0.03)_1px,transparent_1px)] bg-[size:100%_4px]"></div>
       
-      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none text-primary transition-colors">
+      {/* Brilho Dourado no Fundo */}
+      <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-yellow-500/10 rounded-full blur-[40px] pointer-events-none z-0"></div>
+
+      <div className="absolute top-2 right-4 opacity-10 pointer-events-none text-yellow-500 transition-all group-hover:scale-110 group-hover:opacity-20 duration-500 z-0">
         <Trophy size={80} />
       </div>
 
-      <div className="flex justify-between items-end mb-2 relative z-10">
+      <div className="flex justify-between items-end mb-4 relative z-10">
         <div>
-          <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-1">
-            PROTOCOLO DE EVOLUÇÃO
-          </span>
-          <h2 className="text-2xl font-black text-main dark:text-white uppercase leading-none drop-shadow-md">
+          <div className="flex items-center gap-1.5 mb-1.5 opacity-80">
+            <Terminal size={10} className="text-yellow-500" />
+            <span className="text-[9px] font-mono font-black text-yellow-500 uppercase tracking-widest block">
+              Status de Patente
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-white uppercase leading-none drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
             {stats.title || 'Recruta'}
           </h2>
         </div>
         <div className="text-right">
-          <span className="text-3xl font-black text-primary leading-none block">
+          <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-700 leading-none block drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">
             LVL {stats.level || 1}
           </span>
-          <span className="text-[9px] font-bold text-muted uppercase">
+          <span className="text-[9px] font-black text-yellow-500/70 uppercase tracking-widest mt-1 block">
             {(stats.xp || 0).toLocaleString()} XP TOTAL
           </span>
         </div>
@@ -55,15 +66,15 @@ const UserLevel = ({ stats }) => {
 
       {/* Barra de XP */}
       <div className="relative z-10">
-        <div className="flex justify-between text-[9px] font-black text-muted mb-1 uppercase tracking-wider">
-          <span>Progresso</span>
-          <span>{Math.max(0, xpMissing).toLocaleString()} XP p/ Nvl {(stats.level || 1) + 1}</span>
+        <div className="flex justify-between text-[9px] font-black text-muted mb-1.5 uppercase tracking-wider">
+          <span>PROGRESSO DE NÍVEL</span>
+          <span className="text-yellow-500/80">{Math.max(0, xpMissing).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}</span>
         </div>
         
-        <div className="h-4 bg-input/80 dark:bg-black/50 rounded-full border border-border overflow-hidden relative shadow-inner">
+        <div className="h-4 bg-[#0a0f16] rounded-sm border border-yellow-500/30 overflow-hidden relative shadow-[inset_0_0_8px_rgba(0,0,0,0.8)]">
           {/* O preenchimento dinâmico */}
           <div 
-            className="h-full bg-gradient-to-r from-primary to-secondary transition-all flex items-center justify-end pr-1 shadow-[0_0_15px_rgba(var(--primary),0.5)]"
+            className="h-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 flex items-center justify-end pr-1 shadow-[0_0_15px_rgba(250,204,21,0.6)] relative"
             style={{ 
               width: `${Math.min(100, barWidth)}%`,
               transitionDuration: '1500ms',
@@ -71,11 +82,11 @@ const UserLevel = ({ stats }) => {
             }}
           >
             {/* Brilho na ponta da barra */}
-            <div className="h-full w-[2px] bg-white/50 shadow-[0_0_10px_white]"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-3 bg-white/60 blur-[1px]"></div>
           </div>
           
-          {/* Texto de % com mix-blend. */}
-          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white mix-blend-difference z-20 pointer-events-none">
+          {/* Texto de % com mix-blend (mantido, pois cria um efeito visual incrível) */}
+          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white mix-blend-difference z-20 pointer-events-none drop-shadow-md">
             {Math.floor(stats.nextLevelProgress || 0)}%
           </span>
         </div>

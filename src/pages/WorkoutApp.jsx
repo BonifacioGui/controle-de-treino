@@ -26,6 +26,7 @@ import RestTimer from '../components/workout/RestTimer';
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import QuestLogView from '../components/rpg/QuestLogView';
 import { getFlameStyle } from '../utils/rpgSystem';
+import { generateDailyQuests } from '../utils/questSystem'; // 🔥 IMPORTAÇÃO DO MOTOR DE MISSÕES AQUI
 
 // 6. Profile (Identidade e Corpo)
 import ProfileView from '../components/profile/ProfileView';
@@ -89,6 +90,11 @@ const WorkoutApp = () => {
     if (session?.user?.id) actions.fetchCloudData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]); // 🚨 Tiramos o 'actions' daqui!
+
+  // 🔥 4. O GATILHO DAS MISSÕES: Roda o motor ao abrir o app
+  useEffect(() => {
+    generateDailyQuests();
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -212,7 +218,7 @@ const WorkoutApp = () => {
          {state.view === 'dashboard' && (
             <QuestLogView 
               history={state.history} 
-              quests={[]} // Aqui depois ligaremos as quests reais
+              quests={[]} // Aqui depois ligaremos as quests reais se precisar mandar via props
               stats={stats} 
               bodyHistory={state.bodyHistory} 
               setView={setters.setView} 

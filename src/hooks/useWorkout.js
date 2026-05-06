@@ -263,7 +263,8 @@ export const useWorkout = () => {
       setWaistInput(entryForDate ? entryForDate.waist : '');
     },
 
-    finishWorkout: async () => {
+    // 🔥 AQUI ESTÁ A INTEGRAÇÃO (Recebendo o bonusXP e salvando na sessão)
+    finishWorkout: async (bonusXP = 0) => {
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
       let totalVolume = 0;
 
@@ -285,8 +286,12 @@ export const useWorkout = () => {
       });
 
       const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
-      const xpGained = Math.floor(totalVolume * 0.05);
+      
+      // SOMA O XP DO TREINO + O XP EXTRA DAS MISSÕES DIÁRIAS
+      const xpGanhoNoTreino = Math.floor(totalVolume * 0.05);
+      const xpGained = xpGanhoNoTreino + bonusXP;
 
+      // ATUALIZA OS STATUS PARA A TELA DE COMEMORAÇÃO EXIBIR CORRETAMENTE
       setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
 
       const sessionBase = {
@@ -294,7 +299,8 @@ export const useWorkout = () => {
         workout_date: selectedDate,
         workout_name: safeDay,
         note: sessionNote,
-        exercises: exercisesToSave
+        exercises: exercisesToSave,
+        bonus_xp: bonusXP // Salva no banco caso seu rpgSystem precise ler esse valor no futuro
       };
 
       const statsAntes = calculateStats(history);
