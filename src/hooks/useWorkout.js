@@ -111,30 +111,55 @@ export const useWorkout = () => {
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
 
-  // --- STREAK LOGIC ---
+  // --- STREAK LOGIC ABSOLUTAMENTE BLINDADA ---
   const streak = useMemo(() => {
-    if (!history || history.length === 0) return 0;
-    const uniqueDates = [...new Set(history.map(h => h.date.includes('/') ? h.date.split('/').reverse().join('-') : h.date.split('T')[0]))].sort().reverse();
-    const createDate = (str) => { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); };
-    const today = new Date(); today.setHours(0,0,0,0);
+    if (!Array.isArray(history) || history.length === 0) return 0;
+
+    const validDates = history.reduce((acc, h) => {
+      if (!h) return acc;
+      const rawDate = h.date || h.workout_date;
+      if (typeof rawDate === 'string' && rawDate.trim() !== '') {
+        if (rawDate.includes('/')) {
+          acc.push(rawDate.split('/').reverse().join('-'));
+        } else {
+          acc.push(rawDate.split('T')[0]);
+        }
+      }
+      return acc;
+    }, []);
+
+    const uniqueDates = [...new Set(validDates)].sort().reverse();
+
     if (uniqueDates.length === 0) return 0;
+
+    const createDate = (str) => { 
+      const parts = str.split('-').map(Number);
+      if (parts.length !== 3) return new Date(2000, 0, 1);
+      return new Date(parts[0], parts[1] - 1, parts[2]); 
+    };
+
+    const today = new Date(); 
+    today.setHours(0,0,0,0);
+    
     const lastWorkoutDate = createDate(uniqueDates[0]);
     const diffDays = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+
     if (!(diffDays === 0 || diffDays === 1 || (today.getDay() === 1 && diffDays <= 2))) return 0;
+
     let currentStreak = 1;
     for (let i = 0; i < uniqueDates.length - 1; i++) {
-        const gap = Math.floor((createDate(uniqueDates[i]) - createDate(uniqueDates[i+1])) / (1000 * 60 * 60 * 24));
-        if (gap === 1 || (gap === 2 && createDate(uniqueDates[i]).getDay() === 1)) currentStreak++; 
-        else break; 
+        const d1 = createDate(uniqueDates[i]);
+        const d2 = createDate(uniqueDates[i+1]);
+        const gap = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+        
+        if (gap === 1 || (gap === 2 && d1.getDay() === 1)) {
+          currentStreak++; 
+        } else {
+          break; 
+        }
     }
     return currentStreak;
   }, [history]);
-
-  const playSound = useCallback((type) => {
-    const urls = { click: 'mech-keyboard-01.mp3', success: 'level-up-bonus-sequence-2-186891.mp3', start: 'interface-124464.mp3' };
-    const audio = new Audio(`https://www.myinstants.com/media/sounds/${urls[type]}`);
-    audio.volume = 0.3; audio.play().catch(() => {});
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
@@ -177,21 +202,19 @@ export const useWorkout = () => {
   }, []);
 
   const toggleWorkoutTimer = useCallback(() => {
-    playSound('start'); 
     setWorkoutTimer(prev => prev.isRunning 
       ? { ...prev, isRunning: false } 
       : { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed }
     );
-  }, [playSound]);
+  }, []);
 
   const toggleCheck = useCallback((id) => {
-    playSound('click');
     setProgress(p => {
       const isDone = !p[id]?.done;
       if (isDone) setTimerState({ active: true, seconds: 90 });
       return { ...p, [id]: { ...p[id], done: isDone } };
     });
-  }, [playSound]);
+  }, []);
 
   // --- CORE ACTIONS ---
   const actions = useMemo(() => ({
@@ -240,9 +263,8 @@ export const useWorkout = () => {
       setWaistInput(entryForDate ? entryForDate.waist : '');
     },
 
-    finishWorkout: async () => {
-      playSound('success');
-      
+    // 🔥 AQUI ESTÁ A INTEGRAÇÃO (Recebendo o bonusXP e salvando na sessão)
+    finishWorkout: async (bonusXP = 0) => {
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
       let totalVolume = 0;
 
@@ -263,10 +285,13 @@ export const useWorkout = () => {
         return { name: p?.swappedName || ex.name, sets: p?.sets || [], done: p?.done || false, actualSets: p?.actualSets || ex.sets };
       });
 
-      // Calcula a duração e o XP bruto só para mostrar no relatório
       const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
-      const xpGained = Math.floor(totalVolume * 0.05);
+      
+      // SOMA O XP DO TREINO + O XP EXTRA DAS MISSÕES DIÁRIAS
+      const xpGanhoNoTreino = Math.floor(totalVolume * 0.05);
+      const xpGained = xpGanhoNoTreino + bonusXP;
 
+      // ATUALIZA OS STATUS PARA A TELA DE COMEMORAÇÃO EXIBIR CORRETAMENTE
       setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
 
       const sessionBase = {
@@ -274,25 +299,21 @@ export const useWorkout = () => {
         workout_date: selectedDate,
         workout_name: safeDay,
         note: sessionNote,
-        exercises: exercisesToSave
+        exercises: exercisesToSave,
+        bonus_xp: bonusXP // Salva no banco caso seu rpgSystem precise ler esse valor no futuro
       };
 
-      // 🔥 A MÁGICA FINAL: Comparando maçã com maçã usando o calculateStats
-      // Pegamos o nível ANTES do treino salvar
       const statsAntes = calculateStats(history);
       const levelAntes = statsAntes.level || 1;
       
-      // Simulamos a lista de histórico COM o treino novo e calculamos de novo
       const newEntry = {...sessionBase, date: selectedDate.split('-').reverse().join('/')};
       const newHistory = [newEntry, ...history];
       
       const statsDepois = calculateStats(newHistory);
       const levelDepois = statsDepois.level || 1;
       
-      // Essa comparação agora é 100% blindada e vai bater com o Perfil
       const subiuDeNivel = levelDepois > levelAntes;
 
-      // Salva os dados
       setHistory(newHistory);
 
       if (userId) {
@@ -303,7 +324,6 @@ export const useWorkout = () => {
       setSessionNote('');
       setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
 
-      // Retorna a verdade absoluta para a tela
       return subiuDeNivel;
     },
 
@@ -346,7 +366,7 @@ export const useWorkout = () => {
         });
       },
     }
-  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, playSound, workoutTimer]);
+  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer]);
 
   const globalRPG = useMemo(() => {
     return calculateStats(history); 
@@ -364,7 +384,7 @@ export const useWorkout = () => {
       xp: globalRPG.xp,
       title: globalRPG.title,
       progress: globalRPG.nextLevelProgress,
-      xpRemaining: globalRPG.xpRemaining // 🔥 ADICIONE ESTA LINHA AQUI!
+      xpRemaining: globalRPG.xpRemaining 
     }
   };
 };

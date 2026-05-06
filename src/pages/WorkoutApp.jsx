@@ -1,26 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Menu, X, Flame, Sun, Moon, Wifi, WifiOff, LogOut 
+  Menu, Flame, Wifi, WifiOff,  
 } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
-
-// Componentes
-import LoadingScreen from '../components/LoadingScreen'; 
-import WorkoutView from '../components/WorkoutView';
-import HistoryView from '../components/HistoryView';
-import ManageView from '../components/ManageView';
-import StatsView from '../components/StatsView';
-import CyberNav from '../components/CyberNav';
-import Importer from '../components/Importer';
-import AuthView from '../components/AuthView';
-import ProfileView from '../components/ProfileView'; 
-import RestTimer from '../components/RestTimer'; 
 import { supabase } from '../services/supabaseClient';
 
-// Celebrações
-import WorkoutComplete from '../components/WorkoutComplete'; 
-import LevelUpModal from '../components/LevelUpModal';
+// 1. Shared & Layout (Globais)
+import CyberNav from '../components/shared/CyberNav';
+import SidebarMenu from '../components/shared/SidebarMenu';
+import LoadingScreen from '../components/shared/LoadingScreen';
+
+// 2. Auth (Acesso)
+import AuthView from '../components/auth/AuthView';
+
+// 3. Dashboard (Visão Geral)
+import HistoryView from '../components/dashboard/HistoryView';
+
+// 4. Workout (O Treino Ativo)
+import WorkoutView from '../components/workout/WorkoutView';
+import RestTimer from '../components/workout/RestTimer';
+
+
+// 5. RPG (Gamificação do SOLO)
+import LevelUpModal from '../components/rpg/LevelUpModal';
+import QuestLogView from '../components/rpg/QuestLogView';
+import { getFlameStyle } from '../utils/rpgSystem';
+import { generateDailyQuests } from '../utils/questSystem'; // 🔥 IMPORTAÇÃO DO MOTOR DE MISSÕES AQUI
+
+// 6. Profile (Identidade e Corpo)
+import ProfileView from '../components/profile/ProfileView';
+
+// 7. Stats (Inteligência Tática)
+import StatsView from '../components/stats/StatsView';
+
+// 8. Admin (Gestão de Dados)
+import ManageView from '../components/admin/ManageView';
+import Importer from '../components/admin/Importer';
+
+// 9. Export (Relatórios)
+import WorkoutComplete from '../components/export/WorkoutComplete';
 
 const WorkoutApp = () => { 
 
@@ -33,13 +52,15 @@ const WorkoutApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
-
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
-  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  const isAnyModalOpen = showCelebration || showLevelUp || isMenuOpen;
+  
+  // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
+  const flameStyle = getFlameStyle(stats?.streak || 0);
 
   // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
@@ -64,9 +85,16 @@ const WorkoutApp = () => {
   }, []);
 
   // 3. BUSCA DE DADOS AO LOGAR
+  // 3. BUSCA DE DADOS AO LOGAR
   useEffect(() => {
     if (session?.user?.id) actions.fetchCloudData();
-  }, [session?.user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]); // 🚨 Tiramos o 'actions' daqui!
+
+  // 🔥 4. O GATILHO DAS MISSÕES: Roda o motor ao abrir o app
+  useEffect(() => {
+    generateDailyQuests();
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -81,10 +109,6 @@ const WorkoutApp = () => {
       window.removeEventListener('offline', handleStatus); 
     };
   }, []);
-
-  useEffect(() => {
-    setIsAnyModalOpen(showCelebration || showLevelUp || isMenuOpen);
-  }, [showCelebration, showLevelUp, isMenuOpen]);
 
 
   // ==========================================
@@ -107,15 +131,6 @@ const WorkoutApp = () => {
     setShowLevelUp(false);
     setTimeout(() => setShowCelebration(true), 400); 
   };
-
-  const getFlameStyle = (streak) => {
-    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
-    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
-    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
-    return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
-  };
-
-  const flameStyle = getFlameStyle(stats?.streak || 0);
 
   // ==========================================
   // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
@@ -141,9 +156,12 @@ const WorkoutApp = () => {
             <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
               SOLO
             </h1>
-            <div className="relative w-15 h-10 flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary blur-md opacity-20"></div>
-              <img src={logoSolo} alt="SOLO Logo" className="logo-respirando object-contain relative z-10" />
+            <div className="relative h-10 w-auto flex items-center justify-center p-1">
+              <img 
+                src={logoSolo} 
+                alt="SOLO Logo" 
+                className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] hover:drop-shadow-[0_0_12px_rgba(0,243,255,1)] transition-all duration-300 relative z-10" 
+              />
             </div>
           </div>
           <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-muted uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-border">
@@ -199,6 +217,17 @@ const WorkoutApp = () => {
 
       {/* ROTEADOR DE VIEWS */}
       <div className="relative z-10 min-h-[50vh] px-4">
+
+         {state.view === 'dashboard' && (
+            <QuestLogView 
+              history={state.history} 
+              quests={[]} // Aqui depois ligaremos as quests reais se precisar mandar via props
+              stats={stats} 
+              bodyHistory={state.bodyHistory} 
+              setView={setters.setView} 
+            />
+          )}
+
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
             <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
@@ -211,6 +240,13 @@ const WorkoutApp = () => {
             </div>
           )
         )}
+
+        {state.view === 'importer' && (
+          <Importer 
+            setWorkoutData={setters.setWorkoutData} 
+            setView={setters.setView} 
+          />
+        )}
         
         {state.view === 'manage' && (
           <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay}
@@ -220,7 +256,7 @@ const WorkoutApp = () => {
         )}
 
         {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
-        {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} setIsModalOpen={setIsAnyModalOpen} />}
+        {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
       
@@ -250,44 +286,14 @@ const WorkoutApp = () => {
         />
       )}
       
-      {/* MENU LATERAL */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsMenuOpen(false); setConfirmLogout(false); }}></div>
-          <div className="relative w-80 h-full bg-card border-l-2 border-primary p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col text-main dark:text-white">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black text-primary uppercase tracking-widest">COMANDO</h2>
-              <button onClick={() => { setIsMenuOpen(false); setConfirmLogout(false); }} className="text-muted hover:text-red-500 transition-colors">
-                <X size={32} />
-              </button>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <span className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Interface Tática</span>
-              <button onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} 
-                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600' : 'bg-black/50 border-primary text-primary'}`}>
-                <span className="font-black uppercase tracking-widest text-sm">{theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}</span>
-                {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </div>
-            
-            {!confirmLogout ? (
-              <button onClick={() => setConfirmLogout(true)} className="mt-auto w-full py-4 rounded-xl border border-red-500/30 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95">
-                <LogOut size={18} /> ENCERRAR SESSÃO
-              </button>
-            ) : (
-              <div className="mt-auto space-y-3 animate-in fade-in zoom-in duration-200 bg-red-950/20 p-3 rounded-xl border border-red-500/30">
-                <p className="text-center text-xs font-black text-red-400 uppercase tracking-widest">Abandonar a base?</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setConfirmLogout(false)} className="flex-1 py-3 rounded-lg border border-border text-muted font-black uppercase text-xs hover:bg-card transition-all active:scale-95">CANCELAR</button>
-                  <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); window.location.reload(); }} 
-                    className="flex-1 py-3 rounded-lg bg-red-600 text-white font-black uppercase text-xs hover:bg-red-700 transition-all shadow-lg">CONFIRMAR</button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* MENU LATERAL MODULARIZADO */}
+      <SidebarMenu 
+        isOpen={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)} 
+        theme={theme} 
+        setTheme={setTheme} 
+        setView={setters.setView} 
+      />
 
       {/* 🔥 REST TIMER */}
       <div className="relative z-[9999]">

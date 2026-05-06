@@ -1,5 +1,5 @@
 // src/utils/workoutUtils.js
-
+import { getCanonicalName } from './exerciseParser';
 // --- FORMATADORES DE TEXTO E NÚMEROS ---
 
 export const cleanString = (str) => {
@@ -33,48 +33,13 @@ export const getSmartSuggestion = (exerciseName, lastWeight) => {
 // --- CÉREBRO DO HISTÓRICO (Otimização de Busca) ---
 
 export const isSameExercise = (currentName, historyName) => {
-  const currentKey = cleanString(currentName);
-  const historyKey = cleanString(historyName);
+  if (!currentName || !historyName) return false;
+
+  // Em vez de "chutar" com includes, comparamos os nomes canônicos oficiais
+  const currentKey = getCanonicalName(currentName);
+  const historyKey = getCanonicalName(historyName);
   
-  if (currentKey === historyKey) return true;
-
-  const synonyms = {
-    "desenvolvimento": ["desenv", "arnold", "militar", "ombro"],
-    "supinoreto": ["supino", "plano", "barrapreto"],
-    "supinoinclinado": ["inclinado"],
-    "elevacaolateral": ["lateral"],
-    "tricepscorda": ["corda", "triceppolia"],
-    "tricepsfrances": ["frances"],
-    "tricepstesta": ["testa"],
-    "roscadireta": ["barraw", "direta"],
-    "roscamartelo": ["martelo"],
-    "rosca45": ["rosca45", "inclinada"],
-    "remadabaixa": ["triangulo", "polia", "baixa"],
-    "serrote": ["unilateral", "serrote"],
-    "puxada": ["puxada", "pulldown", "frontal"],
-    "crucifixoinverso": ["voadorinverso", "crucifixoinv"],
-    "crossover": ["cross", "polia"],
-    "legpress": ["leg", "leg45", "press"],
-    "agachamentohack": ["hack"],
-    "elevacaopelvica": ["pelvica", "quadril"],
-    "extensora": ["extensora"],
-    "flexora": ["flexora"],
-    "stiff": ["stiff", "rdl"],
-    "abdutora": ["abdu"],
-    "adutora": ["adut"],
-    "panturrilha": ["panturrilha", "gemeos"],
-    "vacuum": ["vacuo", "vacuum"]
-  };
-
-  // Verifica se o nome atual ou o nome do histórico pertence a algum grupo de sinônimos
-  for (const group in synonyms) {
-    const isCurrentInGroup = currentKey.includes(group) || synonyms[group].some(s => currentKey.includes(s));
-    const isHistoryInGroup = historyKey.includes(group) || synonyms[group].some(s => historyKey.includes(s));
-    
-    if (isCurrentInGroup && isHistoryInGroup) return true;
-  }
-
-  return historyKey.includes(currentKey) || currentKey.includes(historyKey);
+  return currentKey === historyKey;
 };
 
 // --- UTILITÁRIOS GERAIS DE TEMPO E DATA (Para o WorkoutView não quebrar) ---

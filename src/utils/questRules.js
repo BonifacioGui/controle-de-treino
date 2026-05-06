@@ -1,13 +1,12 @@
-// Definição das regras de cada missão baseada no ID
-const QUEST_RULES = {
-  // Exemplo: Mover 10.000kg no total
-  'heavy_lifter': (sessionData) => sessionData.totalVolume >= 10000,
-  
-  // Exemplo: Completar todos os exercícios sem pular nenhum
-  'perfect_focus': (sessionData) => {
-     return sessionData.totalSets > 0 && sessionData.completedSets === sessionData.totalSets;
-  },
+// src/utils/questRules.js
 
-  // Exemplo: Treino em menos de 60min (requer timer)
-  'speedrun': (sessionData) => sessionData.duration > 0 && sessionData.duration < 3600 && sessionData.finished
+export const QUEST_RULES = {
+  'heavy_lifter': (sessionData) => sessionData.totalVolume >= 10000,
+  'volume_2000': (sessionData) => sessionData.totalVolume >= 2000,
+  'perfect_focus': (sessionData) => sessionData.totalSets > 0 && sessionData.completedSets === sessionData.totalSets,
+  'speedrun': (sessionData) => sessionData.duration > 0 && sessionData.duration < 3600 && sessionData.finished,
+  'time_45': (sessionData) => sessionData.duration >= 2700,
+  'note': (sessionData) => sessionData.hasNote === true,
+  'swap': (sessionData) => sessionData.exercisesSwapped > 0,
+  'pr': (sessionData) => sessionData.prsBroken > 0
 };

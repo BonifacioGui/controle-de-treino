@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, LogIn, Scale, Ruler, Calendar as CalendarIcon, Mail, Loader2, ArrowLeft } from 'lucide-react';
-import CyberCalendar from './CyberCalendar'; 
-import logoSolo from '../assets/logo-solo.svg';
+import CyberCalendar from '../dashboard/CyberCalendar'; 
+import logoSolo from '../../assets/logo-solo.svg';
 
 // ============================================================================
 // 🔥 CONFIGURAÇÕES GLOBAIS

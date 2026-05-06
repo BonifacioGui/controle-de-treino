@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle } from 'lucide-react';
-
+import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
 const EXERCISE_CATALOG = {
   Peito: ["Supino Reto (Barra)", "Supino Reto (Halter)", "Supino Inclinado (Barra)", "Supino Inclinado (Halter)", "Crucifixo no Crossover", "Crucifixo (Halter)", "Voador (Peck Deck)", "Flexão de Braço", "Pullover", "Crossover Polia Alta", "Crossover Polia Baixa", "Supino Declinado"],
   Costas: ["Puxada Frontal (Pulley)", "Puxada Triângulo", "Remada Curvada", "Remada Baixa", "Remada Unilateral (Serrote)", "Remada Cavalinho", "Pull-down", "Barra Fixa", "Levantamento Terra"],
@@ -166,6 +165,16 @@ const ManageView = ({
         </div>
       )}
 
+      {/* 🔥 AQUI ESTÁ O BOTÃO DA IA CORRIGIDO */}
+      <div className="flex justify-center pt-2">
+        <button 
+          onClick={() => setView('importer')}
+          className="flex items-center gap-2 bg-primary/10 border border-primary/30 px-6 py-3 rounded-xl text-primary font-black text-[12px] uppercase tracking-widest hover:bg-primary/20 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] w-full justify-center"
+        >
+          <Cpu size={16} className="animate-pulse" /> IA: Decodificar Treino
+        </button>
+      </div>
+
       <div className="pt-4 px-1">
         <button onClick={() => setView('workout')} className="w-full py-4 bg-gradient-to-r from-primary to-secondary hover:brightness-110 rounded-xl font-black text-white shadow-md dark:shadow-[0_5px_20px_rgba(var(--primary),0.3)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] active:scale-95 transition-all uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2 ">
           <Save size={16} /> EFETIVAR ALTERAÇÕES
@@ -178,7 +187,6 @@ const ManageView = ({
           <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setIsCatalogOpen(false)}></div>
           <div className="bg-card border-t-2 sm:border-2 border-primary w-full max-w-lg mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl dark:shadow-[0_-10px_40px_rgba(var(--primary),0.2)] relative z-10 overflow-hidden animate-in slide-in-from-bottom-full duration-300 flex flex-col max-h-[85vh]">
             
-            {/* 🔥 PADRÃO OURO: Cabeçalho com contraste seguro */}
             <div className="bg-input/50 dark:bg-black/50 p-4 border-b border-border flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <Dumbbell className="text-primary" size={20} />
@@ -217,7 +225,6 @@ const ManageView = ({
               )}
             </div>
             
-            {/* 🔥 PADRÃO OURO: Rodapé adaptável */}
             <div className="p-4 bg-card/90 dark:bg-black/80 border-t border-border shrink-0 backdrop-blur-md">
               <button onClick={confirmSelection} disabled={selectedExercises.length === 0} className="w-full bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all hover:scale-[1.02] shadow-md dark:shadow-[0_0_20px_rgba(var(--primary),0.3)]">
                 {selectedExercises.length > 0 ? `EQUIPAR ${selectedExercises.length} EXERCÍCIO${selectedExercises.length > 1 ? 'S' : ''}` : 'SELECIONE NO ARSENAL'}

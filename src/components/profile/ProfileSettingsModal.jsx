@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X, Ruler, Calendar, Target, Save } from 'lucide-react';
-import CyberCalendar from './CyberCalendar';
+import CyberCalendar from '../dashboard/CyberCalendar';
 
 const formatNumberInput = (value) => value.replace(/[^0-9.]/g, '');
 
