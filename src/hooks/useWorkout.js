@@ -268,6 +268,7 @@ export const useWorkout = () => {
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
       let totalVolume = 0;
 
+      // 1. Prepara os exercícios e calcula o volume
       const exercisesToSave = workoutData[safeDay].exercises.map((ex, i) => {
         const id = `${selectedDate}-${safeDay}-${i}`;
         const p = progress[id];
@@ -285,24 +286,38 @@ export const useWorkout = () => {
         return { name: p?.swappedName || ex.name, sets: p?.sets || [], done: p?.done || false, actualSets: p?.actualSets || ex.sets };
       });
 
+      // 2. Cálculos de Tempo e XP
       const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
+      const durationSeconds = workoutTimer.elapsed > 0 ? workoutTimer.elapsed : durationMins * 60;
       
-      // SOMA O XP DO TREINO + O XP EXTRA DAS MISSÕES DIÁRIAS
       const xpGanhoNoTreino = Math.floor(totalVolume * 0.05);
       const xpGained = xpGanhoNoTreino + bonusXP;
 
-      // ATUALIZA OS STATUS PARA A TELA DE COMEMORAÇÃO EXIBIR CORRETAMENTE
+      // Atualiza a UI da tela de comemoração
       setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
 
+      // 3. Verifica os exercícios trocados
+      let exercisesSwappedCount = 0;
+      progress && Object.keys(progress).forEach(key => {
+        if(progress[key]?.swappedName) exercisesSwappedCount++;
+      });
+
+      // 4. Monta o pacote EXATO para o Supabase
       const sessionBase = {
         user_id: userId,
         workout_date: selectedDate,
         workout_name: safeDay,
         note: sessionNote,
         exercises: exercisesToSave,
-        bonus_xp: bonusXP // Salva no banco caso seu rpgSystem precise ler esse valor no futuro
+        total_volume: totalVolume,
+        bonus_xp: bonusXP,
+        duration: durationSeconds, 
+        has_note: !!sessionNote,
+        exercises_swapped: exercisesSwappedCount,
+        prs_broken: 0
       };
 
+      // 5. Lógica de Nível (RPG)
       const statsAntes = calculateStats(history);
       const levelAntes = statsAntes.level || 1;
       
@@ -314,12 +329,14 @@ export const useWorkout = () => {
       
       const subiuDeNivel = levelDepois > levelAntes;
 
+      // 6. Salva localmente e na nuvem
       setHistory(newHistory);
 
       if (userId) {
         supabase.from('workout_history').insert([sessionBase]).then(() => fetchCloudData());
       }
 
+      // 7. Limpa a mesa para o próximo treino
       setProgress({});
       setSessionNote('');
       setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });

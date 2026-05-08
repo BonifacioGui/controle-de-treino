@@ -1,5 +1,5 @@
 // src/utils/questSystem.js
-import { QUEST_RULES } from './questRules';
+import { QUEST_RULES } from './questRules'; // Importa para usar aqui dentro
 
 const QUEST_POOL = [
   { id: 'q1', title: 'Sobrecarga Crítica', desc: 'Bata 1 Novo PR no treino de hoje', reward: 150, type: 'pr', completed: false },
@@ -49,3 +49,5 @@ export const validateWorkoutQuests = (sessionData) => {
     window.dispatchEvent(new Event('quest_update'));
   }
 };
+
+export { QUEST_RULES };

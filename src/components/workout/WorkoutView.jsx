@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; 
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'; 
 
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
 import ShareCard from '../export/ShareCard';
 import { formatTime, safeParseFloat } from '../../utils/workoutUtils';
-import { validateWorkoutQuests } from '../../utils/questSystem'; // 🔥 IMPORTA O MOTOR AQUI
+import { QUEST_RULES } from '../../utils/questSystem';
 
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
@@ -15,6 +15,8 @@ const WorkoutView = ({
 }) => {
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+
   const cardRef = useRef(null);
 
   const days = useMemo(() => Object.keys(workoutData || {}), [workoutData]); 
@@ -50,12 +52,15 @@ const WorkoutView = ({
 
   const isTutorialDay = activeDay === 'INÍCIO' || currentWorkout?.exercises?.some(ex => ex.sets === "-x-" || ex.sets === "-");
 
-  // 🔥 COLETA OS DADOS E MANDA PRO SISTEMA
-  const handleFinishWorkout = () => {
+  const handleFinishWorkout = async () => {
+    if (isFinishing) return; // TRAVA: Evita double-tap
+    setIsFinishing(true);    
+    
     let totalSets = 0;
     let completedSets = 0;
     let exercisesSwapped = 0;
 
+    // 1. Coleta de dados do progresso atual
     currentWorkout?.exercises?.forEach((ex, i) => {
       const id = `${selectedDate}-${activeDay}-${i}`;
       const exData = progress[id];
@@ -69,6 +74,7 @@ const WorkoutView = ({
       }
     });
 
+    // 2. Monta o pacote de dados exato que as missões precisam
     const sessionData = {
       totalVolume: todayStats.volume,
       duration: workoutTimer.elapsed,
@@ -79,35 +85,34 @@ const WorkoutView = ({
       finished: true
     };
 
-    // 2. Pega as missões
+    // 3. Valida as missões e captura a recompensa
     const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
     let questsUpdated = false;
-    let bonusXP = 0; // 🔥 VARIÁVEL QUE GUARDA A RECOMPENSA REAL
+    let bonusXP = 0;
 
-    // 3. Valida as missões e SOMA O XP
     const updatedQuests = dailyQuests.map(quest => {
       if (quest.completed) return quest;
 
       const checkRule = QUEST_RULES[quest.type];
       
-      if (checkRule && checkRule(sessionData) === true) {
+      if (typeof checkRule === 'function' && checkRule(sessionData) === true) {
         questsUpdated = true;
-        bonusXP += quest.reward; // 🔥 O RECRUTA GANHOU O XP!
-        console.log(`🔥 MISSÃO CONCLUÍDA: ${quest.title} (+${quest.reward} XP)`);
+        bonusXP += quest.reward;
         return { ...quest, completed: true };
       }
       return quest;
     });
 
-    // 4. Salva as missões atualizadas
+    // 4. Atualiza o painel de quests caso o usuário tenha cumprido alguma
     if (questsUpdated) {
       localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
       window.dispatchEvent(new Event('quest_update'));
     }
 
-    // 5. 🔥 ENVIA O XP EXTRA PARA O SEU SISTEMA SALVAR!
-    // Você vai passar o bonusXP como parâmetro para a função que fecha o treino
-    finishWorkout(bonusXP);
+    // 5. Envia UM ÚNICO sinal de finalização para o useWorkout.js
+    await finishWorkout(bonusXP);
+    
+    setIsFinishing(false); // Libera a trava
   };
 
   return (
@@ -181,10 +186,11 @@ const WorkoutView = ({
               onChange={e => setSessionNote(e.target.value)} 
             />
 
-            {/* BOTÃO FINALIZAR CHAMA A FUNÇÃO INTEGRADA */}
+            {/* BOTÃO FINALIZAR CHAMA A FUNÇÃO INTEGRADA E FICA DESABILITADO DURANTE O ENVIO */}
             <button 
               onClick={handleFinishWorkout} 
-              className="group relative w-full bg-card dark:bg-[#050505] py-5 px-5 border border-border dark:border-[#00f3ff]/20 flex items-center justify-between transition-all duration-300 overflow-hidden active:scale-[0.96] shadow-lg dark:shadow-[0_0_10px_rgba(0,243,255,0.05)] active:shadow-[0_0_20px_rgba(0,243,255,0.4)]"
+              disabled={isFinishing}
+              className="group relative w-full bg-card dark:bg-[#050505] py-5 px-5 border border-border dark:border-[#00f3ff]/20 flex items-center justify-between transition-all duration-300 overflow-hidden active:scale-[0.96] shadow-lg dark:shadow-[0_0_10px_rgba(0,243,255,0.05)] active:shadow-[0_0_20px_rgba(0,243,255,0.4)] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
               style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#00f3ff]/5 via-transparent to-[#ff00ff]/5 animate-pulse"></div>
@@ -196,8 +202,8 @@ const WorkoutView = ({
                 <span className="text-[9px] text-muted dark:text-[#00f3ff]/60 font-mono font-black tracking-widest uppercase block">SYS.OPT</span>
               </div>
 
-              <span className="font-sans font-black text-main dark:text-white uppercase tracking-[0.3em] text-[15px] md:text-lg drop-shadow-[0_0_5px_rgba(0,243,255,0.3)] relative z-10 group-active:text-[#00f3ff] transition-colors">
-                Finalizar Operação
+              <span className="font-sans font-black text-main dark:text-white uppercase tracking-[0.3em] text-[15px] md:text-lg drop-shadow-[0_0_5px_rgba(0,243,255,0.3)] relative z-10 group-active:text-[#00f3ff] transition-colors flex items-center gap-2">
+                {isFinishing ? <><Loader2 size={20} className="animate-spin text-[#00f3ff]" /> SALVANDO</> : 'Finalizar Operação'}
               </span>
 
               <div className="flex items-center gap-2 relative z-10">
