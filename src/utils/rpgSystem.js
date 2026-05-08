@@ -158,3 +158,53 @@ export const getFlameStyle = (streak) => {
     if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
     return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
 };
+
+// Adicione no final do seu src/utils/rpgSystem.js
+
+export const calculateStreak = (history) => {
+  if (!Array.isArray(history) || history.length === 0) return 0;
+
+  const validDates = history.reduce((acc, h) => {
+    if (!h) return acc;
+    const rawDate = h.date || h.workout_date;
+    if (typeof rawDate === 'string' && rawDate.trim() !== '') {
+      if (rawDate.includes('/')) {
+        acc.push(rawDate.split('/').reverse().join('-'));
+      } else {
+        acc.push(rawDate.split('T')[0]);
+      }
+    }
+    return acc;
+  }, []);
+
+  const uniqueDates = [...new Set(validDates)].sort().reverse();
+  if (uniqueDates.length === 0) return 0;
+
+  const createDate = (str) => { 
+    const parts = str.split('-').map(Number);
+    if (parts.length !== 3) return new Date(2000, 0, 1);
+    return new Date(parts[0], parts[1] - 1, parts[2]); 
+  };
+
+  const today = new Date(); 
+  today.setHours(0,0,0,0);
+  
+  const lastWorkoutDate = createDate(uniqueDates[0]);
+  const diffDays = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+
+  if (!(diffDays === 0 || diffDays === 1 || (today.getDay() === 1 && diffDays <= 2))) return 0;
+
+  let currentStreak = 1;
+  for (let i = 0; i < uniqueDates.length - 1; i++) {
+      const d1 = createDate(uniqueDates[i]);
+      const d2 = createDate(uniqueDates[i+1]);
+      const gap = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+      
+      if (gap === 1 || (gap === 2 && d1.getDay() === 1)) {
+        currentStreak++; 
+      } else {
+        break; 
+      }
+  }
+  return currentStreak;
+};

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
-import { calculateStats } from '../utils/rpgSystem';
+import { calculateStats, calculateStreak } from '../utils/rpgSystem'; // 🔥 Streak importado!
+import { useWorkoutTimer } from './useWorkoutTimer'; // 🔥 Timer importado!
 
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});
@@ -9,6 +10,7 @@ const getInitialWorkout = (data) => {
 };
 
 export const useWorkout = () => {
+  // 1. ESTADOS PRINCIPAIS
   const [userId, setUserId] = useState(null);
   const [workoutData, setWorkoutData] = useState(() => {
     try {
@@ -24,21 +26,11 @@ export const useWorkout = () => {
   const [waistInput, setWaistInput] = useState('');
   const [view, setView] = useState('workout');
   const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
-
   const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
 
-  const [workoutTimer, setWorkoutTimer] = useState(() => {
-    try {
-      const saved = localStorage.getItem('workout_stopwatch');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.isRunning) return { ...parsed, elapsed: Math.floor((Date.now() - parsed.startTime) / 1000) };
-        return parsed;
-      }
-      return { isRunning: false, startTime: null, elapsed: 0 };
-    } catch { return { isRunning: false, startTime: null, elapsed: 0 }; }
-  });
+  // 🔥 2. HOOKS MODULARIZADOS
+  const { workoutTimer, toggleWorkoutTimer, resetWorkoutTimer, setWorkoutTimer } = useWorkoutTimer();
 
   const [progress, setProgress] = useState(() => {
     try {
@@ -61,7 +53,7 @@ export const useWorkout = () => {
     } catch { return []; }
   });
 
-  // --- AUTH ---
+  // 3. AUTH & CLOUD FETCH
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -83,17 +75,7 @@ export const useWorkout = () => {
       const { data: trainData } = await supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false });
       if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name })));
 
-      const { data: planList, error: planError } = await supabase
-        .from('workout_plans')
-        .select('plan_data')
-        .eq('user_id', userId)
-        .limit(1); 
-      
-      if (planError) {
-        console.error("🚨 Erro do Supabase ao buscar o treino:", planError.message);
-        return; 
-      }
-
+      const { data: planList } = await supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1); 
       const planData = planList && planList.length > 0 ? planList[0] : null;
 
       if (planData && planData.plan_data) {
@@ -111,62 +93,15 @@ export const useWorkout = () => {
 
   useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
 
-  // --- STREAK LOGIC ABSOLUTAMENTE BLINDADA ---
-  const streak = useMemo(() => {
-    if (!Array.isArray(history) || history.length === 0) return 0;
+  // 🔥 4. CÁLCULO DE STREAK (Agora limpo usando a função externa)
+  const streak = useMemo(() => calculateStreak(history), [history]);
 
-    const validDates = history.reduce((acc, h) => {
-      if (!h) return acc;
-      const rawDate = h.date || h.workout_date;
-      if (typeof rawDate === 'string' && rawDate.trim() !== '') {
-        if (rawDate.includes('/')) {
-          acc.push(rawDate.split('/').reverse().join('-'));
-        } else {
-          acc.push(rawDate.split('T')[0]);
-        }
-      }
-      return acc;
-    }, []);
-
-    const uniqueDates = [...new Set(validDates)].sort().reverse();
-
-    if (uniqueDates.length === 0) return 0;
-
-    const createDate = (str) => { 
-      const parts = str.split('-').map(Number);
-      if (parts.length !== 3) return new Date(2000, 0, 1);
-      return new Date(parts[0], parts[1] - 1, parts[2]); 
-    };
-
-    const today = new Date(); 
-    today.setHours(0,0,0,0);
-    
-    const lastWorkoutDate = createDate(uniqueDates[0]);
-    const diffDays = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
-
-    if (!(diffDays === 0 || diffDays === 1 || (today.getDay() === 1 && diffDays <= 2))) return 0;
-
-    let currentStreak = 1;
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-        const d1 = createDate(uniqueDates[i]);
-        const d2 = createDate(uniqueDates[i+1]);
-        const gap = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
-        
-        if (gap === 1 || (gap === 2 && d1.getDay() === 1)) {
-          currentStreak++; 
-        } else {
-          break; 
-        }
-    }
-    return currentStreak;
-  }, [history]);
-
+  // 5. LOCAL SYNC
   useEffect(() => {
     localStorage.setItem('workout_plan', JSON.stringify(workoutData));
     localStorage.setItem('daily_progress', JSON.stringify(progress));
     localStorage.setItem('workout_history', JSON.stringify(history));
     localStorage.setItem('body_history', JSON.stringify(bodyHistory));
-    localStorage.setItem('workout_stopwatch', JSON.stringify(workoutTimer)); 
     
     const syncPlanToCloud = async () => {
       if (!isCloudSyncReady) return;
@@ -179,18 +114,9 @@ export const useWorkout = () => {
       }
     };
     syncPlanToCloud();
-  }, [workoutData, progress, history, bodyHistory, workoutTimer, userId, isCloudSyncReady]);
+  }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady]);
 
-  useEffect(() => {
-    let interval = null;
-    if (workoutTimer.isRunning) {
-      interval = setInterval(() => {
-        setWorkoutTimer(prev => ({ ...prev, elapsed: Math.floor((Date.now() - prev.startTime) / 1000) }));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [workoutTimer.isRunning]);
-
+  // 6. AÇÕES DO TREINO
   const updateSetData = useCallback((id, i, f, v) => {
     setProgress(p => {
       const c = p[id] || { sets: [] };
@@ -201,13 +127,6 @@ export const useWorkout = () => {
     });
   }, []);
 
-  const toggleWorkoutTimer = useCallback(() => {
-    setWorkoutTimer(prev => prev.isRunning 
-      ? { ...prev, isRunning: false } 
-      : { isRunning: true, startTime: Date.now() - (prev.elapsed * 1000), elapsed: prev.elapsed }
-    );
-  }, []);
-
   const toggleCheck = useCallback((id) => {
     setProgress(p => {
       const isDone = !p[id]?.done;
@@ -216,10 +135,10 @@ export const useWorkout = () => {
     });
   }, []);
 
-  // --- CORE ACTIONS ---
   const actions = useMemo(() => ({
     updateSetData,
     toggleWorkoutTimer,
+    resetWorkoutTimer,
     toggleCheck,
     
     updateSessionSets: (id, value) => {
@@ -231,7 +150,6 @@ export const useWorkout = () => {
       setProgress(p => {
         const current = p[id] || { sets: [] };
         const lastSetTime = p.lastSetTimestamp || 0;
-        const isCombo = now - lastSetTime < 60000; 
         const newSets = [...(current.sets || [])];
         while (newSets.length <= setIdx) newSets.push({ completed: false });
         const isNowCompleted = !newSets[setIdx].completed;
@@ -240,7 +158,6 @@ export const useWorkout = () => {
 
         if (isNowCompleted) {
           setTimerState({ active: true, seconds: 90 });
-          if (isCombo) console.log("COMBO ATIVADO! +10 XP Bônus");
         }
 
         return { ...p, [id]: { ...current, sets: newSets }, lastSetTimestamp: now };
@@ -263,12 +180,10 @@ export const useWorkout = () => {
       setWaistInput(entryForDate ? entryForDate.waist : '');
     },
 
-    // 🔥 AQUI ESTÁ A INTEGRAÇÃO (Recebendo o bonusXP e salvando na sessão)
     finishWorkout: async (bonusXP = 0) => {
       const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
       let totalVolume = 0;
 
-      // 1. Prepara os exercícios e calcula o volume
       const exercisesToSave = workoutData[safeDay].exercises.map((ex, i) => {
         const id = `${selectedDate}-${safeDay}-${i}`;
         const p = progress[id];
@@ -282,27 +197,22 @@ export const useWorkout = () => {
             }
           });
         }
-
         return { name: p?.swappedName || ex.name, sets: p?.sets || [], done: p?.done || false, actualSets: p?.actualSets || ex.sets };
       });
 
-      // 2. Cálculos de Tempo e XP
       const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
       const durationSeconds = workoutTimer.elapsed > 0 ? workoutTimer.elapsed : durationMins * 60;
       
-      const xpGanhoNoTreino = Math.floor(totalVolume * 0.05);
-      const xpGained = xpGanhoNoTreino + bonusXP;
-
-      // Atualiza a UI da tela de comemoração
-      setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
-
-      // 3. Verifica os exercícios trocados
       let exercisesSwappedCount = 0;
       progress && Object.keys(progress).forEach(key => {
         if(progress[key]?.swappedName) exercisesSwappedCount++;
       });
 
-      // 4. Monta o pacote EXATO para o Supabase
+      const xpGanhoNoTreino = Math.floor(totalVolume * 0.05);
+      const xpGained = xpGanhoNoTreino + bonusXP;
+
+      setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
+
       const sessionBase = {
         user_id: userId,
         workout_date: selectedDate,
@@ -314,10 +224,9 @@ export const useWorkout = () => {
         duration: durationSeconds, 
         has_note: !!sessionNote,
         exercises_swapped: exercisesSwappedCount,
-        prs_broken: 0
+        prs_broken: 0 
       };
 
-      // 5. Lógica de Nível (RPG)
       const statsAntes = calculateStats(history);
       const levelAntes = statsAntes.level || 1;
       
@@ -329,14 +238,12 @@ export const useWorkout = () => {
       
       const subiuDeNivel = levelDepois > levelAntes;
 
-      // 6. Salva localmente e na nuvem
       setHistory(newHistory);
 
       if (userId) {
         supabase.from('workout_history').insert([sessionBase]).then(() => fetchCloudData());
       }
 
-      // 7. Limpa a mesa para o próximo treino
       setProgress({});
       setSessionNote('');
       setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
@@ -344,7 +251,6 @@ export const useWorkout = () => {
       return subiuDeNivel;
     },
 
-    resetWorkoutTimer: () => setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 }),
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
     fetchCloudData,
     
@@ -383,11 +289,9 @@ export const useWorkout = () => {
         });
       },
     }
-  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer]);
+  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, resetWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer]);
 
-  const globalRPG = useMemo(() => {
-    return calculateStats(history); 
-  }, [history]);
+  const globalRPG = useMemo(() => calculateStats(history), [history]);
 
   return {
     state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },

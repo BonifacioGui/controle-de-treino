@@ -19,17 +19,6 @@ const VARIANTS    = ['rpg', 'data'];
 
 // ─── StatCell ─────────────────────────────────────────────────────────────────
 
-/**
- * A single stat cell used inside grid rows.
- *
- * @param {object}  props
- * @param {React.ElementType} props.icon
- * @param {string}  props.label
- * @param {string|number} props.value
- * @param {string}  [props.suffix]
- * @param {string}  props.colorClass    - Tailwind text-color class
- * @param {boolean} [props.hasDivider]
- */
 const StatCell = ({ icon: Icon, label, value, suffix, colorClass, hasDivider = false }) => (
   <div className={`flex flex-col items-center justify-center text-center ${hasDivider ? 'border-l border-white/10' : ''}`}>
     <div className="flex items-center justify-center gap-3 mb-4">
@@ -58,7 +47,7 @@ const CardBackground = ({ selfieUrl }) => (
     {selfieUrl ? (
       <img
         src={selfieUrl}
-        alt=""
+        alt="Selfie do Recruta"
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
     ) : (
@@ -71,15 +60,59 @@ const CardBackground = ({ selfieUrl }) => (
         }}
       />
     )}
-    {/* Gradient overlay */}
-    <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/80 to-black/30" />
-    {/* Border frame — inline zIndex: z-15 is not a valid Tailwind class */}
+    
+    {/* Gradiente tático: Se tiver foto, escurece só a base. Senão, escurece tudo. */}
+    <div className={`absolute inset-0 z-10 bg-gradient-to-t ${selfieUrl ? 'from-black/90 via-black/40 to-transparent' : 'from-black via-black/80 to-black/30'}`} />
+    
     <div
       className="absolute inset-6 rounded-[40px] pointer-events-none border-2 border-white/10"
       style={{ zIndex: 15 }}
     />
   </>
 );
+
+// ─── SelfieVariant ────────────────────────────────────────────────────────────
+
+// ─── SelfieVariant ────────────────────────────────────────────────────────────
+
+const SelfieVariant = ({ stats, bossName, streak }) => {
+  const hasPr = stats.prs > 0;
+  // Gera a data no formato DD.MM.YYYY para um visual mais tático/cyberpunk
+  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
+
+  return (
+    <div className="flex flex-col h-full justify-between pb-4 pt-12">
+      
+      {/* Topo: Etiqueta do Alvo e Data da Operação */}
+      <div className="flex justify-between items-start w-full">
+        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 shadow-xl">
+          <Target size={36} className="text-cyan-400" />
+          <span style={{ fontSize: '32px' }} className="text-white font-black tracking-widest uppercase drop-shadow-md">
+            ALVO: {bossName}
+          </span>
+        </div>
+        
+        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-6 py-4 rounded-full flex items-center shadow-xl">
+          <span style={{ fontSize: '28px' }} className="text-white/80 font-mono font-bold tracking-widest uppercase">
+            {dataAtual}
+          </span>
+        </div>
+      </div>
+
+      {/* Base: Bloco de dados dinâmico (2 ou 3 colunas dependendo do PR) */}
+      <div className="bg-black/60 backdrop-blur-xl p-10 rounded-[40px] border border-white/20 shadow-2xl flex flex-col gap-6">
+        <div className={`grid ${hasPr ? 'grid-cols-3' : 'grid-cols-2'} gap-6`}>
+          <StatCell icon={Clock}  label="Duração" value={stats.duration} colorClass="text-purple-400" />
+          <StatCell icon={Flame}  label="Streak"  value={streak} suffix="Dias" colorClass="text-orange-500" hasDivider />
+          
+          {hasPr && (
+            <StatCell icon={Trophy} label="Recordes" value={stats.prs} colorClass="text-yellow-400" hasDivider />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ─── RpgVariant ───────────────────────────────────────────────────────────────
 
@@ -103,7 +136,6 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
           <span className="text-primary">CUMPRIDA</span>
         </h1>
         <div className="mt-8 inline-flex items-center gap-4 bg-primary/10 px-8 py-3 rounded-2xl border border-primary/20">
-          {/* Static dot — animate-pulse intentionally omitted; breaks html2canvas */}
           <span className="w-4 h-4 rounded-full bg-primary" />
           <p style={{ fontSize: '32px' }} className="font-bold text-primary tracking-[0.3em] uppercase">
             HORA: {horaAtual}
@@ -299,21 +331,6 @@ const CardFooter = ({ variant }) => (
 
 // ─── ShareCard ────────────────────────────────────────────────────────────────
 
-/**
- * Renders an off-screen 1080×1920 share-card for html2canvas capture.
- *
- * @param {object}  props
- * @param {{ volume: string|number, duration: string, prs: number }} props.stats
- * @param {string}  props.bossName
- * @param {number}  props.streak
- * @param {number}  props.xp             - XP earned this session
- * @param {React.Ref} props.cardRef      - Forwarded ref for html2canvas
- * @param {string}  [props.selfieUrl]
- * @param {number}  [props.currentLevel]
- * @param {number}  [props.totalXp]      - Cumulative XP (used for progress bar)
- * @param {number}  [props.bossHp]
- * @param {'rpg'|'data'} [props.variant]
- */
 const ShareCard = ({
   stats,
   bossName,
@@ -338,31 +355,41 @@ const ShareCard = ({
         {/* Layers 0–1: background + overlays */}
         <CardBackground selfieUrl={selfieUrl} />
 
-        {/* Layer 2: content */}
+        {/* Layer 2: content - Lógica Condicional Adicionada! */}
         <div className="absolute inset-0 flex flex-col p-[80px]" style={{ zIndex: 20 }}>
-          {safeVariant === 'rpg' && (
-            <RpgVariant
-              stats={stats}
-              bossName={bossName}
-              streak={streak}
-              xp={xp}
-              currentLevel={currentLevel}
-              totalXp={totalXp}
-              bossHp={bossHp}
+          {selfieUrl ? (
+            <SelfieVariant 
+              stats={stats} 
+              bossName={bossName} 
+              streak={streak} 
             />
-          )}
+          ) : (
+            <>
+              {safeVariant === 'rpg' && (
+                <RpgVariant
+                  stats={stats}
+                  bossName={bossName}
+                  streak={streak}
+                  xp={xp}
+                  currentLevel={currentLevel}
+                  totalXp={totalXp}
+                  bossHp={bossHp}
+                />
+              )}
 
-          {safeVariant === 'data' && (
-            <DataVariant
-              stats={stats}
-              bossName={bossName}
-              streak={streak}
-              xp={xp}
-              currentLevel={currentLevel}
-            />
-          )}
+              {safeVariant === 'data' && (
+                <DataVariant
+                  stats={stats}
+                  bossName={bossName}
+                  streak={streak}
+                  xp={xp}
+                  currentLevel={currentLevel}
+                />
+              )}
 
-          <CardFooter variant={safeVariant} />
+              <CardFooter variant={safeVariant} />
+            </>
+          )}
         </div>
       </div>
     </div>

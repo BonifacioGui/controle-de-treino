@@ -109,6 +109,15 @@ const WorkoutApp = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // Quando o app carrega (ou recarrega por causa da câmera), ele verifica se tem card pendente
+    const pendingCard = localStorage.getItem('pending_share_card');
+    if (pendingCard) {
+      // Abre a tela de comemoração instantaneamente
+      setShowCelebration(true);
+    }
+  }, []);
+
 
   // ==========================================
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
@@ -117,6 +126,16 @@ const WorkoutApp = () => {
   const handleFinishWorkoutWrapper = async () => {
     // 1. Dispara o final do treino e pega a resposta imediata se upou de nível
     const upouDeNivel = await actions.finishWorkout();
+
+    // 🔥 PROTOCOLO DE PERSISTÊNCIA: Salva os dados do card para sobreviver ao recarregamento
+    const relatorioTatico = {
+      volume: stats.lastSessionStats.volume,
+      duration: stats.lastSessionStats.duration,
+      xp: stats.lastSessionStats.xp,
+      level: stats.level,
+      streak: stats.streak
+    };
+    localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
     // 2. Orquestra a UI com base na resposta
     if (upouDeNivel) {
       setShowLevelUp(true); // UPOU DE NÍVEL: Mostra a glória!
@@ -270,19 +289,25 @@ const WorkoutApp = () => {
         />
       )}
 
-      {showCelebration && (
+     {showCelebration && (
         <WorkoutComplete 
-          onClose={() => setShowCelebration(false)} 
-          sessionDuration={`${stats.lastSessionStats?.duration || '00:00'} min`} 
-          sessionVolume={`${stats.lastSessionStats?.volume || 0} kg`} 
-          sessionPoints={`+${stats.lastSessionStats?.xp || 0} XP`} 
-          history={state.history}
+          onClose={() => {
+            // 🔥 Limpa a memória para o usuário seguir a vida
+            localStorage.removeItem('pending_share_card');
+            setShowCelebration(false);
+          }} 
+          
+          // 🔥 Lógica de Persistência: Tenta ler o cofre primeiro, se falhar, usa os stats
+          sessionDuration={`${JSON.parse(localStorage.getItem('pending_share_card') || '{}').duration || stats.lastSessionStats?.duration || '00:00'} min`} 
+          sessionVolume={`${JSON.parse(localStorage.getItem('pending_share_card') || '{}').volume || stats.lastSessionStats?.volume || 0} kg`} 
+          sessionPoints={`+${JSON.parse(localStorage.getItem('pending_share_card') || '{}').xp || stats.lastSessionStats?.xp || 0} XP`} 
+          
           bossName={state.workoutData?.[state.activeDay]?.title || "ALVO ELIMINADO"} 
           bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
-          streak={stats?.streak || 0}
-          currentLevel={stats?.level || 1}
-          xpRemaining={stats?.xpRemaining || 0}
-          progressPercent={stats?.progress || 0} 
+          
+          streak={JSON.parse(localStorage.getItem('pending_share_card') || '{}').streak || stats?.streak || 0}
+          currentLevel={JSON.parse(localStorage.getItem('pending_share_card') || '{}').level || stats?.level || 1}
+          totalXp={stats?.xp || 0} 
         />
       )}
       
