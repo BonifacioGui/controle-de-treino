@@ -12,7 +12,7 @@ import SidebarMenu from '../components/shared/SidebarMenu';
 import LoadingScreen from '../components/shared/LoadingScreen';
 
 // 2. Auth (Acesso)
-import AuthView from '../components/auth/AuthView';
+import AuthLayout from '../components/auth/AuthLayout'; // 🔥 AJUSTE AQUI: Trocado de AuthView para AuthLayout
 
 // 3. Dashboard (Visão Geral)
 import HistoryView from '../components/dashboard/HistoryView';
@@ -20,7 +20,6 @@ import HistoryView from '../components/dashboard/HistoryView';
 // 4. Workout (O Treino Ativo)
 import WorkoutView from '../components/workout/WorkoutView';
 import RestTimer from '../components/workout/RestTimer';
-
 
 // 5. RPG (Gamificação do SOLO)
 import LevelUpModal from '../components/rpg/LevelUpModal';
@@ -52,6 +51,7 @@ const WorkoutApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState('driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
@@ -84,7 +84,6 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 3. BUSCA DE DADOS AO LOGAR
   // 3. BUSCA DE DADOS AO LOGAR
   useEffect(() => {
     if (session?.user?.id) actions.fetchCloudData();
@@ -143,7 +142,7 @@ const WorkoutApp = () => {
   if (isSessionLoading) return <div className="min-h-screen bg-black" />;
   
   // Portão 3: Sem sessão = Login
-  if (!session) return <AuthView />;
+  if (!session) return <AuthLayout />; // 🔥 AJUSTE AQUI: Trocado de AuthView para AuthLayout
 
   // Portão 4: Sistema Carregado
   return (
@@ -156,11 +155,12 @@ const WorkoutApp = () => {
             <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
               SOLO
             </h1>
-            <div className="relative h-10 w-auto flex items-center justify-center p-1">
+            {/* Logo com tamanho contido e proporcional ao texto */}
+            <div className="relative h-8 sm:h-6.7 w-auto flex items-center justify-center shrink-0">
               <img 
                 src={logoSolo} 
                 alt="SOLO Logo" 
-                className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] hover:drop-shadow-[0_0_12px_rgba(0,243,255,1)] transition-all duration-300 relative z-10" 
+                className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] hover:drop-shadow-[0_0_12px_rgba(0,243,255,1)] active:scale-95 active:drop-shadow-[0_0_20px_rgba(0,243,255,1)] transition-all duration-300 relative z-10" 
               />
             </div>
           </div>
