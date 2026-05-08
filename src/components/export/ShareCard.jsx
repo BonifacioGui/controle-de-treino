@@ -73,25 +73,41 @@ const CardBackground = ({ selfieUrl }) => (
 
 // ─── SelfieVariant ────────────────────────────────────────────────────────────
 
-const SelfieVariant = ({ stats, xp, bossName }) => {
-  const cleanVolume = stripUnit(stats.volume);
+// ─── SelfieVariant ────────────────────────────────────────────────────────────
+
+const SelfieVariant = ({ stats, bossName, streak }) => {
+  const hasPr = stats.prs > 0;
+  // Gera a data no formato DD.MM.YYYY para um visual mais tático/cyberpunk
+  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
 
   return (
     <div className="flex flex-col h-full justify-between pb-4 pt-12">
-      {/* Etiqueta superior discreta */}
-      <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 self-start shadow-xl">
-        <Target size={36} className="text-cyan-400" />
-        <span style={{ fontSize: '32px' }} className="text-white font-black tracking-widest uppercase drop-shadow-md">
-          ALVO: {bossName}
-        </span>
+      
+      {/* Topo: Etiqueta do Alvo e Data da Operação */}
+      <div className="flex justify-between items-start w-full">
+        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 shadow-xl">
+          <Target size={36} className="text-cyan-400" />
+          <span style={{ fontSize: '32px' }} className="text-white font-black tracking-widest uppercase drop-shadow-md">
+            ALVO: {bossName}
+          </span>
+        </div>
+        
+        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-6 py-4 rounded-full flex items-center shadow-xl">
+          <span style={{ fontSize: '28px' }} className="text-white/80 font-mono font-bold tracking-widest uppercase">
+            {dataAtual}
+          </span>
+        </div>
       </div>
 
-      {/* Bloco de dados ancorado na parte inferior */}
+      {/* Base: Bloco de dados dinâmico (2 ou 3 colunas dependendo do PR) */}
       <div className="bg-black/60 backdrop-blur-xl p-10 rounded-[40px] border border-white/20 shadow-2xl flex flex-col gap-6">
-        <div className="grid grid-cols-3 gap-6">
-          <StatCell icon={Clock}  label="Tempo"  value={stats.duration}           colorClass="text-purple-400" />
-          <StatCell icon={Zap}    label="Volume" value={cleanVolume}  colorClass="text-cyan-400"   hasDivider suffix="kg" />
-          <StatCell icon={ChevronUp} label="XP"  value={`+${xp}`}                 colorClass="text-fuchsia-500" hasDivider />
+        <div className={`grid ${hasPr ? 'grid-cols-3' : 'grid-cols-2'} gap-6`}>
+          <StatCell icon={Clock}  label="Duração" value={stats.duration} colorClass="text-purple-400" />
+          <StatCell icon={Flame}  label="Streak"  value={streak} suffix="Dias" colorClass="text-orange-500" hasDivider />
+          
+          {hasPr && (
+            <StatCell icon={Trophy} label="Recordes" value={stats.prs} colorClass="text-yellow-400" hasDivider />
+          )}
         </div>
       </div>
     </div>
@@ -344,8 +360,8 @@ const ShareCard = ({
           {selfieUrl ? (
             <SelfieVariant 
               stats={stats} 
-              xp={xp} 
               bossName={bossName} 
+              streak={streak} 
             />
           ) : (
             <>
