@@ -61,25 +61,39 @@ const calculateVolume = (exercises) => {
 // --- COMPONENTES VISUAIS COMPACTOS ---
 
 const ExerciseItemView = ({ exercise }) => {
+  // Flag de conclusão verdadeira (quando o usuário clicou no check)
+  const isCompleted = exercise.done === true;
+  // Flag de séries registradas
+  const hasSets = Array.isArray(exercise.sets) && exercise.sets.length > 0;
+
   return (
-    <div className="flex items-center justify-between p-2 border-b border-border last:border-0 hover:bg-input/30 transition-colors">
-      <span className="text-xs font-bold uppercase truncate text-main flex-1 mr-2">
+    <div className={`flex items-center justify-between p-2 border-b border-border last:border-0 transition-colors ${!isCompleted ? 'bg-red-500/5' : 'hover:bg-input/30'}`}>
+      {/* NOME DO EXERCÍCIO (Riscado se foi pulado) */}
+      <span className={`text-xs font-bold uppercase truncate flex-1 mr-2 ${isCompleted ? 'text-main' : 'text-muted line-through opacity-60'}`}>
         {exercise.name}
       </span>
+      
       <div className="flex gap-1 shrink-0">
-        {Array.isArray(exercise.sets) && exercise.sets.length > 0 ? (
+        {/* CONDIÇÃO 1: Feito e Com Carga */}
+        {isCompleted && hasSets ? (
           <div className="flex gap-1 flex-wrap justify-end">
              {exercise.sets.map((set, k) => (
                 <div key={k} className="flex items-center gap-0.5 bg-card border border-border px-1.5 py-0.5 rounded shadow-sm">
-                  <span className="text-[10px] font-black text-success">{set.weight}</span>
+                  <span className="text-[10px] font-black text-success">{set.weight || 0}</span>
                   <span className="text-[8px] text-muted">kg</span>
                   <span className="text-[8px] text-muted mx-0.5">•</span>
-                  <span className="text-[10px] font-black text-primary">{set.reps}</span>
+                  <span className="text-[10px] font-black text-primary">{set.reps || 0}</span>
                 </div>
              ))}
           </div>
-        ) : (
-          <span className="text-[10px] text-muted font-bold uppercase">Concluído</span>
+        ) 
+        /* CONDIÇÃO 2: Feito mas Sem Carga (Check vazio) */
+        : isCompleted && !hasSets ? (
+          <span className="text-[10px] text-primary font-black uppercase tracking-widest">Concluído</span>
+        ) 
+        /* CONDIÇÃO 3: Não Feito / Pulado */
+        : (
+          <span className="text-[9px] text-red-500 font-bold uppercase tracking-widest border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 rounded">Pulado</span>
         )}
       </div>
     </div>
