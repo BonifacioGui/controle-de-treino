@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Ghost, Target, Zap, Sword, Circle, Trophy, RefreshCcw, Flame, Settings2 } from 'lucide-react';
-import { safeParseFloat, calculateTrue1RM, isSameExercise } from '../../utils/workoutUtils';
+// 🔥 Trazemos de volta a inteligência do seu isSameExercise
+import { calculateTrue1RM, isSameExercise } from '../../utils/workoutUtils';
 
 const ExerciseCard = ({
   ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow,
@@ -16,21 +17,52 @@ const ExerciseCard = ({
   const hasRPE = (progress[id]?.sets || []).some(s => s.rpe && s.rpe.trim() !== "");
   const [showAdvanced, setShowAdvanced] = useState(hasRPE);
 
+  // 🔥 EXTRATOR DE PESO: Resolve o bug da vírgula (12,5 -> 12.5) e evita o veneno do NaN
+  const getValidWeight = (val) => {
+    if (!val || String(val).trim() === '') return 0;
+    const parsed = parseFloat(String(val).replace(',', '.'));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // 🔥 MOTOR DE DATAS: Resolve o bug da ordem temporal (ex: 09/01 sendo lido como 1 de Setembro)
+  const parseDateBlindado = (dateStr) => {
+    if (!dateStr) return 0;
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split(' ')[0].split('/'); 
+      if (parts.length === 3) {
+        // Formato brasileiro: DD/MM/YYYY
+        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+      }
+    }
+    const time = new Date(dateStr).getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
+  // 1. Puxa o histórico ignorando apenas o que foi explicitamente desmarcado (done: false).
+  // Se for undefined (treinos antigos), ele passa para não perder seus recordes!
   const exerciseHistory = (history || [])
     .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
-    .filter(e => isSameExercise(displayName, e.name));
+    .filter(e => e.done !== false && isSameExercise(displayName, e.name));
 
+  // 2. Calcula o PR blindado
   const exercisePR = exerciseHistory.reduce((max, e) => {
-      const sessionMax = Math.max(...(e.sets?.map(s => safeParseFloat(s.weight)) || [0]));
+      // Pega apenas as cargas de séries que realmente tiveram peso E repetições preenchidos
+      const validWeights = e.sets
+        ?.filter(s => s.reps && String(s.reps).trim() !== "" && s.weight)
+        .map(s => getValidWeight(s.weight))
+        .filter(w => w > 0) || [];
+        
+      const sessionMax = validWeights.length > 0 ? Math.max(...validWeights) : 0;
       return Math.max(max, sessionMax);
   }, 0);
   
+  // 3. A Última Carga segue a mesma lógica blindada e com o sort de data corrigido
   const lastWorkoutEntry = [...exerciseHistory]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .find(entry => entry.sets && entry.sets.some(s => safeParseFloat(s.weight) > 0));
+      .sort((a, b) => parseDateBlindado(b.date) - parseDateBlindado(a.date))
+      .find(entry => entry.sets && entry.sets.some(s => getValidWeight(s.weight) > 0));
   
-  const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => safeParseFloat(s.weight)) || [0])) : 0;
-  const isBreakingPR = (progress[id]?.sets || []).some(s => safeParseFloat(s.weight) > exercisePR && exercisePR > 0);
+  const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => getValidWeight(s.weight)) || [0])) : 0;
+  const isBreakingPR = (progress[id]?.sets || []).some(s => getValidWeight(s.weight) > exercisePR && exercisePR > 0);
 
   const handleSwap = () => {
     if (!ex.alternatives || ex.alternatives.length === 0) return;
@@ -40,10 +72,10 @@ const ExerciseCard = ({
     onSwap(id, allOptions[nextIndex]);
   };
 
-  // 🔥 THEME COLORS PARA O OVERLAY (Base escura para garantir contraste extremo do Neon)
+  // THEME COLORS PARA O OVERLAY
   const overlayTheme = isDone && isBreakingPR
     ? {
-        bg: 'bg-[rgba(15,10,0,0.9)] backdrop-blur-md', // Fundo quase preto/quente para destacar o ouro
+        bg: 'bg-[rgba(15,10,0,0.9)] backdrop-blur-md', 
         border: 'border-y-2 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5),inset_0_0_15px_rgba(250,204,21,0.2)]',
         text: 'text-yellow-400',
         glow: 'drop-shadow-[0_0_12px_rgba(250,204,21,1)] drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]',
@@ -51,7 +83,7 @@ const ExerciseCard = ({
       }
     : isDone && !isBreakingPR
     ? {
-        bg: 'bg-[rgba(0,10,15,0.9)] backdrop-blur-md', // Fundo quase preto/frio para destacar o cyan
+        bg: 'bg-[rgba(0,10,15,0.9)] backdrop-blur-md', 
         border: 'border-y-2 border-[#00f3ff] shadow-[0_0_30px_rgba(0,243,255,0.4),inset_0_0_15px_rgba(0,243,255,0.2)]',
         text: 'text-[#00f3ff]',
         glow: 'drop-shadow-[0_0_10px_rgba(0,243,255,1)] drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]',
@@ -59,11 +91,9 @@ const ExerciseCard = ({
       }
     : null;
 
-  // Borda do Card Principal
   const cardBorderClasses = isDone
     ? (isBreakingPR ? 'border-2 border-yellow-400 bg-gradient-to-br from-yellow-500/10 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.35)] opacity-95 scale-[0.98]' : 'border-2 border-[#00f3ff] bg-gradient-to-br from-[#00f3ff]/10 to-transparent shadow-[0_0_20px_rgba(0,243,255,0.3)] opacity-95 scale-[0.98]')
     : (isBreakingPR ? 'bg-card border-l-4 border-l-yellow-400 border-y border-y-yellow-400/20 border-r border-r-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:-translate-y-0.5' : 'bg-card border-l-4 border-l-[#00f3ff]/70 border-y border-y-border/50 border-r border-r-border/50 hover:border-l-[#00f3ff] hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(0,243,255,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,243,255,0.3)]');
-
 
   return (
     <div className={`p-4 rounded-xl transition-all duration-500 relative ${cardBorderClasses}`}>
@@ -74,7 +104,6 @@ const ExerciseCard = ({
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             <h3 className={`font-black text-lg leading-tight flex items-center gap-2 drop-shadow-md ${isBreakingPR ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : isDone ? 'text-[#00f3ff]' : 'text-main dark:text-white'}`}>
               {displayName}
-              {/* Etiqueta sutil de PR batido (aparece assim que digita) */}
               {isBreakingPR && !isDone && (
                 <div className="flex items-center gap-1 bg-yellow-500/20 border border-yellow-400 px-2 py-0.5 rounded-md animate-pulse shadow-[0_0_15px_rgba(250,204,21,0.4)]">
                   <Trophy size={14} className="text-yellow-400 fill-yellow-400/50" />
@@ -129,20 +158,14 @@ const ExerciseCard = ({
       {!isTutorial && (
         <div className="relative z-10 w-full overflow-hidden rounded-lg">
           
-          {/* 🔥 OVERLAY DIAGONAL GRITANTE */}
           {overlayTheme && (
             <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center rounded-lg overflow-hidden">
-              
-              {/* 🔥 DIMMER CAMALEÃO: Usa a variável do SEU CSS. Branco fosco no Claro, Escuro fosco no Dark. Funciona 100%. */}
               <div className="absolute inset-0 bg-[var(--bg-card)] opacity-85 backdrop-blur-[3px] transition-opacity duration-500"></div>
 
               <div className={`relative w-[150%] py-3 sm:py-4 transform -rotate-6 flex items-center justify-center animate-in zoom-in duration-300 ${overlayTheme.bg} ${overlayTheme.border}`}>
-                
-                {/* Textura de Scanline (Padrão Ouro RPG) aparecendo apenas no PR */}
                 {isBreakingPR && (
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.15)_1px,transparent_1px)] bg-[size:100%_4px] opacity-60"></div>
                 )}
-                
                 <span className={`relative font-black text-[16px] min-[400px]:text-[18px] sm:text-3xl tracking-widest sm:tracking-[0.35em] uppercase whitespace-nowrap ${overlayTheme.text} ${overlayTheme.glow}`}>
                   {overlayTheme.overlayText}
                 </span>
@@ -150,7 +173,6 @@ const ExerciseCard = ({
             </div>
           )}
 
-          {/* CONTAINER DOS INPUTS */}
           <div className={`space-y-3.5 transition-opacity duration-500 ${isDone ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
             
             <div className="flex items-center justify-between bg-input p-2.5 rounded-lg border border-border h-14 shadow-inner">
@@ -194,7 +216,7 @@ const ExerciseCard = ({
                   const isCritical = rpeNum >= 9;
                   const isHypertrophy = rpeNum >= 7 && rpeNum < 9;
                   
-                  const isThisSetPR = safeParseFloat(setWeight) > exercisePR && exercisePR > 0;
+                  const isThisSetPR = getValidWeight(setWeight) > exercisePR && exercisePR > 0;
 
                   return (
                   <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all h-14 ${shakingRow === uniqueSetKey ? 'translate-x-2 bg-red-900/20 border border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]' : ''} ${isSetDone ? 'bg-[#00f3ff]/5 border border-[#00f3ff]/30' : 'bg-transparent border border-transparent'}`}>

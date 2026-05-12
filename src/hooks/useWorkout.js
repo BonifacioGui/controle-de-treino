@@ -116,6 +116,22 @@ export const useWorkout = () => {
     syncPlanToCloud();
   }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady]);
 
+  // 🔥 MOTOR DO CRONÔMETRO DE DESCANSO
+  useEffect(() => {
+    let interval = null;
+    if (timerState.active && timerState.seconds > 0) {
+      interval = setInterval(() => {
+        setTimerState(prev => {
+          if (prev.seconds <= 1) return { active: false, seconds: 0 };
+          return { ...prev, seconds: prev.seconds - 1 };
+        });
+      }, 1000);
+    } else if (timerState.seconds <= 0) {
+      setTimerState(prev => ({ ...prev, active: false }));
+    }
+    return () => clearInterval(interval);
+  }, [timerState.active, timerState.seconds]);
+
   // 6. AÇÕES DO TREINO
   const updateSetData = useCallback((id, i, f, v) => {
     setProgress(p => {
@@ -149,7 +165,6 @@ export const useWorkout = () => {
       const now = Date.now();
       setProgress(p => {
         const current = p[id] || { sets: [] };
-        const lastSetTime = p.lastSetTimestamp || 0;
         const newSets = [...(current.sets || [])];
         while (newSets.length <= setIdx) newSets.push({ completed: false });
         const isNowCompleted = !newSets[setIdx].completed;
@@ -248,7 +263,15 @@ export const useWorkout = () => {
       setSessionNote('');
       setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
 
-      return subiuDeNivel;
+      // 🔥 NOVO RETORNO: Devolvemos os dados exatos do momento do disparo
+      return {
+        subiuDeNivel,
+        sessionXp: xpGained,
+        sessionVolume: totalVolume,
+        sessionDuration: durationMins,
+        newLevel: levelDepois,
+        newStreak: calculateStreak(newHistory) // Calcula a ofensiva instantaneamente com o treino novo
+      };
     },
 
     closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
@@ -257,6 +280,39 @@ export const useWorkout = () => {
     deleteEntry: async (id, type) => {
         await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
         fetchCloudData();
+    },
+    updateHistoryEntry: async (id, updatedSession) => {
+      if (!userId) return;
+      
+      try {
+        // 1. Recalcula o volume caso você tenha alterado os pesos/reps na edição
+        let newVolume = 0;
+        updatedSession.exercises.forEach(ex => {
+          if (ex.sets) {
+            ex.sets.forEach(set => {
+              const w = parseFloat(set.weight) || 0;
+              const r = parseInt(set.reps) || 0;
+              newVolume += (w * r);
+            });
+          }
+        });
+
+        // 2. Manda a atualização blindada pro Supabase
+        await supabase
+          .from('workout_history')
+          .update({
+            note: updatedSession.note,
+            exercises: updatedSession.exercises,
+            total_volume: newVolume
+          })
+          .eq('id', id);
+
+        // 3. Puxa os dados novos da nuvem para atualizar a tela instantaneamente
+        fetchCloudData();
+        
+      } catch (err) {
+        console.error("Erro ao atualizar o histórico de treino:", err);
+      }
     },
 
     manageData: {
