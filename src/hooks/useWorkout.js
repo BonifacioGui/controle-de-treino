@@ -116,21 +116,29 @@ export const useWorkout = () => {
     syncPlanToCloud();
   }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady]);
 
-  // 🔥 MOTOR DO CRONÔMETRO DE DESCANSO
+  // 🔥 MOTOR DO CRONÔMETRO DE DESCANSO BLINDADO
   useEffect(() => {
     let interval = null;
-    if (timerState.active && timerState.seconds > 0) {
+
+    if (timerState.active) {
       interval = setInterval(() => {
         setTimerState(prev => {
-          if (prev.seconds <= 1) return { active: false, seconds: 0 };
+          // Se já zerou ou vai zerar agora, desativa e trava no zero
+          if (prev.seconds <= 1) {
+            clearInterval(interval);
+            return { active: false, seconds: 0 };
+          }
+          // Subtrai com segurança usando a memória interna do estado
           return { ...prev, seconds: prev.seconds - 1 };
         });
       }, 1000);
-    } else if (timerState.seconds <= 0) {
-      setTimerState(prev => ({ ...prev, active: false }));
     }
-    return () => clearInterval(interval);
-  }, [timerState.active, timerState.seconds]);
+
+    // Limpeza de memória quando o componente desmonta ou o active muda
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerState.active]); // Escuta APENAS o gatilho de ligar/desligar
 
   // 6. AÇÕES DO TREINO
   const updateSetData = useCallback((id, i, f, v) => {
