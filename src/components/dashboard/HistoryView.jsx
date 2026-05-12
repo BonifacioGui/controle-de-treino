@@ -229,7 +229,7 @@ const WeekAccordion = ({ weekTitle, sessions, deleteEntry, updateEntry, openRepo
 };
 
 const MonthAccordion = ({ monthTitle, weeksData, deleteEntry, updateEntry, openReport }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const sortedWeekKeys = Object.keys(weeksData).sort((a, b) => (parseInt(a.replace(/\D/g, '')) || 0) - (parseInt(b.replace(/\D/g, '')) || 0)).reverse();
 
   return (
