@@ -123,24 +123,24 @@ const WorkoutApp = () => {
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
   // ==========================================
 
-  const handleFinishWorkoutWrapper = async () => {
-    // 1. Dispara o final do treino e pega a resposta imediata se upou de nível
-    const upouDeNivel = await actions.finishWorkout();
-
-    // 🔥 PROTOCOLO DE PERSISTÊNCIA: Salva os dados do card para sobreviver ao recarregamento
+  const handleFinishWorkoutWrapper = async (dadosDoTreino) => {
+    // 1. Recebe o pacote de dados fresquinhos direto da função
+    const resultado = await actions.finishWorkout(dadosDoTreino?.bonusXp || 0);
+    
+    // 2. Salva no cache OS DADOS NOVOS (resultado), ignorando o "stats" antigo
     const relatorioTatico = {
-      volume: stats.lastSessionStats.volume,
-      duration: stats.lastSessionStats.duration,
-      xp: stats.lastSessionStats.xp,
-      level: stats.level,
-      streak: stats.streak
+      volume: resultado.sessionVolume,
+      duration: resultado.sessionDuration,
+      xp: resultado.sessionXp,
+      level: resultado.newLevel,
+      streak: resultado.newStreak
     };
     localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
-    // 2. Orquestra a UI com base na resposta
-    if (upouDeNivel) {
-      setShowLevelUp(true); // UPOU DE NÍVEL: Mostra a glória!
+
+    if (resultado.subiuDeNivel) {
+      setShowLevelUp(true); 
     } else {
-      setShowCelebration(true); // NÃO UPOU: Mostra os stats direto.
+      setShowCelebration(true); 
     }
   };
 

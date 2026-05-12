@@ -85,3 +85,11 @@ export const calculateTrue1RM = (weight, reps, rpe) => {
   // Calcula o 1RM com o potencial máximo daquela série
   return Math.round(w * (1 + theoreticalReps / 30));
 };
+
+// Adicione isso ao seu workoutUtils.js
+export const parseBrazilianDate = (dateStr) => {
+  if (!dateStr) return 0;
+  const [day, month, year] = dateStr.split('/');
+  // Retorna o timestamp (milissegundos) para comparação numérica direta
+  return new Date(year, month - 1, day).getTime();
+};

@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
+// 🔥 Função limpadora: tira acentos e joga pra minúsculo
+const removeAcentos = (str) => {
+  if (!str) return "";
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
 const ExerciseSearchModal = ({ exercises, onSelect, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Aplica o filtro inteligente uma única vez antes de desenhar a tela
+  const termoLimpo = removeAcentos(searchTerm);
+  const exerciciosFiltrados = exercises.filter(ex => 
+    removeAcentos(ex).includes(termoLimpo)
+  );
 
   return (
     <div 
@@ -32,24 +44,21 @@ const ExerciseSearchModal = ({ exercises, onSelect, onClose }) => {
         </div>
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
-          {exercises
-            .filter(ex => ex.toLowerCase().includes(searchTerm.toLowerCase()))
-            .map(ex => (
-              <button 
-                key={ex} 
-                onClick={() => {
-                  onSelect(ex);
-                  onClose();
-                }} 
-                className="w-full text-left p-4 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-primary/10 dark:hover:bg-white/5 text-muted hover:text-primary"
-              >
-                {ex}
-              </button>
-            ))
-          }
+          {exerciciosFiltrados.map(ex => (
+            <button 
+              key={ex} 
+              onClick={() => {
+                onSelect(ex);
+                onClose();
+              }} 
+              className="w-full text-left p-4 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-primary/10 dark:hover:bg-white/5 text-muted hover:text-primary"
+            >
+              {ex}
+            </button>
+          ))}
           
           {/* Feedback caso a busca não encontre nada */}
-          {exercises.filter(ex => ex.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+          {exerciciosFiltrados.length === 0 && (
             <div className="text-center p-4 text-muted text-[10px] uppercase font-bold">
               Nenhum registro encontrado.
             </div>

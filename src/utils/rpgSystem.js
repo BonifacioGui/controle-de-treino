@@ -126,10 +126,15 @@ export const calculateStats = (history) => {
     }
   });
   
-  // STATUS GLOBAL (Blindado)
-  stats.xp = Math.floor(totalXp); // 1. Arredonda o XP logo de cara e trava o valor
-  stats.level = getLevelFromXp(stats.xp); // 2. Usa o XP arredondado para definir o nível
+  // --- CÁLCULO DE STATUS GLOBAL (Otimizado para UI) ---
+  
+  // 1. Mantemos o XP com decimais para a barra de progresso ter movimento fluido
+  stats.xp = totalXp; 
+  
+  // 2. O nível continua sendo baseado no valor inteiro
+  stats.level = getLevelFromXp(Math.floor(totalXp));
 
+  // Títulos de Carreira
   let title = "Recruta";
   if (stats.level >= 5) title = "Soldado";
   if (stats.level >= 15) title = "Veterano";
@@ -138,20 +143,27 @@ export const calculateStats = (history) => {
   if (stats.level >= 100) title = "Lenda do SOLO";
   stats.title = title;
 
-  const currentLevelXp = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
-  const nextLevelXp = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
+  // 3. Matemática da Barra de Progresso (Fórmula Exponencial)
+  // XP necessário para o nível atual e para o próximo
+  const currentLevelThreshold = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
+  const nextLevelThreshold = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
   
-  // 3. Usa APENAS o 'stats.xp' (que já é inteiro) na matemática da barra
-  const progress = ((stats.xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
-  stats.nextLevelProgress = Math.min(100, Math.max(0, progress));
+  // XP que o usuário já acumulou DENTRO do nível atual
+  const xpInCurrentLevel = stats.xp - currentLevelThreshold;
+  const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
+
+  // Cálculo da porcentagem (0 a 100)
+  const progressPercent = (xpInCurrentLevel / xpRequiredForNextLevel) * 100;
   
-  // 4. A conta de padaria perfeita (sem Math.floor aqui, pois ambos já são inteiros)
-  stats.xpRemaining = nextLevelXp - stats.xp;
+  stats.nextLevelProgress = Math.min(100, Math.max(0, progressPercent));
+  
+  // XP restante (arredondado para o display)
+  stats.xpRemaining = Math.ceil(nextLevelThreshold - stats.xp);
   
   return stats;
 };
 
-// Adicione no final do src/utils/rpgSystem.js:
+// --- 4. ESTILO DA OFENSIVA ---
 export const getFlameStyle = (streak) => {
     if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
     if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
@@ -159,52 +171,61 @@ export const getFlameStyle = (streak) => {
     return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
 };
 
-// Adicione no final do seu src/utils/rpgSystem.js
-
+// --- 5. CÁLCULO DE OFENSIVA (Com Tolerância de 3 Dias) ---
 export const calculateStreak = (history) => {
   if (!Array.isArray(history) || history.length === 0) return 0;
 
+  // 1. Extrai as datas de forma segura (lidando com formatos variados do banco)
   const validDates = history.reduce((acc, h) => {
     if (!h) return acc;
     const rawDate = h.date || h.workout_date;
     if (typeof rawDate === 'string' && rawDate.trim() !== '') {
+      let year, month, day;
       if (rawDate.includes('/')) {
-        acc.push(rawDate.split('/').reverse().join('-'));
+        [day, month, year] = rawDate.split('/');
       } else {
-        acc.push(rawDate.split('T')[0]);
+        const datePart = rawDate.split('T')[0];
+        [year, month, day] = datePart.split('-');
       }
+      acc.push(new Date(year, month - 1, day).getTime());
     }
     return acc;
   }, []);
 
-  const uniqueDates = [...new Set(validDates)].sort().reverse();
-  if (uniqueDates.length === 0) return 0;
+  if (validDates.length === 0) return 0;
 
-  const createDate = (str) => { 
-    const parts = str.split('-').map(Number);
-    if (parts.length !== 3) return new Date(2000, 0, 1);
-    return new Date(parts[0], parts[1] - 1, parts[2]); 
-  };
+  // 2. Remove datas duplicadas e ordena da mais recente para a mais antiga
+  const uniqueDates = [...new Set(validDates)].sort((a, b) => b - a);
 
-  const today = new Date(); 
-  today.setHours(0,0,0,0);
+  // 3. Define "Hoje" à meia-noite (padronizando o relógio)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTime = today.getTime();
+
+  const msInDay = 1000 * 60 * 60 * 24;
   
-  const lastWorkoutDate = createDate(uniqueDates[0]);
-  const diffDays = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+  // 🔥 REGRA DE NEGÓCIO: Janela de descanso de até 3 dias.
+  const toleranceDays = 3; 
 
-  if (!(diffDays === 0 || diffDays === 1 || (today.getDay() === 1 && diffDays <= 2))) return 0;
-
-  let currentStreak = 1;
-  for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const d1 = createDate(uniqueDates[i]);
-      const d2 = createDate(uniqueDates[i+1]);
-      const gap = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
-      
-      if (gap === 1 || (gap === 2 && d1.getDay() === 1)) {
-        currentStreak++; 
-      } else {
-        break; 
-      }
+  // Se o último treino registrado foi há MAIS de 3 dias de HOJE, a ofensiva zerou.
+  if ((todayTime - uniqueDates[0]) / msInDay > toleranceDays) {
+    return 0;
   }
+
+  // Se chegou aqui, a ofensiva está ativa. Vamos calcular o tamanho da corrente.
+  let currentStreak = 1;
+
+  for (let i = 0; i < uniqueDates.length - 1; i++) {
+    const diffInDays = (uniqueDates[i] - uniqueDates[i + 1]) / msInDay;
+
+    // Se o espaço entre os treinos for aceitável (até 3 dias), a corrente cresce
+    if (diffInDays <= toleranceDays) {
+      currentStreak++;
+    } else {
+      // Se tiver um buraco maior que 3 dias, a contagem da corrente para aqui
+      break;
+    }
+  }
+
   return currentStreak;
 };

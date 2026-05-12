@@ -1,48 +1,130 @@
-// Função para padronizar nomes de exercícios e evitar duplicações no banco de dados
+// src/utils/exerciseParser.js
+
 export const getCanonicalName = (rawName) => {
   if (!rawName) return "";
-  let clean = rawName.split('(')[0].trim();
-  const lower = clean.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); 
 
-  if (lower.includes("desenv")) return "Desenvolvimento";
-  if (lower.includes("lateral")) return "Elevação Lateral";
-  if (lower.includes("frontal")) return "Elevação Frontal";
-  if (lower.includes("facepull") || (lower.includes("face") && lower.includes("pull"))) return "Face Pull";
+  // Lê a string inteira para não perder detalhes da pegada (ex: Barra H)
+  const lower = rawName.toLowerCase()
+                     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                     .trim();
 
-  if (lower.includes("abdu")) return "Cadeira Abdutora";
-  if (lower.includes("adut")) return "Cadeira Adutora";
-  if (lower.includes("leg") && lower.includes("45")) return "Leg Press 45º";
-  if (lower.includes("leg")) return "Leg Press";
-  if (lower.includes("hack")) return "Agachamento Hack";
-  if (lower.includes("extensora")) return "Cadeira Extensora";
-  if (lower.includes("flexora")) return "Mesa Flexora";
-  if (lower.includes("panturrilha") || lower.includes("gemeos")) return "Panturrilha";
+  // Ferramentas de busca
+  const has = (word) => lower.includes(word);
+  const hasExact = (word) => new RegExp(`\\b${word}\\b`).test(lower);
 
-  if (lower.includes("triceps")) {
-      if (lower.includes("testa")) return "Tríceps Testa";
-      if (lower.includes("frances")) return "Tríceps Francês";
-      return "Tríceps Corda"; 
+  // ==========================================
+  // 🏆 MOTOR DE REGRAS DO MVP (RULE ENGINE)
+  // ==========================================
+  // Ordem de prioridade: do mais específico para o mais geral.
+  const rules = [
+    // --- COSTAS ---
+    { check: () => has("puxada") && (has("triangulo") || hasExact("v")), name: "Puxada Triângulo" },
+    { check: () => has("puxada") && (has("barra h") || hasExact("h") || has("romana")), name: "Puxada Barra H" },
+    { check: () => has("puxada") && (has("supinada") || has("inversa")), name: "Puxada Supinada" },
+    { check: () => has("puxada") && (has("articulada") || has("maquina")), name: "Puxada Máquina" },
+    { check: () => has("puxada") || has("pulldown"), name: "Puxada Frontal" },
+
+    { check: () => has("remada") && (has("baixa") || has("polia") || has("cabo")), name: "Remada Baixa" },
+    { check: () => has("remada") && has("curvada") && has("supinada"), name: "Remada Curvada Supinada" },
+    { check: () => has("remada") && has("curvada"), name: "Remada Curvada" },
+    { check: () => has("remada") && (has("cavalo") || hasExact("t")), name: "Remada Cavalinho" },
+    { check: () => has("remada") && (has("maquina") || has("articulada")), name: "Remada Máquina" },
+    { check: () => hasExact("unilateral") || has("serrote"), name: "Serrote" },
+
+    // --- PEITO ---
+    { check: () => has("supino") && has("inclinado") && has("halter"), name: "Supino Inclinado Halteres" },
+    { check: () => has("supino") && has("inclinado"), name: "Supino Inclinado" },
+    { check: () => has("supino") && has("declinado"), name: "Supino Declinado" },
+    { check: () => has("supino") && (has("maquina") || has("articulado")), name: "Supino Máquina" },
+    { check: () => has("supino") && has("reto") && has("halter"), name: "Supino Reto Halteres" },
+    { check: () => has("supino"), name: "Supino Reto" },
+
+    { check: () => has("crucifixo") && has("inverso"), name: "Crucifixo Inverso" },
+    { check: () => has("crucifixo") && has("inclinado"), name: "Crucifixo Inclinado" },
+    { check: () => has("peck") || has("voador") || (has("crucifixo") && has("maquina")), name: "Peck Deck" },
+    { check: () => has("crucifixo"), name: "Crucifixo Reto" },
+    { check: () => has("crossover") || (has("cross") && has("over")), name: "Crossover" },
+
+    // --- OMBROS ---
+    { check: () => (has("elevacao") || hasExact("elev")) && hasExact("lateral") && (has("cabo") || has("polia")), name: "Elevação Lateral Polia" },
+    { check: () => (has("elevacao") || hasExact("elev")) && hasExact("lateral"), name: "Elevação Lateral" },
+    { check: () => (has("elevacao") || hasExact("elev")) && hasExact("frontal"), name: "Elevação Frontal" },
+    
+    { check: () => has("desenvolvimento") && (has("maquina") || has("articulado")), name: "Desenvolvimento Máquina" },
+    { check: () => has("desenvolvimento") && has("halter"), name: "Desenvolvimento Halteres" },
+    { check: () => has("desenvolvimento"), name: "Desenvolvimento" },
+    { check: () => has("face") && has("pull"), name: "Face Pull" },
+
+    // --- TRÍCEPS ---
+    { check: () => has("triceps") && has("testa") && (has("polia") || has("cabo")), name: "Tríceps Testa Polia" },
+    { check: () => has("triceps") && has("testa"), name: "Tríceps Testa" },
+    { check: () => has("triceps") && has("frances") && (has("polia") || has("cabo")), name: "Tríceps Francês Polia" },
+    { check: () => has("triceps") && has("frances"), name: "Tríceps Francês" },
+    { check: () => has("triceps") && has("corda"), name: "Tríceps Corda" },
+    { check: () => has("triceps") && has("coice"), name: "Tríceps Coice" },
+    { check: () => has("triceps") && (has("pulley") || has("polia") || has("barra")), name: "Tríceps Pulley" },
+
+    // --- BÍCEPS ---
+    { check: () => has("rosca") && has("martelo") && (has("polia") || has("cabo")), name: "Rosca Martelo Polia" },
+    { check: () => has("rosca") && has("martelo"), name: "Rosca Martelo" },
+    { check: () => has("rosca") && has("scott"), name: "Rosca Scott" },
+    { check: () => has("rosca") && (has("45") || has("inclinada")), name: "Rosca 45º" },
+    { check: () => has("rosca") && (has("inversa") || has("pronada")), name: "Rosca Inversa" },
+    { check: () => has("rosca") && has("alternada"), name: "Rosca Alternada" },
+    { check: () => has("rosca") && has("direta") && (has("polia") || has("cabo")), name: "Rosca Direta Polia" },
+    { check: () => has("rosca") && has("direta"), name: "Rosca Direta" },
+
+    // --- PERNAS & GLÚTEOS ---
+    { check: () => has("leg") && has("45"), name: "Leg Press 45º" },
+    { check: () => has("leg") && hasExact("unilateral"), name: "Leg Press Unilateral" },
+    { check: () => has("leg"), name: "Leg Press" },
+    
+    { check: () => hasExact("hack") && has("reverso"), name: "Agachamento Hack Reverso" },
+    { check: () => hasExact("hack"), name: "Agachamento Hack" },
+    
+    { check: () => has("extensora") && hasExact("unilateral"), name: "Cadeira Extensora Unilateral" },
+    { check: () => has("extensora"), name: "Cadeira Extensora" },
+    
+    { check: () => has("flexora") && (has("mesa") || has("deitada")), name: "Mesa Flexora" },
+    { check: () => has("flexora") && (has("cadeira") || has("sentada")), name: "Cadeira Flexora" },
+    { check: () => has("flexora"), name: "Flexora" },
+    
+    { check: () => has("abdu"), name: "Cadeira Abdutora" },
+    { check: () => has("adu"), name: "Cadeira Adutora" },
+    { check: () => has("elevacao") && has("pelvica"), name: "Elevação Pélvica" },
+    
+    { check: () => (has("panturrilha") || has("gemeos")) && (has("sentado") || has("banco")), name: "Panturrilha Sentado" },
+    { check: () => (has("panturrilha") || has("gemeos")) && (has("pe") || has("em pe")), name: "Panturrilha em Pé" },
+    { check: () => has("panturrilha") || has("gemeos"), name: "Panturrilha" },
+
+    { check: () => has("agachamento") && has("bulgaro"), name: "Agachamento Búlgaro" },
+    { check: () => has("agachamento") && has("smith"), name: "Agachamento Smith" },
+    { check: () => has("agachamento") && has("sumo"), name: "Agachamento Sumô" },
+    { check: () => has("agachamento"), name: "Agachamento Livre" },
+    
+    { check: () => (has("terra") || has("deadlift")) && has("sumo"), name: "Levantamento Terra Sumô" },
+    { check: () => has("terra") || has("deadlift"), name: "Levantamento Terra" },
+    { check: () => has("stiff"), name: "Stiff" }
+  ];
+
+  // Executa o motor: a primeira regra que der "match" vence.
+  for (const rule of rules) {
+    if (rule.check()) {
+      return rule.name;
+    }
   }
-  if (lower.includes("rosca")) {
-      if (lower.includes("martelo")) return "Rosca Martelo";
-      if (lower.includes("45") || lower.includes("inclinada")) return "Rosca 45º";
-      return "Rosca Direta";
-  }
 
-  if (lower.includes("supino")) {
-      if (lower.includes("inclinado")) return "Supino Inclinado";
-      return "Supino Reto";
-  }
-  if (lower.includes("crossover") || (lower.includes("cross") && lower.includes("over"))) return "Crossover";
-
-  if (lower.includes("puxada")) return "Puxada Frontal";
-  if (lower.includes("remada")) {
-      if (lower.includes("baixa") || lower.includes("triangulo")) return "Remada Baixa";
-      if (lower.includes("unilateral") || lower.includes("serrote")) return "Serrote";
-      return "Remada";
-  }
-
-  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+  // ==========================================
+  // 🚀 FALLBACK INTELIGENTE (Tratamento de Exceções)
+  // ==========================================
+  // Se for algo muito diferente que não está nas regras, limpamos 
+  // anotações extras e capitalizamos as palavras para a UI não quebrar.
+  let cleanFallback = rawName.split('(')[0].split('-')[0].trim();
+  
+  return cleanFallback
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 };
 
 // Função para agrupar exercícios no mapa de calor

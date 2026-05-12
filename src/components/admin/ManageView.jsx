@@ -100,25 +100,34 @@ const ManageView = ({
       </div>
 
       {/* Header de Configuração */}
-      <div className="flex justify-between items-center border-b border-secondary/30 pb-3 mb-4 px-1">
-        <div className="flex items-center gap-2">
-          <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
-          <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
-            EDITANDO: <span className="text-secondary">{activeDay}</span>
-          </h2>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95" title="Apagar Protocolo">
-            <Trash2 size={18} strokeWidth={2} />
-          </button>
-          
-          {activeDay !== 'INÍCIO' && (
-            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
-              <Plus size={18} strokeWidth={3} />
+        <div className="flex justify-between items-center border-b border-secondary/30 pb-3 mb-4 px-1">
+          <div className="flex items-center gap-2">
+            <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
+            <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+              EDITANDO: <span className="text-secondary">{activeDay}</span>
+            </h2>
+          </div>
+          <div className="flex gap-2 items-center">
+            {/* 🔥 BOTÃO DA IA - MOVIDO PARA O TOPO (Padrão Ouro de UX) */}
+            <button 
+              onClick={() => setView('importer')}
+              className="bg-primary/10 border border-primary/50 p-2 rounded-lg text-primary hover:bg-primary hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--primary),0.2)] active:scale-95 flex items-center gap-1.5" 
+              title="IA: Decodificar Treino"
+            >
+              <Cpu size={18} className="animate-pulse" strokeWidth={2.5} />
             </button>
-          )}
+
+            {activeDay !== 'INÍCIO' && (
+              <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
+                <Plus size={18} strokeWidth={2.5} />
+              </button>
+            )}
+
+            <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar Protocolo">
+              <Trash2 size={18} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
-      </div>
 
       {activeDay === 'INÍCIO' ? (
         <div className="mt-8 p-6 border-2 border-dashed border-red-500/30 rounded-xl text-center bg-red-500/5 animate-pulse mx-1">
@@ -160,24 +169,18 @@ const ManageView = ({
             </div>
           ))}
           <button onClick={openCatalog} className="w-full mt-4 py-4 border-2 border-dashed border-primary/50 text-primary bg-primary/5 hover:bg-primary/10 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
-            <Search size={18} /> Acessar Arsenal de Combate
+            <Search size={18} /> ADICIONAR EXERCÍCIOS
           </button>
         </div>
       )}
 
-      {/* 🔥 AQUI ESTÁ O BOTÃO DA IA CORRIGIDO */}
-      <div className="flex justify-center pt-2">
-        <button 
-          onClick={() => setView('importer')}
-          className="flex items-center gap-2 bg-primary/10 border border-primary/30 px-6 py-3 rounded-xl text-primary font-black text-[12px] uppercase tracking-widest hover:bg-primary/20 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] w-full justify-center"
-        >
-          <Cpu size={16} className="animate-pulse" /> IA: Decodificar Treino
-        </button>
-      </div>
-
       <div className="pt-4 px-1">
-        <button onClick={() => setView('workout')} className="w-full py-4 bg-gradient-to-r from-primary to-secondary hover:brightness-110 rounded-xl font-black text-white shadow-md dark:shadow-[0_5px_20px_rgba(var(--primary),0.3)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] active:scale-95 transition-all uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2 ">
-          <Save size={16} /> EFETIVAR ALTERAÇÕES
+        <button 
+          onClick={() => setView('workout')} 
+          // 🔥 Adicionado 'active:' para as cores mudarem no exato momento do toque na tela do celular
+          className="w-full py-4 border-2 border-primary text-primary bg-primary/10 hover:bg-primary active:bg-primary hover:text-white dark:hover:text-black active:text-white dark:active:text-black rounded-xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.5)]"
+        >
+          <Save size={18} strokeWidth={2.5} /> EFETIVAR ALTERAÇÕES
         </button>
       </div>
 
