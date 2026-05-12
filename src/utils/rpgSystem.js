@@ -126,10 +126,15 @@ export const calculateStats = (history) => {
     }
   });
   
-  // STATUS GLOBAL (Blindado)
-  stats.xp = Math.floor(totalXp); // 1. Arredonda o XP logo de cara e trava o valor
-  stats.level = getLevelFromXp(stats.xp); // 2. Usa o XP arredondado para definir o nível
+  // --- CÁLCULO DE STATUS GLOBAL (Otimizado para UI) ---
+  
+  // 1. Mantemos o XP com decimais para a barra de progresso ter movimento fluido
+  stats.xp = totalXp; 
+  
+  // 2. O nível continua sendo baseado no valor inteiro
+  stats.level = getLevelFromXp(Math.floor(totalXp));
 
+  // Títulos de Carreira
   let title = "Recruta";
   if (stats.level >= 5) title = "Soldado";
   if (stats.level >= 15) title = "Veterano";
@@ -138,15 +143,22 @@ export const calculateStats = (history) => {
   if (stats.level >= 100) title = "Lenda do SOLO";
   stats.title = title;
 
-  const currentLevelXp = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
-  const nextLevelXp = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
+  // 3. Matemática da Barra de Progresso (Fórmula Exponencial)
+  // XP necessário para o nível atual e para o próximo
+  const currentLevelThreshold = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
+  const nextLevelThreshold = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
   
-  // 3. Usa APENAS o 'stats.xp' (que já é inteiro) na matemática da barra
-  const progress = ((stats.xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
-  stats.nextLevelProgress = Math.min(100, Math.max(0, progress));
+  // XP que o usuário já acumulou DENTRO do nível atual
+  const xpInCurrentLevel = stats.xp - currentLevelThreshold;
+  const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
+
+  // Cálculo da porcentagem (0 a 100)
+  const progressPercent = (xpInCurrentLevel / xpRequiredForNextLevel) * 100;
   
-  // 4. A conta de padaria perfeita (sem Math.floor aqui, pois ambos já são inteiros)
-  stats.xpRemaining = nextLevelXp - stats.xp;
+  stats.nextLevelProgress = Math.min(100, Math.max(0, progressPercent));
+  
+  // XP restante (arredondado para o display)
+  stats.xpRemaining = Math.ceil(nextLevelThreshold - stats.xp);
   
   return stats;
 };

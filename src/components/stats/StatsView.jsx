@@ -12,7 +12,6 @@ import VolumeChart from './VolumeChart';
 import TopRecords from './TopRecords';
 import ExerciseSearchModal from '../workout/ExerciseSearchModal';
 
-
 // Componente auxiliar de Seção (mantido para padronizar blocos internos)
 const Section = ({ title, icon: Icon, children, h = "h-48" }) => (
   <section className="space-y-2">
@@ -112,6 +111,34 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       .sort((a, b) => new Date(a.full.split('/').reverse().join('-')) - new Date(b.full.split('/').reverse().join('-')));
   }, [history, selectedExercise]);
 
+
+  // 🔥 LÓGICA DO DASHBOARD DE CONSISTÊNCIA
+  const monthlyTarget = 20; 
+  const consistencyProgress = Math.min(100, Math.round((recentWorkoutsCount / monthlyTarget) * 100));
+  
+  let statusColor = 'text-red-500';
+  let barColor = 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
+  let borderColor = 'border-red-500/50';
+  let statusText = 'CRÍTICO';
+
+  if (consistencyProgress >= 80) {
+    statusColor = 'text-[#00ff88]'; 
+    barColor = 'bg-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.8)]';
+    borderColor = 'border-[#00ff88]/50';
+    statusText = 'ELITE';
+  } else if (consistencyProgress >= 50) {
+    statusColor = 'text-[#00f3ff]'; 
+    barColor = 'bg-[#00f3ff] shadow-[0_0_10px_rgba(0,243,255,0.8)]';
+    borderColor = 'border-[#00f3ff]/50';
+    statusText = 'ESTÁVEL';
+  } else if (consistencyProgress >= 25) {
+    statusColor = 'text-yellow-400';
+    barColor = 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]';
+    borderColor = 'border-yellow-400/50';
+    statusText = 'BAIXA';
+  }
+
+
   return (
     <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
@@ -121,16 +148,50 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <h2 className="text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
-      {/* DASHBOARD DE CONSISTÊNCIA */}
-      <div className="bg-card border-2 border-primary/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_15px_rgba(var(--primary),0.1)]">
-        <div>
-          <h3 className="text-[10px] font-black text-muted uppercase tracking-widest flex items-center gap-1.5 mb-1">
-            <CalendarCheck size={14} className="text-primary" /> Consistência (30D)
-          </h3>
-          <p className="text-sm font-medium text-main dark:text-white">Operações concluídas no último mês</p>
+      {/* DASHBOARD DE CONSISTÊNCIA TÁTICO */}
+      <div className={`relative bg-card dark:bg-[#050B14] border-l-4 border-y border-r rounded-r-2xl p-5 overflow-hidden transition-all duration-500 border-y-border dark:border-y-white/5 border-r-border dark:border-r-white/5 ${borderColor} shadow-sm hover:shadow-md`}>
+        {/* Scanlines e background tático */}
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_4px]"></div>
+        <div className={`absolute top-[-50%] right-[-10%] w-32 h-32 ${barColor.split(' ')[0]}/10 rounded-full blur-[40px] pointer-events-none`}></div>
+
+        {/* Header do Card */}
+        <div className="flex justify-between items-start mb-4 relative z-10">
+          <div>
+            <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-1.5 mb-1">
+              <CalendarCheck size={14} className={statusColor} /> 
+              Consistência (30D)
+            </h3>
+            <p className="text-[11px] font-bold text-main/70 dark:text-zinc-400 uppercase tracking-wider">
+              Operações em Campo
+            </p>
+          </div>
+          
+          {/* Status Badge */}
+          <div className={`px-2 py-0.5 rounded border ${borderColor} ${barColor.split(' ')[0]}/10 flex items-center`}>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${statusColor} drop-shadow-sm`}>
+              {statusText}
+            </span>
+          </div>
         </div>
-        <div className="text-3xl font-black text-primary">
-          {recentWorkoutsCount}
+
+        {/* Números e Progress Bar */}
+        <div className="relative z-10">
+          <div className="flex items-baseline gap-1.5 mb-2">
+            <span className={`text-4xl font-black leading-none drop-shadow-md ${statusColor}`}>
+              {recentWorkoutsCount}
+            </span>
+            <span className="text-xs font-bold text-muted uppercase tracking-widest">
+              / {monthlyTarget} TREINOS
+            </span>
+          </div>
+
+          {/* Barra de Progresso */}
+          <div className="w-full h-1.5 bg-black/10 dark:bg-black/50 rounded-full overflow-hidden shadow-inner">
+            <div 
+              className={`h-full transition-all duration-1000 ${barColor}`} 
+              style={{ width: `${consistencyProgress}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 

@@ -1,29 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Terminal } from 'lucide-react';
 
-// 🔥 PADRÃO OURO: Recebe 'stats' direto, sem recalcular nada!
+// 🔥 PADRÃO OURO: Recebe 'stats' direto e confia na matemática do rpgSystem!
 const UserLevel = ({ stats }) => {
   
-  // Cálculo rápido apenas para fins visuais da interface (XP que falta)
-  // Nota: Certifique-se de que essa matemática (x 100) bate com a regra do seu rpgSystem!
-  const nextLevelXp = Math.pow((stats?.level || 1), 2) * 100;
-  const xpMissing = nextLevelXp - (stats?.xp || 0);
-
   // 🔥 ESTADO DE ANIMAÇÃO: Controla a largura da barra
   const [barWidth, setBarWidth] = useState(0);
 
   // 🔥 EFEITO GATILHO: Espera a tela renderizar e joga a barra para o valor real
   useEffect(() => {
-    // Começa no zero
     setBarWidth(0);
     
-    // Pequeno atraso (150ms) para o navegador "respirar" e então aplicar a transição
     const timer = setTimeout(() => {
-      setBarWidth(stats?.nextLevelProgress || 0);
+      // Usando o nome correto que veio do useWorkout!
+      setBarWidth(stats?.progress || 0);
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [stats?.nextLevelProgress]);
+  }, [stats?.progress]);
 
   if (!stats) return null; // Prevenção contra carregamento fantasma
 
@@ -59,7 +53,7 @@ const UserLevel = ({ stats }) => {
             LVL {stats.level || 1}
           </span>
           <span className="text-[9px] font-black text-yellow-600/80 dark:text-yellow-500/70 uppercase tracking-widest mt-1 block">
-            {(stats.xp || 0).toLocaleString()} XP TOTAL
+            {Math.floor(stats.xp || 0).toLocaleString()} XP TOTAL
           </span>
         </div>
       </div>
@@ -68,7 +62,10 @@ const UserLevel = ({ stats }) => {
       <div className="relative z-10">
         <div className="flex justify-between text-[9px] font-black text-muted mb-1.5 uppercase tracking-wider">
           <span>PROGRESSO DE NÍVEL</span>
-          <span className="text-yellow-600 dark:text-yellow-500/80">{Math.max(0, xpMissing).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}</span>
+          <span className="text-yellow-600 dark:text-yellow-500/80">
+            {/* 🔥 Usa o xpRemaining que já veio calculado do servidor */}
+            {Math.max(0, stats.xpRemaining || 0).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}
+          </span>
         </div>
         
         <div className="h-4 bg-black/10 dark:bg-[#0a0f16] rounded-sm border border-yellow-500/30 overflow-hidden relative shadow-inner dark:shadow-[inset_0_0_8px_rgba(0,0,0,0.8)]">
@@ -85,9 +82,9 @@ const UserLevel = ({ stats }) => {
             <div className="absolute right-0 top-0 bottom-0 w-3 bg-white/60 blur-[1px]"></div>
           </div>
           
-          {/* Texto de % com mix-blend (mantido, pois cria um efeito visual incrível) */}
+          {/* Texto de % com mix-blend */}
           <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white mix-blend-difference z-20 pointer-events-none drop-shadow-md">
-            {Math.floor(stats.nextLevelProgress || 0)}%
+            {Math.floor(stats?.progress || 0)}%
           </span>
         </div>
       </div>

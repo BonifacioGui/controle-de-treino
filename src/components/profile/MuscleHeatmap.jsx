@@ -1,26 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, User, Users } from 'lucide-react';
 
-// Dicionário Tático (Traduzido para o Português para o HUD)
+// Dicionário Tático (Separado biomecanicamente)
 const muscleMap = {
   "Supino Reto": "peito", "Supino Inclinado": "peito", "Crossover": "peito", "Peck Deck": "peito", "Crucifixo com Halteres": "peito",
   "Puxada Neutra": "costas", "Remada Baixa": "costas", "Serrote": "costas", "Puxada Frontal": "costas", "Remada": "costas",
   "Desenvolvimento": "ombros", "Elevação Lateral": "ombros", "Crucifixo Inverso": "ombros", "Face Pull": "ombros", "Elevação Frontal": "ombros",
-  "Rosca Direta": "braços", "Rosca Martelo": "braços", "Rosca Alternada": "braços", "Rosca 45º": "braços",
-  "Tríceps Francês": "braços", "Tríceps Corda": "braços", "Tríceps Testa": "braços",
+  // 🔥 Braços separados
+  "Rosca Direta": "bíceps", "Rosca Martelo": "bíceps", "Rosca Alternada": "bíceps", "Rosca 45º": "bíceps", "Rosca Scott": "bíceps",
+  "Tríceps Francês": "tríceps", "Tríceps Corda": "tríceps", "Tríceps Testa": "tríceps", "Tríceps Pulley": "tríceps", "Tríceps Coice": "tríceps",
+  // 
   "Prancha": "core", "Prancha Lateral": "core", "Vacuum": "core", "Abdominal Infra": "core",
   "Leg Press": "quadríceps", "Agachamento Hack": "quadríceps", "Cadeira Extensora": "quadríceps", "Agachamento Isométrico": "quadríceps", "Leg Press 45º": "quadríceps",
   "Mesa Flexora": "posteriores", "Stiff": "posteriores", "Elevação Pélvica": "posteriores", "Cadeira Abdutora": "posteriores",
-  "Panturrilha": "panturrilhas"
+  "Panturrilha": "panturrilhas", "Panturrilha Sentado": "panturrilhas", "Panturrilha em Pé": "panturrilhas"
 };
 
 const MuscleHeatmap = ({ history }) => {
-  // Estado para controlar o biotipo (male/female)
   const [gender, setGender] = useState('male');
 
-  // Analisa os últimos 7 dias
   const heatData = useMemo(() => {
-    const data = { peito: 0, costas: 0, ombros: 0, braços: 0, core: 0, quadríceps: 0, posteriores: 0, panturrilhas: 0 };
+    // 🔥 Os 9 grupos musculares atualizados
+    const data = { peito: 0, costas: 0, ombros: 0, bíceps: 0, tríceps: 0, core: 0, quadríceps: 0, posteriores: 0, panturrilhas: 0 };
     if (!history) return data;
 
     const oneWeekAgo = new Date();
@@ -33,11 +34,11 @@ const MuscleHeatmap = ({ history }) => {
       if (sessionDate >= oneWeekAgo && session.exercises) {
         session.exercises.forEach(ex => {
           if (!ex.done) return;
-          // Normaliza o nome para buscar no mapa
+          
           let cleanName = ex.name.split('(')[0].trim();
           const muscle = muscleMap[cleanName] || muscleMap[Object.keys(muscleMap).find(k => cleanName.toLowerCase().includes(k.toLowerCase()))];
           
-          if (muscle) {
+          if (muscle && data[muscle] !== undefined) {
             const setsDone = ex.sets ? ex.sets.filter(s => s.reps && s.weight).length : 0;
             const fallbackSets = ex.sets ? ex.sets.length : 3; 
             data[muscle] += (setsDone > 0 ? setsDone : fallbackSets);
@@ -63,7 +64,6 @@ const MuscleHeatmap = ({ history }) => {
     return '';
   };
 
-  // Props comuns para os polígonos SVG
   const polyProps = (muscle) => ({
     fill: getHeatColor(heatData[muscle]),
     stroke: heatData[muscle] >= 12 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(var(--primary), 0.5)',
@@ -74,10 +74,8 @@ const MuscleHeatmap = ({ history }) => {
   return (
     <div className="bg-card border-2 border-border p-5 rounded-3xl shadow-lg dark:shadow-[0_0_30px_rgba(0,0,0,0.5)] mt-6 relative overflow-hidden transition-colors duration-300">
       
-      {/* Efeito de fundo de grid tático - Dinâmico para claro/escuro */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(var(--primary),0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary),0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none transition-colors duration-300"></div>
       
-      {/* Header com Seletor de Biotipo */}
       <div className="flex items-center justify-between mb-6 relative z-10">
         <h3 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
           <Activity size={18} /> Scanner Biométrico (7D)
@@ -100,9 +98,7 @@ const MuscleHeatmap = ({ history }) => {
       </div>
 
       <div className="flex justify-center items-center py-4 relative z-10">
-        {/* SVG ESTILIZADO CYBERPUNK */}
         <svg viewBox="0 0 200 300" className="w-56 h-auto filter drop-shadow-md dark:drop-shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-          {/* Definições de Efeitos Visuais */}
           <defs>
             <pattern id="scanlines" patternUnits="userSpaceOnUse" width="4" height="4">
               <line x1="0" y1="0" x2="200" y2="0" stroke="rgba(0,0,0,0.15)" strokeWidth="2" className="dark:stroke-[rgba(0,0,0,0.4)]"/>
@@ -114,10 +110,8 @@ const MuscleHeatmap = ({ history }) => {
             </linearGradient>
           </defs>
 
-          {/* Camada de Fundo do Holograma */}
           <rect x="20" y="0" width="160" height="300" fill="url(#hologram-gradient)" rx="20" opacity="0.8" />
 
-          {/* Renderização Condicional dos Biotipos */}
           {gender === 'male' ? (
             <g className="male-wireframe">
                <polygon points="90,20 110,20 115,40 100,50 85,40" fill="rgba(100,116,139,0.3)" stroke="rgba(var(--primary),0.4)"/>
@@ -126,10 +120,13 @@ const MuscleHeatmap = ({ history }) => {
                <polygon points="60,80 70,80 75,120 60,120" {...polyProps('costas')}/>
                <polygon points="140,80 130,80 125,120 140,120" {...polyProps('costas')}/>
                <polygon points="77,115 123,115 118,155 100,165 82,155" {...polyProps('core')}/>
-               <rect x="40" y="80" width="18" height="45" rx="4" {...polyProps('braços')}/>
-               <rect x="142" y="80" width="18" height="45" rx="4" {...polyProps('braços')}/>
-               <rect x="35" y="130" width="15" height="40" rx="3" {...polyProps('braços')}/>
-               <rect x="150" y="130" width="15" height="40" rx="3" {...polyProps('braços')}/>
+               
+               {/* 🔥 Separação Visual: Parte superior = Bíceps, Inferior = Tríceps */}
+               <rect x="40" y="80" width="18" height="45" rx="4" {...polyProps('bíceps')}/>
+               <rect x="142" y="80" width="18" height="45" rx="4" {...polyProps('bíceps')}/>
+               <rect x="35" y="130" width="15" height="40" rx="3" {...polyProps('tríceps')}/>
+               <rect x="150" y="130" width="15" height="40" rx="3" {...polyProps('tríceps')}/>
+               
                <polygon points="78,170 98,170 95,230 73,230" {...polyProps('quadríceps')}/>
                <polygon points="102,170 122,170 127,230 105,230" {...polyProps('quadríceps')}/>
                <polygon points="68,175 76,175 71,225 63,220" {...polyProps('posteriores')}/>
@@ -145,10 +142,13 @@ const MuscleHeatmap = ({ history }) => {
               <polygon points="70,75 78,75 82,110 70,110" {...polyProps('costas')}/>
               <polygon points="130,75 122,75 118,110 130,110" {...polyProps('costas')}/>
               <polygon points="80,105 120,105 125,145 100,155 75,145" {...polyProps('core')}/>
-              <rect x="52" y="75" width="14" height="42" rx="4" {...polyProps('braços')}/>
-              <rect x="134" y="75" width="14" height="42" rx="4" {...polyProps('braços')}/>
-              <rect x="48" y="122" width="12" height="38" rx="3" {...polyProps('braços')}/>
-              <rect x="140" y="122" width="12" height="38" rx="3" {...polyProps('braços')}/>
+              
+              {/* 🔥 Separação Visual Feminina */}
+              <rect x="52" y="75" width="14" height="42" rx="4" {...polyProps('bíceps')}/>
+              <rect x="134" y="75" width="14" height="42" rx="4" {...polyProps('bíceps')}/>
+              <rect x="48" y="122" width="12" height="38" rx="3" {...polyProps('tríceps')}/>
+              <rect x="140" y="122" width="12" height="38" rx="3" {...polyProps('tríceps')}/>
+              
               <polygon points="73,160 98,160 94,225 70,225" {...polyProps('quadríceps')}/>
               <polygon points="102,160 127,160 130,225 106,225" {...polyProps('quadríceps')}/>
               <polygon points="65,165 73,165 69,220 60,215" {...polyProps('posteriores')}/>
@@ -158,14 +158,10 @@ const MuscleHeatmap = ({ history }) => {
             </g>
           )}
 
-          {/* Overlay de Scanlines para efeito de tela */}
           <rect x="20" y="0" width="160" height="300" fill="url(#scanlines)" rx="20" opacity="0.4" style={{ mixBlendMode: 'overlay' }} />
-          
-          {/* Linha de Scanner animada */}
           <line x1="20" y1="10" x2="180" y2="10" stroke="rgba(var(--primary),0.6)" strokeWidth="2" className="animate-scanline" />
         </svg>
 
-        {/* LEGENDA FLUTUANTE HUD MELHORADA */}
         <div className="absolute right-2 top-16 flex flex-col gap-2 text-[8px] font-mono uppercase tracking-widest text-muted text-right bg-card/80 dark:bg-black/40 p-2 rounded-lg border border-border shadow-sm backdrop-blur-md z-20 transition-colors">
           <div className="flex items-center gap-1 justify-end text-red-500 font-bold drop-shadow-sm">
             <Activity size={10} className="animate-pulse" /> Sobrecarga (+100%)
@@ -179,8 +175,8 @@ const MuscleHeatmap = ({ history }) => {
         </div>
       </div>
 
-      {/* DADOS BRUTOS (Compacto) */}
-      <div className="grid grid-cols-4 gap-1.5 mt-2 pt-3 border-t border-border/30 relative z-10">
+      {/* 🔥 GRID TÁTICO: Agora usa grid-cols-3 para englobar os 9 itens com simetria perfeita */}
+      <div className="grid grid-cols-3 gap-1.5 mt-2 pt-3 border-t border-border/30 relative z-10">
         {Object.entries(heatData).map(([muscle, sets]) => {
           const isOverload = sets >= 12;
           return (
@@ -193,22 +189,15 @@ const MuscleHeatmap = ({ history }) => {
         )})}
       </div>
       
-      {/* 🔥 AQUI ESTÁ O SEGREDO: APENAS <style> SEM O 'jsx' */}
       <style>{`
-        .neon-pulse-blue {
-          filter: drop-shadow(0 0 6px rgba(var(--primary), 0.6));
-        }
-        .neon-pulse-red {
-          animation: pulse-red 2s infinite;
-        }
+        .neon-pulse-blue { filter: drop-shadow(0 0 6px rgba(var(--primary), 0.6)); }
+        .neon-pulse-red { animation: pulse-red 2s infinite; }
         @keyframes pulse-red {
           0% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); fill: rgba(239, 68, 68, 0.8); }
           50% { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.9)); fill: rgba(239, 68, 68, 1); }
           100% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); fill: rgba(239, 68, 68, 0.8); }
         }
-        .animate-scanline {
-          animation: scan 3s linear infinite;
-        }
+        .animate-scanline { animation: scan 3s linear infinite; }
         @keyframes scan {
           0% { transform: translateY(0); opacity: 0; }
           10% { opacity: 1; }
