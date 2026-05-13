@@ -165,7 +165,7 @@ const WorkoutApp = () => {
 
   // Portão 4: Sistema Carregado
   return (
-    <div className="min-h-screen bg-page text-main font-cyber pb-32 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
+    <div className="min-h-screen bg-page text-main font-cyber pb-8 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
       
       {/* HEADER TÁTICO */}
       <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20">

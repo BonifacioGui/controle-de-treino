@@ -1,12 +1,16 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'; 
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, Loader2, Trophy, X } from 'lucide-react'; 
 
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
 import ShareCard from '../export/ShareCard';
-import { formatTime, safeParseFloat } from '../../utils/workoutUtils';
-import { QUEST_RULES } from '../../utils/questSystem';
+import { formatTime, safeParseFloat, isSameExercise } from '../../utils/workoutUtils';
+
+
+// 🔥 CORREÇÃO 1: Importando direto da fonte inquebrável
+import { QUEST_RULES } from '../../utils/questRules';
 
 const WorkoutView = ({ 
   activeDay, setActiveDay, workoutData, selectedDate, setSelectedDate, 
@@ -16,6 +20,9 @@ const WorkoutView = ({
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  
+  // 🔥 ESTADO DO TOAST DE RECOMPENSA
+  const [toastQuest, setToastQuest] = useState(null);
 
   const cardRef = useRef(null);
 
@@ -59,11 +66,13 @@ const WorkoutView = ({
     let totalSets = 0;
     let completedSets = 0;
     let exercisesSwapped = 0;
+    let prsBroken = 0; // 🔥 NOVA VARIÁVEL AQUI
 
-    // 1. Coleta de dados do progresso atual
+    // 1. Coleta de dados do progresso atual e calcula PRs
     currentWorkout?.exercises?.forEach((ex, i) => {
       const id = `${selectedDate}-${activeDay}-${i}`;
       const exData = progress[id];
+      const displayName = exData?.swappedName || ex.name;
       
       if (exData && exData.swappedName && exData.swappedName !== ex.name) {
         exercisesSwapped++;
@@ -71,45 +80,102 @@ const WorkoutView = ({
       if (exData && exData.sets) {
         totalSets += exData.sets.length;
         completedSets += exData.sets.filter(s => s.completed).length;
+
+        // 🔥 AUDITORIA DE PR: O Pai agora também faz a matemática
+        const exerciseHistory = (history || [])
+          .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
+          .filter(e => e.done !== false && isSameExercise(displayName, e.name));
+
+        const exercisePR = exerciseHistory.reduce((max, e) => {
+           const validWeights = e.sets?.map(s => parseFloat(String(s.weight).replace(',', '.')) || 0).filter(w => w > 0) || [];
+           return Math.max(max, validWeights.length > 0 ? Math.max(...validWeights) : 0);
+        }, 0);
+
+        const todayMax = exData.sets.reduce((max, s) => {
+           const w = parseFloat(String(s.weight).replace(',', '.')) || 0;
+           return Math.max(max, w);
+        }, 0);
+
+        if (todayMax > exercisePR && exercisePR > 0) {
+            prsBroken++;
+        }
       }
     });
 
-    // 2. Monta o pacote de dados exato que as missões precisam
+    // 2. Monta o pacote de dados EXATO e com trava de segurança (!!)
     const sessionData = {
       totalVolume: todayStats.volume,
-      duration: workoutTimer.elapsed,
-      hasNote: sessionNote.trim().length > 0,
+      duration: workoutTimer?.elapsed || 0,
+      hasNote: !!sessionNote && sessionNote.trim().length > 0, 
       totalSets,
       completedSets,
       exercisesSwapped,
+      prsBroken, // 🔥 AGORA A VARIÁVEL VAI NO PACOTE!
       finished: true
     };
 
-    // 3. Valida as missões e captura a recompensa
-    const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
-    let questsUpdated = false;
     let bonusXP = 0;
 
-    const updatedQuests = dailyQuests.map(quest => {
-      if (quest.completed) return quest;
-
-      const checkRule = QUEST_RULES[quest.type];
-      
-      if (typeof checkRule === 'function' && checkRule(sessionData) === true) {
-        questsUpdated = true;
-        bonusXP += quest.reward;
-        return { ...quest, completed: true };
+    // 🔥 3. CORREÇÃO DE DATA: BLINDAGEM MÁXIMA
+    // Lê a data independentemente do formato (DD/MM/YYYY ou YYYY-MM-DD)
+    let isToday = false;
+    if (selectedDate) {
+      let d, m, y;
+      if (selectedDate.includes('/')) {
+        [d, m, y] = selectedDate.split('/');
+      } else if (selectedDate.includes('-')) {
+        [y, m, d] = selectedDate.split('-');
       }
-      return quest;
-    });
-
-    // 4. Atualiza o painel de quests caso o usuário tenha cumprido alguma
-    if (questsUpdated) {
-      localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
-      window.dispatchEvent(new Event('quest_update'));
+      
+      const today = new Date();
+      // Compara apenas os números puros, ignorando zeros à esquerda e traços
+      isToday = (
+        parseInt(d) === today.getDate() &&
+        parseInt(m) === (today.getMonth() + 1) &&
+        parseInt(y) === today.getFullYear()
+      );
     }
 
-    // 5. Envia UM ÚNICO sinal de finalização para o useWorkout.js
+    // Só avalia missões se for o treino de HOJE.
+    if (isToday) {
+      const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+      let questsUpdated = false;
+      const newlyCompleted = [];
+
+      const updatedQuests = dailyQuests.map(quest => {
+        if (quest.completed) return quest;
+
+        const checkRule = QUEST_RULES[quest.type];
+        
+        // Verifica se a regra existe e se o treino passou no teste
+        if (checkRule && checkRule(sessionData) === true) {
+          questsUpdated = true;
+          bonusXP += quest.reward;
+          newlyCompleted.push(quest);
+          return { ...quest, completed: true };
+        }
+        return quest;
+      });
+
+      // 4. Atualiza o painel de quests e exibe o Toast
+      if (questsUpdated) {
+        localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
+        
+        // Sincroniza a chave duplicada para o QuestBoard ler instantaneamente
+        const savedData = JSON.parse(localStorage.getItem('daily_quests_data') || '{}');
+        savedData.quests = updatedQuests;
+        localStorage.setItem('daily_quests_data', JSON.stringify(savedData));
+        
+        window.dispatchEvent(new Event('quest_update'));
+        
+        if (newlyCompleted.length > 0) {
+          setToastQuest(newlyCompleted[0]); // Dispara o Toast animado
+          setTimeout(() => setToastQuest(null), 5000); 
+        }
+      }
+    }
+
+    // 5. Envia UM ÚNICO sinal de finalização para o motor
     await finishWorkout(bonusXP);
     
     setIsFinishing(false); // Libera a trava
@@ -119,7 +185,7 @@ const WorkoutView = ({
     <>
       <ShareCard cardRef={cardRef} stats={todayStats} bossName="BOSS" theme={theme} />
 
-      <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28">
+      <main className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28 relative">
         
         <WorkoutHeader 
           selectedDate={selectedDate} 
@@ -223,6 +289,38 @@ const WorkoutView = ({
           </div>
         )}
       </main>
+
+      {/* 🔥 TOAST CYBERPUNK DE MISSÃO CUMPRIDA */}
+      {toastQuest && createPortal(
+        <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[99999] animate-in slide-in-from-top-10 fade-in duration-500">
+          <div 
+            className="bg-card/95 backdrop-blur-md border-l-4 border-secondary border-y border-r border-border p-4 rounded-r-2xl shadow-[0_10px_40px_rgba(var(--secondary),0.3)] flex items-center gap-4 min-w-[280px] max-w-sm relative overflow-hidden"
+          >
+            {/* Efeito de Scanline no Toast */}
+            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:100%_4px] opacity-50"></div>
+            
+            <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center border-2 border-secondary/50 shrink-0 relative z-10 shadow-[0_0_15px_rgba(var(--secondary),0.4)]">
+              <Trophy size={24} className="text-secondary drop-shadow-md animate-bounce" />
+            </div>
+            
+            <div className="flex-1 relative z-10">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-0.5">Missão Cumprida</h4>
+              <p className="text-sm font-bold text-main dark:text-white leading-tight">{toastQuest.title}</p>
+              <span className="text-[11px] font-black text-primary mt-1.5 block tracking-widest drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+                +{toastQuest.reward} XP
+              </span>
+            </div>
+            
+            <button 
+              onClick={() => setToastQuest(null)} 
+              className="text-muted hover:text-red-500 transition-colors p-1 relative z-10 self-start mt-[-4px] mr-[-4px]"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
