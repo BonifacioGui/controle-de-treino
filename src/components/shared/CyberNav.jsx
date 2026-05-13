@@ -4,10 +4,11 @@ import { History, ShieldAlert, User, Dumbbell, ChartNoAxesColumnIncreasing, Targ
 const CyberNav = ({ currentView, setView }) => {
   const navItems = [
     // 🎯 NOVO: Botão de Comando (Dashboard)
-    { id: 'dashboard', label: 'MISSÕES', icon: Target, color: 'text-primary', dot: 'bg-primary', borderGlow: 'border-primary/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]' },
     
     { id: 'workout', label: 'TREINO', icon: Dumbbell, color: 'text-secondary', dot: 'bg-secondary', borderGlow: 'border-secondary/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--secondary),0.4)]' },
-    
+
+    { id: 'dashboard', label: 'MISSÕES', icon: Target, color: 'text-primary', dot: 'bg-primary', borderGlow: 'border-primary/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]' },
+
     { id: 'history', label: 'HISTÓRICO', icon: History, color: 'text-success', dot: 'bg-success', borderGlow: 'border-success/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--success),0.4)]' },
     
     { id: 'stats', label: 'DADOS', icon: ChartNoAxesColumnIncreasing, color: 'text-cyan-500', dot: 'bg-cyan-500', borderGlow: 'border-cyan-500/50 shadow-sm dark:shadow-[0_0_15px_rgba(6,182,212,0.4)]' },
@@ -15,6 +16,7 @@ const CyberNav = ({ currentView, setView }) => {
     { id: 'profile', label: 'PERFIL', icon: User, color: 'text-blue-500', dot: 'bg-blue-500', borderGlow: 'border-blue-500/50 shadow-sm dark:shadow-[0_0_15px_rgba(59,130,246,0.4)]' },
     
     { id: 'manage', label: 'SISTEMA', icon: ShieldAlert, color: 'text-warning', dot: 'bg-warning', borderGlow: 'border-warning/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--warning),0.4)]' }, 
+
   ];
 
   return (

@@ -99,6 +99,11 @@ export const calculateStats = (history) => {
   let totalXp = 0;
 
   history.forEach(session => {
+    // 🔥 1. ADICIONA O BÔNUS DE MISSÃO (XP LIVRE)
+    // Se a sessão tiver bonus_xp salvo (como o das missões), joga pro total!
+    const bonusDaSessao = parseInt(session.bonus_xp) || 0;
+    totalXp += bonusDaSessao;
+
     if (!session.exercises) return;
     session.exercises.forEach(ex => {
       if (!ex.sets || !Array.isArray(ex.sets) || !ex.name) return;
@@ -116,7 +121,7 @@ export const calculateStats = (history) => {
       
       const gainedXp = (vol * STAT_XP_MULTIPLIER);
       stats[statType].xp += gainedXp;
-      totalXp += gainedXp;
+      totalXp += gainedXp; // 🔥 2. ADICIONA O XP DE TREINO (VOLUME)
     });
   });
   
