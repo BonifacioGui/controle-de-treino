@@ -30,6 +30,15 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      // 🔥 O CÉREBRO OFFLINE COMEÇA AQUI
+      workbox: {
+        // Diz para o navegador fazer download e guardar todos esses tipos de arquivo:
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Se o usuário entrar numa rota que não existe offline, joga ele pro index principal:
+        navigateFallback: '/controle-de-treino/index.html',
+        // Quando você lançar uma versão nova do app, ele limpa a memória velha pra não pesar o celular do usuário:
+        cleanupOutdatedCaches: true, 
       }
     })
   ],
