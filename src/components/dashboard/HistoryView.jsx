@@ -270,9 +270,11 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
     setItemToDelete({ id, type });
   };
 
-  return (
+ return (
     <>
-      <main className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-20 h-full flex flex-col">
+      {/* 1. Adicionado flex, flex-col e min-h para forçar a tela a ter o tamanho certo */}
+      <main className="flex flex-col min-h-[calc(100vh-12rem)] space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 font-cyber pb-4">
+        
         <div className="flex items-center justify-between border-b border-primary/30 pb-3 shrink-0">
           <h2 className="text-lg font-black flex items-center gap-2 text-primary uppercase drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
             <Database size={20} className="text-primary" /> Histórico de treinos
@@ -280,7 +282,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
           <span className="text-[8px] font-black text-muted tracking-[0.2em]">LOGS.SYS</span>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col gap-3">
+        {/* 2. O conteúdo agora cresce o quanto precisar, sem empurrar o botão para o "limbo" */}
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between px-1 shrink-0">
             <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
               <Activity size={14} /> Histórico de Combate
@@ -288,8 +291,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
             <span className="text-[10px] text-muted font-bold">{history.length} LOGS</span>
           </div>
 
-          {/* O scroll invisível mas funcional */}
-          <div className="overflow-y-auto pr-1 pb-8 max-h-[75vh]">
+          <div className="overflow-y-auto pr-1 max-h-[60vh]">
             {history.length === 0 && (
               <div className="bg-card/40 border border-dashed border-border p-6 rounded-xl text-center">
                 <p className="text-muted text-xs font-black uppercase tracking-widest ">Buffer Vazio.</p>
@@ -299,7 +301,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
           </div>
         </div>
 
-        <button onClick={() => setView('workout')} className="w-full py-4 bg-card hover:bg-input border border-border hover:border-primary rounded-xl font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-primary transition-all shrink-0 mt-2 shadow-sm">
+        {/* 3. O mt-auto funciona como um "ímã" que joga o botão para o fundo da tela */}
+        <button onClick={() => setView('workout')} className="mt-auto w-full py-4 bg-card hover:bg-[#00f3ff]/5 border border-border hover:border-[#00f3ff] rounded-xl font-black text-xs uppercase tracking-[0.2em] text-muted hover:text-[#00f3ff] hover:shadow-[0_0_15px_rgba(0,243,255,0.3)] transition-all shadow-sm">
           Retornar à Base
         </button>
       </main>
