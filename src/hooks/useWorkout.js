@@ -3,6 +3,7 @@ import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
 import { calculateStats, calculateStreak } from '../utils/rpgSystem'; // 🔥 Streak importado!
 import { useWorkoutTimer } from './useWorkoutTimer'; // 🔥 Timer importado!
+import { getUnlockedBadges } from '../utils/gameLogic'; // 🔥 ADICIONE ESTA LINHA
 
 const getInitialWorkout = (data) => {
   const keys = Object.keys(data || {});
@@ -252,6 +253,8 @@ export const useWorkout = () => {
 
       const statsAntes = calculateStats(history);
       const levelAntes = statsAntes.level || 1;
+
+      const badgesAntes = getUnlockedBadges(history).filter(b => b.unlocked).map(b => b.id);
       
       const newEntry = {...sessionBase, date: selectedDate.split('-').reverse().join('/')};
       const newHistory = [newEntry, ...history];
@@ -261,6 +264,10 @@ export const useWorkout = () => {
       
       const subiuDeNivel = levelDepois > levelAntes;
 
+      // 🔥 2. AS LINHAS QUE FALTARAM: Tira a foto depois e cria a variável "novasConquistas"
+      const badgesDepoisCompleto = getUnlockedBadges(newHistory).filter(b => b.unlocked);
+      const novasConquistas = badgesDepoisCompleto.filter(b => !badgesAntes.includes(b.id));
+      
       setHistory(newHistory);
 
       if (userId) {
@@ -278,7 +285,8 @@ export const useWorkout = () => {
         sessionVolume: totalVolume,
         sessionDuration: durationMins,
         newLevel: levelDepois,
-        newStreak: calculateStreak(newHistory) // Calcula a ofensiva instantaneamente com o treino novo
+        newStreak: calculateStreak(newHistory), // Calcula a ofensiva instantaneamente com o treino novo
+        newBadges: novasConquistas // 🔥 4. ENVIA AS CONQUISTAS NOVAS NO PACOTE!
       };
     },
 

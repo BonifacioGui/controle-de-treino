@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Download, Loader2, Share2, Target, X, Activity, Skull } from 'lucide-react';
+import { Camera, Download, Loader2, Share2, Target, X, Activity, Skull,  Medal, Zap } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
 
@@ -25,7 +25,8 @@ const WorkoutComplete = ({
   const prevImageUrl   = useRef(null); // Rastreia URL anterior para revoke
 
   const earnedXp = parseInt(sessionPoints.replace(/\D/g, ''), 10) || 0;
-
+  
+  const newBadges = JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || [];
   // ─── Geração do card ────────────────────────────────────────────────────────
 
   const generateShareCard = useCallback(async () => {
@@ -170,7 +171,24 @@ const WorkoutComplete = ({
 
         {/* PREVIEW */}
         <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center bg-black/40 relative min-h-0">
-
+          {/* 🔥 TOAST DE CONQUISTA NOVA 🔥 */}
+          {newBadges.length > 0 && (
+            <div className="w-full max-w-[260px] mb-4 space-y-2">
+              {newBadges.map((badge, idx) => (
+                <div key={idx} className="bg-yellow-500/10 border border-yellow-400 rounded-xl p-3 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500 shadow-[0_0_20px_rgba(250,204,21,0.2)]">
+                  <div className="bg-yellow-400 text-black p-2 rounded-lg shrink-0">
+                    <Medal size={20} className="drop-shadow-[0_0_5px_rgba(0,0,0,0.5)]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[10px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-1">
+                      <Zap size={10} className="fill-yellow-400" /> Nova Conquista!
+                    </h3>
+                    <p className="text-sm font-bold text-white uppercase leading-tight mt-0.5">{badge.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {/*
             Overlay de loading leve — mantém a imagem anterior visível
             enquanto a nova está sendo gerada, em vez de sumir tudo.

@@ -84,7 +84,7 @@ export const BADGES_LIST = [
     title: 'PRIMEIRO SANGUE', 
     desc: 'Sincronizou o primeiro treino no sistema.', 
     icon: 'Sword',
-    condition: (history) => history.length >= 1 
+    condition: (history) => history.length >= 35 
   },
   
   // --- OFENSIVA (STREAKS INTELIGENTES) ---

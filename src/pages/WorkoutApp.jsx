@@ -133,7 +133,8 @@ const WorkoutApp = () => {
       duration: resultado.sessionDuration,
       xp: resultado.sessionXp,
       level: resultado.newLevel,
-      streak: resultado.newStreak
+      streak: resultado.newStreak,
+      newBadges: resultado.newBadges // 🔥 SALVANDO AS CONQUISTAS AQUI!
     };
     localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
 
@@ -308,6 +309,7 @@ const WorkoutApp = () => {
           streak={JSON.parse(localStorage.getItem('pending_share_card') || '{}').streak || stats?.streak || 0}
           currentLevel={JSON.parse(localStorage.getItem('pending_share_card') || '{}').level || stats?.level || 1}
           totalXp={stats?.xp || 0} 
+          newBadges={JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []}
         />
       )}
       
