@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Download, Loader2, Share2, Target, X, Activity, Skull } from 'lucide-react';
+import { Camera, Download, Loader2, Share2, Target, X, Activity, Skull,  Medal, Zap } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
 
@@ -25,7 +25,8 @@ const WorkoutComplete = ({
   const prevImageUrl   = useRef(null); // Rastreia URL anterior para revoke
 
   const earnedXp = parseInt(sessionPoints.replace(/\D/g, ''), 10) || 0;
-
+  
+  const newBadges = JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || [];
   // ─── Geração do card ────────────────────────────────────────────────────────
 
   const generateShareCard = useCallback(async () => {
@@ -170,7 +171,6 @@ const WorkoutComplete = ({
 
         {/* PREVIEW */}
         <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center bg-black/40 relative min-h-0">
-
           {/*
             Overlay de loading leve — mantém a imagem anterior visível
             enquanto a nova está sendo gerada, em vez de sumir tudo.

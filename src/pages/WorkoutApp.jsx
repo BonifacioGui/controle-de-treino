@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Menu, Flame, Wifi, WifiOff,  
-} from 'lucide-react';
+import { Menu, Flame, Wifi, WifiOff, Medal, Zap  } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
@@ -55,12 +53,20 @@ const WorkoutApp = () => {
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showBadgeAlert, setShowBadgeAlert] = useState(false); // 🔥 ADICIONE ESTA LINHA
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
 
-  const isAnyModalOpen = showCelebration || showLevelUp || isMenuOpen;
-  
+  const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;  
   // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
   const flameStyle = getFlameStyle(stats?.streak || 0);
+
+  // 🔥 FORMATADOR DO HUD TÁTICO
+  const formatTimer = (totalSeconds) => {
+    if (!totalSeconds) return "00:00";
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
@@ -123,31 +129,51 @@ const WorkoutApp = () => {
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
   // ==========================================
 
+  // ==========================================
+  // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
+  // ==========================================
+
   const handleFinishWorkoutWrapper = async (dadosDoTreino) => {
-    // 1. Recebe o pacote de dados fresquinhos direto da função
     const resultado = await actions.finishWorkout(dadosDoTreino?.bonusXp || 0);
     
-    // 2. Salva no cache OS DADOS NOVOS (resultado), ignorando o "stats" antigo
     const relatorioTatico = {
       volume: resultado.sessionVolume,
       duration: resultado.sessionDuration,
       xp: resultado.sessionXp,
       level: resultado.newLevel,
-      streak: resultado.newStreak
+      streak: resultado.newStreak,
+      newBadges: resultado.newBadges 
     };
     localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
 
+    // A Escadinha: 1º Nível -> 2º Conquistas -> 3º Relatório
     if (resultado.subiuDeNivel) {
       setShowLevelUp(true); 
+    } else if (resultado.newBadges && resultado.newBadges.length > 0) {
+      setShowBadgeAlert(true);
     } else {
       setShowCelebration(true); 
     }
   };
 
-  // Se a pessoa upou de nível, quando ela fechar o modal, abre o Relatório de Stats na sequência
   const handleLevelUpClose = () => {
     setShowLevelUp(false);
-    setTimeout(() => setShowCelebration(true), 400); 
+    const relatorioTatico = JSON.parse(localStorage.getItem('pending_share_card') || '{}');
+    
+    setTimeout(() => {
+      // Se tiver conquista, mostra ela. Se não, vai pro relatório.
+      if (relatorioTatico.newBadges && relatorioTatico.newBadges.length > 0) {
+        setShowBadgeAlert(true);
+      } else {
+        setShowCelebration(true); 
+      }
+    }, 400); 
+  };
+
+  const handleBadgeAlertClose = () => {
+    setShowBadgeAlert(false);
+    // Depois de comemorar a conquista, abre o relatório final
+    setTimeout(() => setShowCelebration(true), 400);
   };
 
   // ==========================================
@@ -278,6 +304,39 @@ const WorkoutApp = () => {
         {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
+
+      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) */}
+      {state.workoutTimer?.isRunning && state.view !== 'workout' && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-[400px] animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <button 
+            onClick={() => setters.setView('workout')}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-[#050B14]/90 backdrop-blur-md border border-red-500/50 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.15)] group hover:border-red-500 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              {/* Ponto vermelho piscando (Recording) */}
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em] leading-none mb-1">
+                  Operação em Andamento
+                </span>
+                <span className="text-xs font-bold text-white uppercase tracking-widest leading-none">
+                  Retornar ao Combate
+                </span>
+              </div>
+            </div>
+            
+            {/* Cronômetro Espelhado */}
+            <div className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
+              <span className="font-mono text-sm font-bold text-red-400 tracking-wider drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                {formatTimer(state.workoutTimer.elapsed)}
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
       
       {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
       
@@ -287,6 +346,39 @@ const WorkoutApp = () => {
           level={stats?.level || 1} 
           onClose={handleLevelUpClose} 
         />
+      )}
+
+      {/* ALERTA DE NOVA CONQUISTA (ISOLADO) */}
+      {showBadgeAlert && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[320px] bg-card border border-yellow-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(250,204,21,0.2)] animate-in zoom-in-95 duration-500">
+            
+            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-bounce relative">
+              <Medal size={48} className="text-black drop-shadow-md z-10" />
+              <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-20"></div>
+            </div>
+            
+            <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Zap className="fill-yellow-400" size={20} /> Conquista!
+            </h2>
+            
+            <div className="w-full space-y-3 mb-8">
+              {(JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []).map((badge, idx) => (
+                 <div key={idx} className="bg-black/50 border border-yellow-500/30 p-4 rounded-xl flex flex-col items-center">
+                   <p className="text-lg font-black text-white uppercase text-center leading-tight">{badge.title}</p>
+                   {badge.desc && <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-wider">{badge.desc}</p>}
+                 </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={handleBadgeAlertClose}
+              className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-xs tracking-widest rounded-xl hover:bg-yellow-300 transition-colors shadow-[0_0_20px_rgba(250,204,21,0.4)] active:scale-95"
+            >
+              Avançar
+            </button>
+          </div>
+        </div>
       )}
 
      {showCelebration && (
@@ -308,6 +400,7 @@ const WorkoutApp = () => {
           streak={JSON.parse(localStorage.getItem('pending_share_card') || '{}').streak || stats?.streak || 0}
           currentLevel={JSON.parse(localStorage.getItem('pending_share_card') || '{}').level || stats?.level || 1}
           totalXp={stats?.xp || 0} 
+          newBadges={JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []}
         />
       )}
       
