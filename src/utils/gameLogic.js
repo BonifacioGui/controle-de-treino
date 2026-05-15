@@ -155,7 +155,7 @@ export const BADGES_LIST = [
     desc: 'Acumulou 100.000 XP totais no sistema.', 
     icon: 'Zap',
     condition: (history) => calculateTotalXP(history) >= 100000
-  }
+  },
 
   // --- OFENSIVA E CICLOS ---
   {
