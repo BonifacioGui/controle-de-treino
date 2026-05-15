@@ -156,7 +156,53 @@ export const BADGES_LIST = [
     icon: 'Zap',
     condition: (history) => calculateTotalXP(history) >= 100000
   }
+
+  // --- OFENSIVA E CICLOS ---
+  {
+    id: 'perfect_week',
+    title: 'CICLO FECHADO',
+    desc: 'Completou 5 treinos em um intervalo de 7 dias.',
+    icon: 'RefreshCcw',
+    condition: (history) => {
+      if (history.length < 5) return false;
+      // Pega os 5 treinos mais recentes
+      const last5 = history.slice(0, 5);
+      
+      // Converte as datas (DD/MM/YYYY) para milissegundos para comparar
+      const parseDate = (dStr) => {
+        const [d, m, y] = dStr.split('/');
+        return new Date(`${y}-${m}-${d}`).getTime();
+      };
+
+      const dateNewest = parseDate(last5[0].date);
+      const dateOldest = parseDate(last5[4].date);
+      
+      // Diferença em dias (1000ms * 60s * 60m * 24h = 86400000)
+      const diffDays = (dateNewest - dateOldest) / (1000 * 60 * 60 * 24);
+      
+      return diffDays <= 7;
+    }
+  },
+
+  // --- PROGRESSÃO DE CONSISTÊNCIA ---
+  { 
+    id: 'consistency_1_5', 
+    title: 'OPERADOR EM TREINAMENTO', 
+    desc: 'Completou 25 treinos registrados.', 
+    icon: 'Target',
+    condition: (history) => history.length >= 25 
+  },
+
+  // --- FORÇA BRUTA ---
+  { 
+    id: 'heavy_lifter_3', 
+    title: 'TITÃ', 
+    desc: 'Moveu impressionantes 30 Toneladas em um único treino.', 
+    icon: 'Mountain', 
+    condition: (history) => history.some(s => calculateSessionVolume(s) >= 30000)
+  }
 ];
+
 
 // ============================================================================
 // --- FUNÇÕES DE EXPORTAÇÃO DE DADOS ---
