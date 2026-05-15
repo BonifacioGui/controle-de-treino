@@ -20,7 +20,17 @@ export const useWorkout = () => {
     } catch { return initialWorkoutData; }
   });
 
-  const [activeDay, setActiveDay] = useState(() => getInitialWorkout(workoutData));
+  const [activeDay, setActiveDay] = useState(() => {
+    try {
+      const savedDay = localStorage.getItem('active_day');
+      const planKeys = Object.keys(workoutData || {});
+      // Se existe um dia salvo e ele pertence ao plano atual, trava nele. Se não, pega o primeiro.
+      if (savedDay && planKeys.includes(savedDay)) return savedDay;
+      return planKeys[0] || 'A';
+    } catch { 
+      return getInitialWorkout(workoutData); 
+    }
+  });
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sessionNote, setSessionNote] = useState('');
   const [weightInput, setWeightInput] = useState('');
@@ -82,7 +92,11 @@ export const useWorkout = () => {
       if (planData && planData.plan_data) {
         const parsedData = typeof planData.plan_data === 'string' ? JSON.parse(planData.plan_data) : planData.plan_data;
         setWorkoutData(parsedData);
-        setActiveDay(currentDay => parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A'));
+        
+        // 🔥 A nuvem agora respeita a aba que estava salva no celular
+        const savedDay = localStorage.getItem('active_day');
+        setActiveDay(currentDay => (savedDay && parsedData[savedDay]) ? savedDay : (parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A')));
+        
         localStorage.setItem('workout_plan', JSON.stringify(parsedData));
       }
     } catch (err) { 
@@ -103,6 +117,7 @@ export const useWorkout = () => {
     localStorage.setItem('daily_progress', JSON.stringify(progress));
     localStorage.setItem('workout_history', JSON.stringify(history));
     localStorage.setItem('body_history', JSON.stringify(bodyHistory));
+    localStorage.setItem('active_day', activeDay); // 🔥 ADICIONE ESTA LINHA!
     
     const syncPlanToCloud = async () => {
       if (!isCloudSyncReady) return;
@@ -115,7 +130,7 @@ export const useWorkout = () => {
       }
     };
     syncPlanToCloud();
-  }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady]);
+  }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady, activeDay]);
 
   // 🔥 MOTOR DO CRONÔMETRO DE DESCANSO BLINDADO
   useEffect(() => {

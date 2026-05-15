@@ -60,6 +60,14 @@ const WorkoutApp = () => {
   // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
   const flameStyle = getFlameStyle(stats?.streak || 0);
 
+  // 🔥 FORMATADOR DO HUD TÁTICO
+  const formatTimer = (totalSeconds) => {
+    if (!totalSeconds) return "00:00";
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
     // Mantém a animação rodando por pelo menos 2.5 segundos para dar aquele efeito "Premium"
@@ -296,6 +304,39 @@ const WorkoutApp = () => {
         {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
+
+      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) */}
+      {state.workoutTimer?.isRunning && state.view !== 'workout' && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-[400px] animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <button 
+            onClick={() => setters.setView('workout')}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-[#050B14]/90 backdrop-blur-md border border-red-500/50 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.15)] group hover:border-red-500 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              {/* Ponto vermelho piscando (Recording) */}
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em] leading-none mb-1">
+                  Operação em Andamento
+                </span>
+                <span className="text-xs font-bold text-white uppercase tracking-widest leading-none">
+                  Retornar ao Combate
+                </span>
+              </div>
+            </div>
+            
+            {/* Cronômetro Espelhado */}
+            <div className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
+              <span className="font-mono text-sm font-bold text-red-400 tracking-wider drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                {formatTimer(state.workoutTimer.elapsed)}
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
       
       {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
       
