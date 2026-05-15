@@ -294,14 +294,26 @@ export const useWorkout = () => {
     fetchCloudData,
     
     deleteEntry: async (id, type) => {
-        await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
-        fetchCloudData();
+      // 🛡️ ANTI-CHEAT CIRÚRGICO: Desmarca as missões em vez de evaporar com elas
+      if (type !== 'body') {
+        const questsData = localStorage.getItem('daily_quests');
+        if (questsData) {
+          try {
+            const quests = JSON.parse(questsData);
+            const resetQuests = quests.map(q => ({ ...q, completed: false, progress: 0 }));
+            localStorage.setItem('daily_quests', JSON.stringify(resetQuests));
+          } catch (e) { console.error("Erro ao resetar missões:", e); }
+        }
+      }
+
+      await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
+      fetchCloudData();
     },
+
     updateHistoryEntry: async (id, updatedSession) => {
       if (!userId) return;
       
       try {
-        // 1. Recalcula o volume caso você tenha alterado os pesos/reps na edição
         let newVolume = 0;
         updatedSession.exercises.forEach(ex => {
           if (ex.sets) {
@@ -313,17 +325,29 @@ export const useWorkout = () => {
           }
         });
 
-        // 2. Manda a atualização blindada pro Supabase
+        const dateToday = new Date().toLocaleDateString('pt-BR');
+        if (updatedSession.date === dateToday) {
+          // 🛡️ ANTI-CHEAT CIRÚRGICO
+          const questsData = localStorage.getItem('daily_quests');
+          if (questsData) {
+            try {
+              const quests = JSON.parse(questsData);
+              const resetQuests = quests.map(q => ({ ...q, completed: false, progress: 0 }));
+              localStorage.setItem('daily_quests', JSON.stringify(resetQuests));
+            } catch (e) { console.error("Erro ao resetar missões:", e); }
+          }
+        }
+
         await supabase
           .from('workout_history')
           .update({
             note: updatedSession.note,
             exercises: updatedSession.exercises,
-            total_volume: newVolume
+            total_volume: newVolume,
+            bonus_xp: 0 // Zera o XP ilícito
           })
           .eq('id', id);
 
-        // 3. Puxa os dados novos da nuvem para atualizar a tela instantaneamente
         fetchCloudData();
         
       } catch (err) {

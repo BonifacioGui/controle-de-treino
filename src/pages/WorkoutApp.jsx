@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Menu, Flame, Wifi, WifiOff,  
-} from 'lucide-react';
+import { Menu, Flame, Wifi, WifiOff, Medal, Zap  } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
@@ -55,10 +53,10 @@ const WorkoutApp = () => {
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showBadgeAlert, setShowBadgeAlert] = useState(false); // 🔥 ADICIONE ESTA LINHA
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
 
-  const isAnyModalOpen = showCelebration || showLevelUp || isMenuOpen;
-  
+  const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;  
   // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
   const flameStyle = getFlameStyle(stats?.streak || 0);
 
@@ -123,32 +121,51 @@ const WorkoutApp = () => {
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
   // ==========================================
 
+  // ==========================================
+  // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
+  // ==========================================
+
   const handleFinishWorkoutWrapper = async (dadosDoTreino) => {
-    // 1. Recebe o pacote de dados fresquinhos direto da função
     const resultado = await actions.finishWorkout(dadosDoTreino?.bonusXp || 0);
     
-    // 2. Salva no cache OS DADOS NOVOS (resultado), ignorando o "stats" antigo
     const relatorioTatico = {
       volume: resultado.sessionVolume,
       duration: resultado.sessionDuration,
       xp: resultado.sessionXp,
       level: resultado.newLevel,
       streak: resultado.newStreak,
-      newBadges: resultado.newBadges // 🔥 SALVANDO AS CONQUISTAS AQUI!
+      newBadges: resultado.newBadges 
     };
     localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
 
+    // A Escadinha: 1º Nível -> 2º Conquistas -> 3º Relatório
     if (resultado.subiuDeNivel) {
       setShowLevelUp(true); 
+    } else if (resultado.newBadges && resultado.newBadges.length > 0) {
+      setShowBadgeAlert(true);
     } else {
       setShowCelebration(true); 
     }
   };
 
-  // Se a pessoa upou de nível, quando ela fechar o modal, abre o Relatório de Stats na sequência
   const handleLevelUpClose = () => {
     setShowLevelUp(false);
-    setTimeout(() => setShowCelebration(true), 400); 
+    const relatorioTatico = JSON.parse(localStorage.getItem('pending_share_card') || '{}');
+    
+    setTimeout(() => {
+      // Se tiver conquista, mostra ela. Se não, vai pro relatório.
+      if (relatorioTatico.newBadges && relatorioTatico.newBadges.length > 0) {
+        setShowBadgeAlert(true);
+      } else {
+        setShowCelebration(true); 
+      }
+    }, 400); 
+  };
+
+  const handleBadgeAlertClose = () => {
+    setShowBadgeAlert(false);
+    // Depois de comemorar a conquista, abre o relatório final
+    setTimeout(() => setShowCelebration(true), 400);
   };
 
   // ==========================================
@@ -288,6 +305,39 @@ const WorkoutApp = () => {
           level={stats?.level || 1} 
           onClose={handleLevelUpClose} 
         />
+      )}
+
+      {/* ALERTA DE NOVA CONQUISTA (ISOLADO) */}
+      {showBadgeAlert && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[320px] bg-card border border-yellow-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(250,204,21,0.2)] animate-in zoom-in-95 duration-500">
+            
+            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-bounce relative">
+              <Medal size={48} className="text-black drop-shadow-md z-10" />
+              <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-20"></div>
+            </div>
+            
+            <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Zap className="fill-yellow-400" size={20} /> Conquista!
+            </h2>
+            
+            <div className="w-full space-y-3 mb-8">
+              {(JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []).map((badge, idx) => (
+                 <div key={idx} className="bg-black/50 border border-yellow-500/30 p-4 rounded-xl flex flex-col items-center">
+                   <p className="text-lg font-black text-white uppercase text-center leading-tight">{badge.title}</p>
+                   {badge.desc && <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-wider">{badge.desc}</p>}
+                 </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={handleBadgeAlertClose}
+              className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-xs tracking-widest rounded-xl hover:bg-yellow-300 transition-colors shadow-[0_0_20px_rgba(250,204,21,0.4)] active:scale-95"
+            >
+              Avançar
+            </button>
+          </div>
+        </div>
       )}
 
      {showCelebration && (
