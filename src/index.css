@@ -28,7 +28,6 @@
      KEYFRAMES
   ════════════════════════════════ */
 
-  /* Original: Glitch */
   @keyframes glitch {
     0%   { transform: translate(0); }
     20%  { transform: translate(-3px,  2px); clip-path: inset(10% 0 80% 0); }
@@ -38,31 +37,26 @@
     100% { transform: translate(0);          clip-path: inset(0 0 0 0); }
   }
 
-  /* Original: GlowPulse */
   @keyframes glowPulse {
     0%, 100% { filter: drop-shadow(0 0 6px  rgba(0,255,255,.5)); }
     50%       { filter: drop-shadow(0 0 24px rgba(0,255,255,1))
                         drop-shadow(0 0 40px rgba(255,0,255,.5)); }
   }
 
-  /* Original: NeonBorder */
   @keyframes neonBorder {
     0%, 100% { opacity: .15; }
     50%       { opacity: 1; }
   }
 
-  /* Original: Scanline */
   @keyframes scanline {
     0%   { transform: translateY(-100%); }
     100% { transform: translateY(200%); }
   }
 
-  /* Original: GradientMove */
   @keyframes gradientMove {
     to { background-position: 200% center; }
   }
 
-  /* Original: PulseGlow */
   @keyframes pulseGlow {
     0%, 100% {
       transform: scale(.97);
@@ -75,25 +69,21 @@
     }
   }
 
-  /* Original: BreatheAndFloat */
   @keyframes breatheAndFloat {
     0%, 100% { transform: scale(1)    translateY(0);   }
     50%       { transform: scale(1.02) translateY(-5px); }
   }
 
-  /* Original: Glow */
   @keyframes glow {
     0%, 100% { opacity: .3; filter: blur(20px) saturate(100%); }
     50%       { opacity: .7; filter: blur(28px) saturate(180%); }
   }
 
-  /* Original: LoadingScan */
   @keyframes loadingScan {
     0%   { left: -50%; }
     100% { left: 110%; }
   }
 
-  /* Original: RespiroCibernetico */
   @keyframes respiro-cibernetico {
     0%, 100% {
       transform: scale(1);
@@ -110,20 +100,17 @@
     }
   }
 
-  /* Original: FadeInUp */
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(20px); }
     to   { opacity: 1; transform: translateY(0);    }
   }
 
-  /* ★ NOVO: HolographicShift - fundo iridescente */
   @keyframes holographicShift {
     0%   { background-position: 0%   50%; }
     50%  { background-position: 100% 50%; }
     100% { background-position: 0%   50%; }
   }
 
-  /* ★ NOVO: DataStream - texto caindo estilo matrix */
   @keyframes dataStream {
     0%   { transform: translateY(-100%); opacity: 0; }
     10%  { opacity: 1; }
@@ -131,7 +118,6 @@
     100% { transform: translateY(100vh); opacity: 0; }
   }
 
-  /* ★ NOVO: GlitchText - deslocamento de texto com cor */
   @keyframes glitchText {
     0%   { text-shadow: none; transform: translate(0); }
     10%  { text-shadow: -3px 0 #ff00ff, 3px 0 #00ffff; transform: translate(-2px, 0); }
@@ -144,7 +130,6 @@
     100% { text-shadow: none; transform: translate(0); }
   }
 
-  /* ★ NOVO: Flicker - luz instável */
   @keyframes flicker {
     0%, 19.999%, 22%, 62.999%, 64%,
     64.999%, 70%, 100% { opacity: 1; }
@@ -153,13 +138,11 @@
     65%, 69.999%       { opacity: .6; }
   }
 
-  /* ★ NOVO: CornerPulse - brackets dos cantos do card */
   @keyframes cornerPulse {
     0%, 100% { opacity: .4; width: 12px; height: 12px; }
     50%       { opacity: 1;  width: 18px; height: 18px; }
   }
 
-  /* ★ NOVO: EnergyCharge - linha de energia no botão */
   @keyframes energyCharge {
     0%   { left: -100%; opacity: 0; }
     30%  { opacity: 1; }
@@ -167,19 +150,16 @@
     100% { left: 200%; opacity: 0; }
   }
 
-  /* ★ NOVO: HudSweep - varredura de radar */
   @keyframes hudSweep {
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
 
-  /* ★ NOVO: TypeIn - texto digitando */
   @keyframes typeIn {
     from { width: 0; }
     to   { width: 100%; }
   }
 
-  /* ★ NOVO: BorderFlow - gradiente correndo pela borda */
   @keyframes borderFlow {
     0%   { background-position: 0%   50%; }
     100% { background-position: 200% 50%; }
@@ -205,7 +185,7 @@
 .animate-border-flow     { animation: borderFlow            3s  linear      infinite; }
 
 /* ================================================
-   BASE - DARK (padrão / mobile-first)
+   BASE (Dark default + Light)
 ================================================ */
 
 @layer base {
@@ -224,7 +204,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #00f2ff 0%, #7b00ff 50%, #ff00ff 100%);
-    border-radius: 0; /* ★ Cantos retos - mais HUD */
+    border-radius: 0; 
     box-shadow:
       0 0 8px  rgba(0,242,255,.7),
       0 0 20px rgba(120,0,255,.4);
@@ -243,10 +223,10 @@
     --text-main:  #e2f4ff;
     --text-muted: #7a9cc0;
 
-    --primary:   0,243,255;     /* Ciano elétrico */
-    --secondary: 255,0,255;     /* Magenta */
-    --accent:    120,0,255;     /* Roxo profundo ★ */
-    --gold:      255,200,50;    /* Dourado neon ★ */
+    --primary:   0,243,255;
+    --secondary: 255,0,255;
+    --accent:    120,0,255;
+    --gold:      255,200,50;
     --success:   16,185,129;
     --warning:   245,158,11;
 
@@ -290,22 +270,31 @@
       0 20px 40px rgba(0,0,0,.08);
   }
 
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
+  /* ── BODY (Estilos base + Background) ── */
   body {
     font-family: 'Orbitron', sans-serif;
-    background: var(--bg-page);
-    color: var(--text-main);
     font-weight: 600;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    color: var(--text-main);
+    background-color: var(--bg-page);
+    background-image:
+      radial-gradient(ellipse at 10%  15%, rgba(0,243,255,.08)  0%, transparent 50%),
+      radial-gradient(ellipse at 90%  85%, rgba(120,0,255,.09)  0%, transparent 50%),
+      radial-gradient(ellipse at 50%  50%, rgba(255,0,255,.03)  0%, transparent 60%),
+      radial-gradient(ellipse at 80%  10%, rgba(0,100,255,.05)  0%, transparent 40%),
+      linear-gradient(180deg, #020617 0%, #030a1e 60%, #020617 100%);
     transition: background-color .35s ease, color .35s ease;
   }
 
-  /* Seleção de texto neon */
+  /* ── Light Mode Background ── */
+  [data-theme='light'] body {
+    background-color: var(--bg-page);
+    background-image:
+      radial-gradient(ellipse at 10% 15%, rgba(14,165,233,.14) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 85%, rgba(168,85,247,.10) 0%, transparent 50%),
+      linear-gradient(180deg, #f0f4ff 0%, #e2e8f0 100%);
+  }
+
   ::selection {
     background: rgba(0,243,255,.25);
     color: #fff;
@@ -315,43 +304,19 @@
   input, button, textarea, select {
     font-family: inherit;
     font-size: max(16px, 1em);
-    -webkit-appearance: none;
     appearance: none;
   }
 
-  /* Placeholder muted mas com style */
   ::placeholder {
     color: var(--text-muted);
     font-family: 'Share Tech Mono', monospace;
     letter-spacing: .08em;
     opacity: .7;
   }
-
 }
 
 /* ================================================
-   BACKGROUND FUTURISTA - DARK
-================================================ */
-
-body {
-  background:
-    radial-gradient(ellipse at 10%  15%, rgba(0,243,255,.08)  0%, transparent 50%),
-    radial-gradient(ellipse at 90%  85%, rgba(120,0,255,.09)  0%, transparent 50%),
-    radial-gradient(ellipse at 50%  50%, rgba(255,0,255,.03)  0%, transparent 60%),
-    radial-gradient(ellipse at 80%  10%, rgba(0,100,255,.05)  0%, transparent 40%),
-    linear-gradient(180deg, #020617 0%, #030a1e 60%, #020617 100%);
-}
-
-/* ── Light ── */
-[data-theme='light'] body {
-  background:
-    radial-gradient(ellipse at 10% 15%, rgba(14,165,233,.14) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 85%, rgba(168,85,247,.10) 0%, transparent 50%),
-    linear-gradient(180deg, #f0f4ff 0%, #e2e8f0 100%);
-}
-
-/* ================================================
-   CYBER GRID - perspectiva 3D + dual layer ★
+   CYBER GRID - perspectiva 3D + dual layer
 ================================================ */
 
 .cyber-grid {
@@ -363,7 +328,6 @@ body {
   background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
 }
 
-/* Grade com perspectiva 3D vanishing point ★ */
 .cyber-grid-3d {
   position: relative;
   overflow: hidden;
@@ -383,13 +347,12 @@ body {
 }
 
 /* ================================================
-   CARD HUD - com corner brackets ★
+   CARD HUD
 ================================================ */
 
 .card-hud {
   position: relative;
   background: var(--bg-card);
-  /* ★ Cantos cortados estilo painel militar */
   clip-path: polygon(
     var(--corner-size) 0%,
     100% 0%,
@@ -401,13 +364,11 @@ body {
   border: 1px solid var(--border-color);
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
   transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
   min-height: 44px;
 }
 
-/* Hover apenas em dispositivos com ponteiro */
 @media (hover: hover) and (pointer: fine) {
   .card-hud:hover {
     transform: translateY(-5px);
@@ -419,7 +380,6 @@ body {
   }
 }
 
-/* ── Borda neon animada ── */
 .card-hud::before {
   content: "";
   position: absolute;
@@ -437,12 +397,10 @@ body {
   background-size: 200% 200%;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  -webkit-mask-composite: destination-out;
   animation: borderFlow 4s linear infinite, neonBorder 3s ease-in-out infinite;
   pointer-events: none;
 }
 
-/* ── Scanline dupla ── */
 .card-hud::after {
   content: "";
   position: absolute;
@@ -459,7 +417,6 @@ body {
   pointer-events: none;
 }
 
-/* ── Corner brackets (4 cantos) ★ ── */
 .card-hud-corners {
   position: absolute;
   inset: 0;
@@ -474,14 +431,12 @@ body {
   height: var(--corner-size);
   animation: cornerPulse 2s ease-in-out infinite;
 }
-/* canto superior-esquerdo */
 .card-hud-corners::before {
   top: 0; left: 0;
   border-top: var(--corner-width) solid rgb(var(--primary));
   border-left: var(--corner-width) solid rgb(var(--primary));
   box-shadow: -2px -2px 8px rgba(0,243,255,.6);
 }
-/* canto inferior-direito */
 .card-hud-corners::after {
   bottom: 0; right: 0;
   border-bottom: var(--corner-width) solid rgb(var(--secondary));
@@ -490,7 +445,6 @@ body {
   animation-delay: 1s;
 }
 
-/* ── Variante: card sem clip-path (para conteúdo com overflow) ── */
 .card-hud-soft {
   border-radius: 2px;
   clip-path: none;
@@ -498,7 +452,7 @@ body {
 .card-hud-soft::before { clip-path: none; border-radius: 2px; }
 
 /* ================================================
-   BOTÃO CYBER - com energy charge ★
+   BOTÃO CYBER
 ================================================ */
 
 .btn-cyber {
@@ -513,7 +467,6 @@ body {
     rgb(var(--secondary))
   );
   background-size: 200% auto;
-  /* ★ Cantos cortados */
   clip-path: polygon(
     8px 0%, 100% 0%,
     100% calc(100% - 8px), calc(100% - 8px) 100%,
@@ -528,8 +481,6 @@ body {
   text-transform: uppercase;
   cursor: pointer;
   user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
   transition: background-position .4s ease, transform .25s ease, box-shadow .25s ease;
   box-shadow:
     0 0 20px rgba(0,255,255,.3),
@@ -538,7 +489,6 @@ body {
   font-family: 'Orbitron', sans-serif;
 }
 
-/* Hover - mouse only */
 @media (hover: hover) and (pointer: fine) {
   .btn-cyber:hover {
     background-position: right center;
@@ -553,13 +503,11 @@ body {
   }
 }
 
-/* Active - toque */
 .btn-cyber:active {
   transform: scale(.95);
   box-shadow: 0 0 15px rgba(0,255,255,.5);
 }
 
-/* Glow aura */
 .btn-cyber::before {
   content: "";
   position: absolute;
@@ -578,7 +526,6 @@ body {
   pointer-events: none;
 }
 
-/* ★ Energy charge - brilho varrendo o botão */
 .btn-cyber::after {
   content: "";
   position: absolute;
@@ -596,7 +543,6 @@ body {
   pointer-events: none;
 }
 
-/* ── Variante: outline ghost ★ ── */
 .btn-cyber-ghost {
   background: transparent;
   border: 1px solid rgba(0,243,255,.5);
@@ -617,14 +563,13 @@ body {
 }
 .btn-cyber-ghost::before { display: none; }
 
-/* ── Variante: danger / warning ★ ── */
 .btn-cyber-danger {
   background: linear-gradient(135deg, #ff0040, #ff00ff);
   box-shadow: 0 0 20px rgba(255,0,64,.4);
 }
 
 /* ================================================
-   INPUT CYBER ★
+   INPUT CYBER
 ================================================ */
 
 .input-cyber {
@@ -652,7 +597,6 @@ body {
   opacity: .6;
 }
 
-/* ── Label cyber ★ ── */
 .label-cyber {
   display: block;
   font-size: .65rem;
@@ -665,7 +609,7 @@ body {
 }
 
 /* ================================================
-   BADGE / TAG CYBER ★
+   BADGE / TAG CYBER
 ================================================ */
 
 .badge-cyber {
@@ -684,7 +628,6 @@ body {
   text-shadow: 0 0 6px rgba(0,243,255,.7);
   box-shadow: 0 0 8px rgba(0,243,255,.08) inset;
 }
-/* ── Dot pulsante no badge ── */
 .badge-cyber::before {
   content: "";
   width: 5px;
@@ -695,7 +638,6 @@ body {
   animation: flicker 3s linear infinite;
 }
 
-/* ── Variante warning / alert ── */
 .badge-cyber-warning {
   color: rgb(var(--warning));
   border-color: rgba(245,158,11,.4);
@@ -718,7 +660,7 @@ body {
 }
 
 /* ================================================
-   DIVIDER CYBER ★
+   DIVIDER CYBER
 ================================================ */
 
 .divider-cyber {
@@ -752,7 +694,7 @@ body {
 }
 
 /* ================================================
-   PROGRESS BAR CYBER ★
+   PROGRESS BAR CYBER
 ================================================ */
 
 .progress-cyber {
@@ -801,7 +743,6 @@ body {
   overflow: hidden;
 }
 
-/* Grade no fundo da splash */
 .splash-container::before {
   content: "";
   position: absolute;
@@ -830,17 +771,14 @@ body {
     #00ffff 100%
   );
   background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: gradientMove 3s linear infinite;
+  color: transparent;
+  animation: gradientMove 3s linear infinite, glitchText 6s ease-in-out infinite;
   letter-spacing: .3rem;
   margin-bottom: 48px;
   text-transform: uppercase;
-  animation: gradientMove 3s linear infinite, glitchText 6s ease-in-out infinite;
 }
 
-/* ── Status text abaixo da loading bar ★ ── */
 .splash-status {
   margin-top: 14px;
   font-family: 'Share Tech Mono', monospace;
@@ -882,7 +820,7 @@ body {
 }
 
 /* ================================================
-   TOOLTIP CYBER ★
+   TOOLTIP CYBER
 ================================================ */
 
 .tooltip-cyber {
@@ -920,44 +858,31 @@ body {
 
 @layer utilities {
 
-  /* Área de toque mínima */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* Remove highlight de toque */
-  .no-tap-highlight {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  /* ── Texto ciano → magenta ── */
   .text-cyber {
     background: linear-gradient(135deg, #00ffff, #7b00ff, #ff00ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;
   }
 
-  /* ★ Texto ciano → dourado */
   .text-cyber-gold {
     background: linear-gradient(135deg, #00ffff, rgb(var(--gold)));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;
   }
 
-  /* ★ Texto com efeito glitch */
   .text-glitch {
     animation: glitchText 4s ease-in-out infinite;
   }
 
-  /* ★ Texto flickering */
   .text-flicker {
     animation: flicker 5s linear infinite;
   }
 
-  /* ★ Fundo holográfico */
   .bg-holographic {
     background: linear-gradient(
       135deg,
@@ -971,7 +896,6 @@ body {
     animation: holographicShift 8s ease infinite;
   }
 
-  /* ★ Texto uppercase mono estilo HUD */
   .text-hud {
     font-family: 'Share Tech Mono', monospace;
     letter-spacing: .15em;
@@ -980,27 +904,11 @@ body {
     color: var(--text-muted);
   }
 
-  /* ★ Neon drop shadow - ciano */
-  .shadow-neon-cyan {
-    filter: drop-shadow(0 0 8px rgba(0,243,255,.8));
-  }
+  .shadow-neon-cyan { filter: drop-shadow(0 0 8px rgba(0,243,255,.8)); }
+  .shadow-neon-magenta { filter: drop-shadow(0 0 8px rgba(255,0,255,.8)); }
+  .shadow-neon-purple { filter: drop-shadow(0 0 8px rgba(120,0,255,.8)); }
+  .shadow-neon-gold { filter: drop-shadow(0 0 8px rgba(255,200,50,.8)); }
 
-  /* ★ Neon drop shadow - magenta */
-  .shadow-neon-magenta {
-    filter: drop-shadow(0 0 8px rgba(255,0,255,.8));
-  }
-
-  /* ★ Neon drop shadow - roxo */
-  .shadow-neon-purple {
-    filter: drop-shadow(0 0 8px rgba(120,0,255,.8));
-  }
-
-  /* ★ Neon drop shadow - dourado */
-  .shadow-neon-gold {
-    filter: drop-shadow(0 0 8px rgba(255,200,50,.8));
-  }
-
-  /* ★ Borda estilo HUD cortada */
   .clip-hud {
     clip-path: polygon(
       12px 0%, 100% 0%,
@@ -1009,7 +917,6 @@ body {
     );
   }
 
-  /* ★ Linha de status HUD (rodapé de cards) */
   .hud-statusbar {
     display: flex;
     align-items: center;
@@ -1024,4 +931,25 @@ body {
     color: var(--text-muted);
   }
 
+}
+
+/* ================================================
+   WCAG (ACESSIBILIDADE): REDUÇÃO DE MOVIMENTO 
+================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .splash-container {
+    background-image: none !important;
+  }
+  
+  .cyber-grid-3d::before {
+    animation: none !important;
+  }
 }
