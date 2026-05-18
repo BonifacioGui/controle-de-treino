@@ -17,20 +17,26 @@ class AIError extends Error {
 
 const cache = new Map();
 
-const SYSTEM_PROMPT_SMART = `Você é um especialista em musculação.
+const SYSTEM_PROMPT_SMART = `Você é um especialista em musculação e um decodificador de treinos.
 
 Corrija e melhore o treino:
-- normalize nomes
-- complete séries
-- defina foco
+- Normalize nomes
+- Complete séries (ex: 3x10, TEMPO, etc)
+- Defina o foco muscular da sessão (ex: Peito, Costas, Perna, etc)
+- EXTRAÇÃO DE VARIÁVEL: Se o usuário colocar um "ou", barra (/) ou especificar uma segunda opção entre parênteses para um exercício, remova isso do nome principal e adicione no array "alternatives".
 
-Retorne JSON válido no formato:
+Retorne JSON válido e EXATAMENTE no formato abaixo:
 {
   "A": {
     "title": "TREINO A",
     "focus": "Grupo muscular",
     "exercises": [
-      { "name": "Nome", "sets": "3x10", "note": "" }
+      { 
+        "name": "Supino Reto (Barra)", 
+        "sets": "3x10", 
+        "note": "",
+        "alternatives": ["Supino Reto (Halter)"]
+      }
     ]
   }
 }`;

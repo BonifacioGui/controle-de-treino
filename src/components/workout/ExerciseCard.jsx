@@ -115,9 +115,10 @@ const ExerciseCard = ({
             {ex.alternatives && ex.alternatives.length > 0 && !isDone && !isTutorial && (
               <button 
                 onClick={handleSwap}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-input border border-border text-[11px] font-black text-muted hover:text-[#00f3ff] hover:border-[#00f3ff] hover:shadow-[0_0_10px_rgba(0,243,255,0.3)] transition-all active:scale-90 shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/50 text-[11px] font-black text-yellow-500 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(250,204,21,0.2)] transition-all active:scale-95 z-50 relative"
+                title={`Substituir por: ${ex.alternatives.join(', ')}`}
               >
-                <RefreshCcw size={11} />
+                <RefreshCcw size={12} strokeWidth={3} />
                 TROCAR
               </button>
             )}

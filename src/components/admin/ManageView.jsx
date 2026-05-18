@@ -138,43 +138,68 @@ const ManageView = ({
             ⚠️ ACESSO NEGADO
           </span>
           <span className="text-[10px] font-bold uppercase text-muted tracking-widest">
-            Este é um protocolo do sistema. Crie um + NOVO protocolo para equipar armamentos.
+            Este é um protocolo do sistema. Crie um + NOVO protocolo para equipar exercícios.
           </span>
         </div>
       ) : (
         <div className="space-y-3 px-1">
-          {(workoutData[activeDay]?.exercises || []).map((ex, i) => (
-            <div key={i} className="bg-card border border-border p-3 rounded-xl relative group transition-all hover:border-primary/50 overflow-hidden shadow-sm">
-              <div className="absolute top-0 left-0 w-1 h-0 group-hover:h-full bg-primary transition-all duration-300"></div>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-muted uppercase tracking-[0.1em] ml-1">Identificação</label>
+        {(workoutData[activeDay]?.exercises || []).map((ex, i) => (
+          <div key={i} className="bg-card border border-border p-3 rounded-xl relative group transition-all hover:border-primary/50 overflow-hidden shadow-sm">
+            <div className="absolute top-0 left-0 w-1 h-0 group-hover:h-full bg-primary transition-all duration-300"></div>
+            
+            <div className="space-y-3">
+              
+              {/* 1. NOME PRINCIPAL */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-muted uppercase tracking-[0.1em] ml-1">Identificação Principal</label>
+                <input 
+                  className="bg-input/50 border-b border-border focus:border-primary text-main dark:text-white font-bold text-sm w-full outline-none p-2 rounded-t transition-all placeholder-muted/50 uppercase" 
+                  value={ex.name || ''} 
+                  onChange={(e) => editExerciseBase(activeDay, i, 'name', e.target.value)} 
+                  placeholder="Ex: Supino Reto (Barra)"
+                />
+              </div>
+
+              {/* 🔥 2. NOVO: ARMAMENTO SECUNDÁRIO (SWAP) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-yellow-500/70 uppercase tracking-[0.1em] ml-1 flex items-center gap-1">
+                  Exercício secundário (Swap)
+                </label>
+                <input 
+                  className="bg-input border border-yellow-500/30 focus:border-yellow-500 text-yellow-500/90 text-xs font-bold w-full outline-none p-2 rounded transition-all placeholder-muted/30 uppercase" 
+                  value={ex.alternatives && ex.alternatives.length > 0 ? ex.alternatives[0] : ''} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    editExerciseBase(activeDay, i, 'alternatives', val ? [val] : []);
+                  }}
+                  placeholder="Opcional: Ex: Supino Reto (Halter)"
+                />
+              </div>
+
+              {/* 3. META E LIXEIRA */}
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[10px] font-black text-muted uppercase tracking-[0.1em] ml-1">Meta</label>
                   <input 
-                    className="bg-input/50 border-b border-border focus:border-primary text-main dark:text-white font-bold text-sm w-full outline-none p-2 rounded-t transition-all placeholder-muted/50 uppercase" 
-                    value={ex.name} 
-                    onChange={(e) => editExerciseBase(activeDay, i, 'name', e.target.value)} 
+                    className="bg-input border border-border focus:border-secondary text-secondary text-sm font-black p-2 rounded-lg w-full outline-none transition-all uppercase placeholder-muted/30" 
+                    value={ex.sets || ''} 
+                    onChange={(e) => editExerciseBase(activeDay, i, 'sets', e.target.value)} 
                   />
                 </div>
-                <div className="flex gap-3 items-end">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[10px] font-black text-muted uppercase tracking-[0.1em] ml-1">Meta</label>
-                    <input 
-                      className="bg-input border border-border focus:border-secondary text-secondary text-sm font-black p-2 rounded-lg w-full outline-none transition-all uppercase placeholder-muted/30" 
-                      value={ex.sets} 
-                      onChange={(e) => editExerciseBase(activeDay, i, 'sets', e.target.value)} 
-                    />
-                  </div>
-                  <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-red-500/30 text-red-500 p-2 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm active:scale-95">
-                    <Trash2 size={18}/>
-                  </button>
-                </div>
+                <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-red-500/30 text-red-500 p-2 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
+                  <Trash2 size={18}/>
+                </button>
               </div>
+
             </div>
-          ))}
-          <button onClick={openCatalog} className="w-full mt-4 py-4 border-2 border-dashed border-primary/50 text-primary bg-primary/5 hover:bg-primary/10 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
-            <Search size={18} /> ADICIONAR EXERCÍCIOS
-          </button>
-        </div>
+          </div>
+        ))}
+        
+        {/* BOTÃO DE ADICIONAR NOVO */}
+        <button onClick={openCatalog} className="w-full mt-4 py-4 border-2 border-dashed border-primary/50 text-primary bg-primary/5 hover:bg-primary/10 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
+          <Search size={18} /> ADICIONAR EXERCÍCIOS
+        </button>
+      </div>
       )}
 
       <div className="pt-4 px-1">
@@ -227,7 +252,7 @@ const ManageView = ({
                 );
               })}
               {getFilteredExercises().length === 0 && (
-                <div className="text-center p-8 opacity-50"><span className="font-black text-main dark:text-white uppercase tracking-widest text-xs">Armamento não encontrado</span></div>
+                <div className="text-center p-8 opacity-50"><span className="font-black text-main dark:text-white uppercase tracking-widest text-xs">Exercício não encontrado</span></div>
               )}
             </div>
             
