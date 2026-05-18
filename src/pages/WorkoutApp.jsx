@@ -290,6 +290,7 @@ const WorkoutApp = () => {
           <Importer 
             setWorkoutData={setters.setWorkoutData} 
             setView={setters.setView} 
+            setActiveDay={setters.setActiveDay} // 🔥 ADICIONE ESTA LINHA AQUI
           />
         )}
         

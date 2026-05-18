@@ -100,34 +100,37 @@ const ManageView = ({
       </div>
 
       {/* Header de Configuração */}
-        <div className="flex justify-between items-center border-b border-secondary/30 pb-3 mb-4 px-1">
-          <div className="flex items-center gap-2">
-            <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
-            <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
-              EDITANDO: <span className="text-secondary">{activeDay}</span>
-            </h2>
-          </div>
-          <div className="flex gap-2 items-center">
-            {/* 🔥 BOTÃO DA IA - MOVIDO PARA O TOPO (Padrão Ouro de UX) */}
-            <button 
-              onClick={() => setView('importer')}
-              className="bg-primary/10 border border-primary/50 p-2 rounded-lg text-primary hover:bg-primary hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--primary),0.2)] active:scale-95 flex items-center gap-1.5" 
-              title="IA: Decodificar Treino"
-            >
-              <Cpu size={18} className="animate-pulse" strokeWidth={2.5} />
-            </button>
-
-            {activeDay !== 'INÍCIO' && (
-              <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
-                <Plus size={18} strokeWidth={2.5} />
-              </button>
-            )}
-
-            <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar Protocolo">
-              <Trash2 size={18} strokeWidth={2.5} />
-            </button>
-          </div>
+      <div className="flex justify-between items-center pb-1 px-1">
+        <div className="flex items-center gap-2">
+          <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
+          <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+            EDITANDO: <span className="text-secondary">{activeDay}</span>
+          </h2>
         </div>
+        
+        <div className="flex gap-2 items-center">
+          {activeDay !== 'INÍCIO' && (
+            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
+              <Plus size={18} strokeWidth={2.5} />
+            </button>
+          )}
+
+          <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar Protocolo">
+            <Trash2 size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* 🔥 BOTÃO DA IA EM DESTAQUE E ISOLADO */}
+      <div className="px-1 border-b border-secondary/30 pb-4 mb-4">
+        <button 
+          onClick={() => setView('importer')}
+          className="w-full py-3 px-4 border border-dashed border-primary/50 text-primary bg-primary/10 rounded-xl font-bold uppercase tracking-wider hover:bg-primary/20 transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
+        >
+          <Cpu size={18} className="animate-pulse" />
+          <span>Decodificar Treino com IA </span>
+        </button>
+      </div>
 
       {activeDay === 'INÍCIO' ? (
         <div className="mt-8 p-6 border-2 border-dashed border-red-500/30 rounded-xl text-center bg-red-500/5 animate-pulse mx-1">

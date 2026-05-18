@@ -9,7 +9,7 @@ export const initialWorkoutData = {
         name: "🛠️ Configure seu Treino", 
         sets: "-x-", 
         target: "-", 
-        note: "Vá no menu 'Gerenciar' (ícone de engrenagem) para apagar este aviso e começar a criar seus dias de treino." 
+        note: "Vá no menu 'Sistema' para apagar este aviso e começar a criar seus dias de treino." 
       }
     ]
   }
