@@ -21,7 +21,6 @@ import RestTimer from '../components/workout/RestTimer';
 
 // 5. RPG (Gamificação do SOLO)
 import LevelUpModal from '../components/rpg/LevelUpModal';
-import QuestLogView from '../components/rpg/QuestLogView';
 import { getFlameStyle } from '../utils/rpgSystem';
 import { generateDailyQuests } from '../utils/questSystem'; // 🔥 IMPORTAÇÃO DO MOTOR DE MISSÕES AQUI
 
@@ -261,17 +260,7 @@ const WorkoutApp = () => {
       )}
 
       {/* ROTEADOR DE VIEWS */}
-      <div className="relative z-10 min-h-[50vh] px-4">
 
-         {state.view === 'dashboard' && (
-            <QuestLogView 
-              history={state.history} 
-              quests={[]} // Aqui depois ligaremos as quests reais se precisar mandar via props
-              stats={stats} 
-              bodyHistory={state.bodyHistory} 
-              setView={setters.setView} 
-            />
-          )}
 
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
