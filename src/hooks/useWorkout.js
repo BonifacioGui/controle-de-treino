@@ -319,7 +319,17 @@ export const useWorkout = () => {
       setHistory(newHistory);
 
       if (userId) {
-        supabase.from('workout_history').insert([sessionBase]).then(() => fetchCloudData());
+        // 🔥 BLINDAGEM MÁXIMA DO BANCO DE DADOS
+        const { error } = await supabase.from('workout_history').insert([sessionBase]);
+        
+        if (error) {
+          console.error("[ERRO CRÍTICO SUPABASE] O treino não foi salvo na nuvem:", error.message);
+          alert(`Falha no Banco de Dados: ${error.message}\nVerifique se todas as colunas existem no Supabase!`);
+          // Note que NÃO chamamos o fetchCloudData aqui. Assim seu treino local não é apagado!
+        } else {
+          // Só puxa da nuvem se o salvamento foi um SUCESSO absoluto
+          fetchCloudData();
+        }
       }
 
       setProgress({});

@@ -7,8 +7,6 @@ const CyberNav = ({ currentView, setView }) => {
     
     { id: 'workout', label: 'TREINO', icon: Dumbbell, color: 'text-secondary', dot: 'bg-secondary', borderGlow: 'border-secondary/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--secondary),0.4)]' },
 
-    { id: 'dashboard', label: 'MISSÕES', icon: Target, color: 'text-primary', dot: 'bg-primary', borderGlow: 'border-primary/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]' },
-
     { id: 'history', label: 'HISTÓRICO', icon: History, color: 'text-success', dot: 'bg-success', borderGlow: 'border-success/50 shadow-sm dark:shadow-[0_0_15px_rgba(var(--success),0.4)]' },
     
     { id: 'stats', label: 'DADOS', icon: ChartNoAxesColumnIncreasing, color: 'text-cyan-500', dot: 'bg-cyan-500', borderGlow: 'border-cyan-500/50 shadow-sm dark:shadow-[0_0_15px_rgba(6,182,212,0.4)]' },

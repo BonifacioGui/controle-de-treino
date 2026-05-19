@@ -63,122 +63,145 @@ const WorkoutView = ({
     if (isFinishing) return; // TRAVA: Evita double-tap
     setIsFinishing(true);    
     
-    let totalSets = 0;
-    let completedSets = 0;
-    let exercisesSwapped = 0;
-    let prsBroken = 0; // 🔥 NOVA VARIÁVEL AQUI
+    try {
+      let totalSets = 0;
+      let completedSets = 0;
+      let exercisesSwapped = 0;
+      let prsBroken = 0; 
 
-    // 1. Coleta de dados do progresso atual e calcula PRs
-    currentWorkout?.exercises?.forEach((ex, i) => {
-      const id = `${selectedDate}-${activeDay}-${i}`;
-      const exData = progress[id];
-      const displayName = exData?.swappedName || ex.name;
-      
-      if (exData && exData.swappedName && exData.swappedName !== ex.name) {
-        exercisesSwapped++;
-      }
-      if (exData && exData.sets) {
-        totalSets += exData.sets.length;
-        completedSets += exData.sets.filter(s => s.completed).length;
-
-        // 🔥 AUDITORIA DE PR: O Pai agora também faz a matemática
-        const exerciseHistory = (history || [])
-          .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
-          .filter(e => e.done !== false && isSameExercise(displayName, e.name));
-
-        const exercisePR = exerciseHistory.reduce((max, e) => {
-           const validWeights = e.sets?.map(s => parseFloat(String(s.weight).replace(',', '.')) || 0).filter(w => w > 0) || [];
-           return Math.max(max, validWeights.length > 0 ? Math.max(...validWeights) : 0);
-        }, 0);
-
-        const todayMax = exData.sets.reduce((max, s) => {
-           const w = parseFloat(String(s.weight).replace(',', '.')) || 0;
-           return Math.max(max, w);
-        }, 0);
-
-        if (todayMax > exercisePR && exercisePR > 0) {
-            prsBroken++;
-        }
-      }
-    });
-
-    // 2. Monta o pacote de dados EXATO e com trava de segurança (!!)
-    const sessionData = {
-      totalVolume: todayStats.volume,
-      duration: workoutTimer?.elapsed || 0,
-      hasNote: !!sessionNote && sessionNote.trim().length > 0, 
-      totalSets,
-      completedSets,
-      exercisesSwapped,
-      prsBroken, // 🔥 AGORA A VARIÁVEL VAI NO PACOTE!
-      finished: true
-    };
-
-    let bonusXP = 0;
-
-    // 🔥 3. CORREÇÃO DE DATA: BLINDAGEM MÁXIMA
-    // Lê a data independentemente do formato (DD/MM/YYYY ou YYYY-MM-DD)
-    let isToday = false;
-    if (selectedDate) {
-      let d, m, y;
-      if (selectedDate.includes('/')) {
-        [d, m, y] = selectedDate.split('/');
-      } else if (selectedDate.includes('-')) {
-        [y, m, d] = selectedDate.split('-');
-      }
-      
-      const today = new Date();
-      // Compara apenas os números puros, ignorando zeros à esquerda e traços
-      isToday = (
-        parseInt(d) === today.getDate() &&
-        parseInt(m) === (today.getMonth() + 1) &&
-        parseInt(y) === today.getFullYear()
-      );
-    }
-
-    // Só avalia missões se for o treino de HOJE.
-    if (isToday) {
-      const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
-      let questsUpdated = false;
-      const newlyCompleted = [];
-
-      const updatedQuests = dailyQuests.map(quest => {
-        if (quest.completed) return quest;
-
-        const checkRule = QUEST_RULES[quest.type];
+      // 1. Coleta de dados do progresso atual e calcula PRs
+      currentWorkout?.exercises?.forEach((ex, i) => {
+        const id = `${selectedDate}-${activeDay}-${i}`;
+        const exData = progress[id];
+        const displayName = exData?.swappedName || ex.name;
         
-        // Verifica se a regra existe e se o treino passou no teste
-        if (checkRule && checkRule(sessionData) === true) {
-          questsUpdated = true;
-          bonusXP += quest.reward;
-          newlyCompleted.push(quest);
-          return { ...quest, completed: true };
+        if (exData && exData.swappedName && exData.swappedName !== ex.name) {
+          exercisesSwapped++;
         }
-        return quest;
+        
+        if (exData) {
+          // 🔥 MAPEAMENTO MULTI-PROPRIEDADE: Detecta se o exercício inteiro foi marcado
+          const isExerciseDone = !!(exData.completed || exData.done || exData.checked);
+
+          if (exData.sets && Array.isArray(exData.sets)) {
+            totalSets += exData.sets.length;
+            
+            // Conta as séries feitas de forma individual OU se o card pai foi checado
+            const cSets = exData.sets.filter(s => 
+              s.completed === true || 
+              s.done === true || 
+              s.checked === true || 
+              isExerciseDone
+            ).length;
+            
+            completedSets += cSets;
+
+            // Lógica de auditoria de PRs
+            const exerciseHistory = (history || [])
+              .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
+              .filter(e => e.done !== false && isSameExercise(displayName, e.name));
+
+            const exercisePR = exerciseHistory.reduce((max, e) => {
+               const validWeights = e.sets?.map(s => parseFloat(String(s.weight).replace(',', '.')) || 0).filter(w => w > 0) || [];
+               return Math.max(max, validWeights.length > 0 ? Math.max(...validWeights) : 0);
+            }, 0);
+
+            const todayMax = exData.sets.reduce((max, s) => {
+               const w = parseFloat(String(s.weight).replace(',', '.')) || 0;
+               return Math.max(max, w);
+            }, 0);
+
+            if (todayMax > exercisePR && exercisePR > 0) {
+                prsBroken++;
+            }
+          } else if (isExerciseDone) {
+            // Fallback preventivo: se não houver array de sets mas o exercício foi marcado
+            const estimatedSets = ex.sets ? (parseInt(ex.sets) || 3) : 3;
+            totalSets += estimatedSets;
+            completedSets += estimatedSets;
+          }
+        }
       });
 
-      // 4. Atualiza o painel de quests e exibe o Toast
-      if (questsUpdated) {
-        localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
-        
-        // Sincroniza a chave duplicada para o QuestBoard ler instantaneamente
-        const savedData = JSON.parse(localStorage.getItem('daily_quests_data') || '{}');
-        savedData.quests = updatedQuests;
-        localStorage.setItem('daily_quests_data', JSON.stringify(savedData));
-        
-        window.dispatchEvent(new Event('quest_update'));
-        
-        if (newlyCompleted.length > 0) {
-          setToastQuest(newlyCompleted[0]); // Dispara o Toast animado
-          setTimeout(() => setToastQuest(null), 5000); 
+      // Log tático para você auditar no console antes de enviar
+      console.log(`[SYS.LOG] Séries Totais: ${totalSets} | Séries Concluídas: ${completedSets}`);
+
+      // Se mesmo com o mapeamento completo ainda der 0, bloqueia para não corromper o banco
+      if (completedSets === 0) {
+        console.warn("Treino abortado: Nenhuma série foi concluída.");
+        setIsFinishing(false);
+        return;
+      }
+
+      // 2. Monta o pacote de dados EXATO
+      const sessionData = {
+        totalVolume: todayStats.volume,
+        duration: workoutTimer?.elapsed || 0,
+        hasNote: !!sessionNote && sessionNote.trim().length > 0, 
+        totalSets,
+        completedSets,
+        exercisesSwapped,
+        prsBroken, 
+        finished: true
+      };
+
+      let bonusXP = 0;
+
+      // 3. Avaliação Simplificada de Missões (Apenas para o dia atual local)
+      const isTodayStr = new Date().toISOString().split('T')[0];
+      const isWorkoutToday = selectedDate === isTodayStr;
+
+      if (isWorkoutToday) {
+        try {
+          const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+          let questsUpdated = false;
+          const newlyCompleted = [];
+
+          const updatedQuests = dailyQuests.map(quest => {
+            if (quest.completed) return quest;
+
+            const checkRule = QUEST_RULES[quest.type];
+            if (checkRule && checkRule(sessionData) === true) {
+              questsUpdated = true;
+              bonusXP += quest.reward;
+              newlyCompleted.push(quest);
+              return { ...quest, completed: true };
+            }
+            return quest;
+          });
+
+          if (questsUpdated) {
+            localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
+            
+            const savedData = JSON.parse(localStorage.getItem('daily_quests_data') || '{}');
+            savedData.quests = updatedQuests;
+            localStorage.setItem('daily_quests_data', JSON.stringify(savedData));
+            
+            window.dispatchEvent(new Event('quest_update'));
+            
+            if (newlyCompleted.length > 0) {
+              setToastQuest(newlyCompleted[0]); 
+              setTimeout(() => setToastQuest(null), 5000); 
+            }
+          }
+        } catch (questError) {
+           console.error("Erro ao auditar missões:", questError);
+           // Não abortamos o salvamento do treino se a missão falhar!
         }
       }
-    }
 
-    // 5. Envia UM ÚNICO sinal de finalização para o motor
-    await finishWorkout(bonusXP);
-    
-    setIsFinishing(false); // Libera a trava
+      // 4. Envia o sinal de finalização para o motor (passando o bonusXP ou 0 como definimos)
+      // Usamos await para esperar o banco de dados salvar de verdade antes de destravar
+      await finishWorkout(bonusXP);
+      
+    } catch (error) {
+       // Se o código chegou aqui, o Supabase, o LocalStorage ou a Matemática estouraram!
+       console.error("Falha Crítica ao salvar o treino:", error);
+       alert("Erro ao salvar operação. Verifique sua conexão e tente novamente.");
+    } finally {
+       // 5. BLINDAGEM: Não importa se deu Sucesso (try) ou Erro (catch), ele sempre destrava o botão!
+       setIsFinishing(false); 
+    }
   };
 
   return (
