@@ -3,6 +3,7 @@ import { Menu, Flame, Wifi, WifiOff, Medal, Zap  } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
+import { createPortal } from 'react-dom'
 
 // 1. Shared & Layout (Globais)
 import CyberNav from '../components/shared/CyberNav';
@@ -54,6 +55,7 @@ const WorkoutApp = () => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false); // 🔥 ADICIONE ESTA LINHA
   const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
+  const [successToast, setSuccessToast] = useState(false);
 
   const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;  
   // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
@@ -376,6 +378,8 @@ const WorkoutApp = () => {
             // 🔥 Limpa a memória para o usuário seguir a vida
             localStorage.removeItem('pending_share_card');
             setShowCelebration(false);
+            setSuccessToast(true);
+            setTimeout(() => setSuccessToast(false), 3500);
           }} 
           
           // 🔥 Lógica de Persistência: Tenta ler o cofre primeiro, se falhar, usa os stats
@@ -412,6 +416,18 @@ const WorkoutApp = () => {
               setRestTimerConfig(p => ({ ...p, isOpen: false })); 
             }} 
           />
+        )}
+        {/* 🔥 TOAST DE SUCESSO GLOBAL */}
+        {successToast && createPortal(
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] animate-in slide-in-from-top-10 fade-in duration-500">
+            <div className="bg-[#050505]/95 backdrop-blur-md border border-[#00f3ff]/40 px-6 py-3 rounded-full shadow-[0_0_20px_rgba(0,243,255,0.2)] flex items-center gap-3">
+              <div className="w-2 h-2 bg-[#00f3ff] rounded-full animate-ping shadow-[0_0_8px_rgba(0,243,255,0.8)]"></div>
+              <span className="text-xs font-black text-white uppercase tracking-[0.15em]">
+                Operação Registrada
+              </span>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
