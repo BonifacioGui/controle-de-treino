@@ -128,12 +128,11 @@ const WorkoutApp = () => {
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
   // ==========================================
 
-  // ==========================================
-  // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
-  // ==========================================
-
-  const handleFinishWorkoutWrapper = async (dadosDoTreino) => {
-    const resultado = await actions.finishWorkout(dadosDoTreino?.bonusXp || 0);
+  const handleFinishWorkoutWrapper = async (xpOuDados) => {
+    // 🔥 LÊ O XP CORRETAMENTE: Aceita tanto número puro quanto objeto
+    const bonusParaSalvar = typeof xpOuDados === 'number' ? xpOuDados : (xpOuDados?.bonusXp || 0);
+    
+    const resultado = await actions.finishWorkout(bonusParaSalvar);
     
     const relatorioTatico = {
       volume: resultado.sessionVolume,
@@ -260,7 +259,7 @@ const WorkoutApp = () => {
       )}
 
       {/* ROTEADOR DE VIEWS */}
-
+      <div className="relative z-10 min-h-[50vh] px-4">
 
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
