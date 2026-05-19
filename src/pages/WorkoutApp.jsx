@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Flame, Wifi, WifiOff, Medal, Zap  } from 'lucide-react';
+import { Menu, Flame, Wifi, WifiOff, Medal, Zap, Check } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
@@ -125,6 +125,29 @@ const WorkoutApp = () => {
     }
   }, []);
 
+  // 🔥 REDIRECIONAMENTO AUTOMÁTICO DE PROTOCOLO CONCLUÍDO
+  useEffect(() => {
+    if (state.view === 'workout' && state.workoutData && state.history) {
+      // Verifica se o treino que está atualmente selecionado já foi feito hoje
+      const currentIsDone = state.history.some(
+        h => h.workout_name === state.activeDay && h.workout_date === state.selectedDate
+      );
+
+      if (currentIsDone) {
+        const planKeys = Object.keys(state.workoutData);
+        // Procura o primeiro treino do seu plano que NÃO foi feito hoje
+        const nextAvailableDay = planKeys.find(
+          day => !state.history.some(h => h.workout_name === day && h.workout_date === state.selectedDate)
+        );
+
+        // Se encontrar um treino disponível, muda para ele automaticamente
+        if (nextAvailableDay) {
+          setters.setActiveDay(nextAvailableDay);
+        }
+      }
+    }
+  }, [state.view, state.activeDay, state.history, state.selectedDate, state.workoutData, setters]);
+
 
   // ==========================================
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
@@ -176,6 +199,17 @@ const WorkoutApp = () => {
     setTimeout(() => setShowCelebration(true), 400);
   };
 
+  // ==========================================
+  // 🔥 LÓGICA DE UI E TRAVAS
+  // ==========================================
+  const isRestTimerVisible = state.timerState?.active || restTimerConfig.isOpen;
+  
+  const isWorkoutCompletedToday = (dayName) => {
+    return state.history.some(h => 
+      h.workout_name === dayName && 
+      h.workout_date === state.selectedDate
+    );
+  };
   // ==========================================
   // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
   // ==========================================
@@ -238,21 +272,47 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* ABAS DO TREINO */}
+      {/* ABAS DO TREINO COM TRAVAS DE SEGURANÇA E VISUAL CYBERPUNK */}
       {state.view === 'workout' && state.workoutData && (
         <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-4">
           {Object.keys(state.workoutData).map((day) => {
             const wData = state.workoutData[day];
             const isActive = state.activeDay === day;
+            
+            const isDone = isWorkoutCompletedToday(day); 
+            const isLocked = state.workoutTimer?.isRunning && !isActive; 
+
             return (
-              <button key={day} onClick={() => setters.setActiveDay(day)}
+              <button 
+                key={day} 
+                onClick={() => !isLocked && !isDone && setters.setActiveDay(day)}
+                disabled={isLocked || isDone}
                 className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
-                  ${isActive ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] scale-[1.02]' : 'bg-card text-main dark:text-white border-border hover:border-primary/40'}`}>
-                {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
-                <span className={`text-3xl font-black tracking-tighter ${isActive ? 'text-black' : 'text-main dark:text-white'}`}>{day}</span>
-                <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border'}`}>
-                  <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">{wData?.title || "TREINO"}</span>
-                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive ? 'text-black/70' : 'text-muted'}`}>{wData?.focus || "SISTEMA"}</span>
+                  ${isActive && !isDone ? 'bg-primary text-black scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.3)]' : ''}
+                  ${!isActive && !isDone ? 'bg-card text-main dark:text-white border-border hover:border-primary/40' : ''}
+                  ${isDone ? 'bg-[#050505] border-[#00f3ff]/30 shadow-[inset_0_0_15px_rgba(0,243,255,0.05)] cursor-not-allowed' : ''}
+                `}
+              >
+                {/* 🛡️ TAG NEON DE MISSÃO CUMPRIDA */}
+                {isDone && (
+                  <div className="absolute top-0 right-0 bg-[#00f3ff]/10 px-2 py-0.5 rounded-bl-xl border-b border-l border-[#00f3ff]/30 backdrop-blur-sm">
+                    <span className="text-[7px] font-black text-[#00f3ff] uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">Cleared</span>
+                  </div>
+                )}
+                
+                {isActive && !isDone && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
+                
+                <span className={`text-3xl font-black tracking-tighter ${isActive && !isDone ? 'text-black' : (isDone ? 'text-[#00f3ff]/40' : 'text-main dark:text-white')}`}>
+                  {day}
+                </span>
+                
+                <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive && !isDone ? 'border-black/30' : (isDone ? 'border-[#00f3ff]/20' : 'border-border')}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px] ${isDone ? 'text-[#00f3ff]/60' : ''}`}>
+                    {wData?.title || "TREINO"}
+                  </span>
+                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive && !isDone ? 'text-black/70' : (isDone ? 'text-[#00f3ff]/40' : 'text-muted')}`}>
+                    {wData?.focus || "SISTEMA"}
+                  </span>
                 </div>
               </button>
             );
@@ -265,9 +325,20 @@ const WorkoutApp = () => {
 
         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
-            <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
-              setSessionNote={setters.setSessionNote} finishWorkout={handleFinishWorkoutWrapper} updateSetData={actions.updateSetData}
-              updateSessionSets={actions.updateSessionSets} toggleCheck={actions.toggleCheck} setRestTimerConfig={setRestTimerConfig} />
+            // 🔥 UX MINIMALISTA: Se estiver concluído, mostra apenas um selo silencioso
+            isWorkoutCompletedToday(state.activeDay) ? (
+              <div className="flex flex-col items-center justify-center h-[40vh] opacity-60 animate-in fade-in duration-700">
+                <Check size={48} className="text-[#00f3ff] mb-4 drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]" />
+                <span className="text-xl font-black text-[#00f3ff] uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]">
+                  Cleared
+                </span>
+              </div>
+            ) : (
+              // Roda o treino normalmente
+              <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
+                setSessionNote={setters.setSessionNote} finishWorkout={handleFinishWorkoutWrapper} updateSetData={actions.updateSetData}
+                updateSessionSets={actions.updateSessionSets} toggleCheck={actions.toggleCheck} setRestTimerConfig={setRestTimerConfig} />
+            )
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10 uppercase font-black">
                <p>DADOS INCONSISTENTES</p>
@@ -296,15 +367,14 @@ const WorkoutApp = () => {
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
 
-      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) */}
-      {state.workoutTimer?.isRunning && state.view !== 'workout' && (
+      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) - OCULTA SE O TIMER ESTIVER ATIVO */}
+      {state.workoutTimer?.isRunning && state.view !== 'workout' && !isRestTimerVisible && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-[400px] animate-in slide-in-from-bottom-4 fade-in duration-500">
           <button 
             onClick={() => setters.setView('workout')}
             className="w-full flex items-center justify-between px-5 py-3.5 bg-[#050B14]/90 backdrop-blur-md border border-red-500/50 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.15)] group hover:border-red-500 transition-colors"
           >
             <div className="flex items-center gap-3">
-              {/* Ponto vermelho piscando (Recording) */}
               <div className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
@@ -319,7 +389,6 @@ const WorkoutApp = () => {
               </div>
             </div>
             
-            {/* Cronômetro Espelhado */}
             <div className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
               <span className="font-mono text-sm font-bold text-red-400 tracking-wider drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
                 {formatTimer(state.workoutTimer.elapsed)}
@@ -380,6 +449,9 @@ const WorkoutApp = () => {
             setShowCelebration(false);
             setSuccessToast(true);
             setTimeout(() => setSuccessToast(false), 3500);
+
+            // 🔥 O CHUTE TÁTICO: Expulsa da tela de treino para o histórico!
+            setters.setView('history');
           }} 
           
           // 🔥 Lógica de Persistência: Tenta ler o cofre primeiro, se falhar, usa os stats
