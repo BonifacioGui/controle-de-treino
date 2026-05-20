@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Flame, Wifi, WifiOff, Medal, Zap  } from 'lucide-react';
+import { Menu, Flame, Wifi, WifiOff, Medal, Zap, Check } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout'; 
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
@@ -125,6 +125,29 @@ const WorkoutApp = () => {
     }
   }, []);
 
+  // 🔥 REDIRECIONAMENTO AUTOMÁTICO DE PROTOCOLO CONCLUÍDO
+  useEffect(() => {
+    if (state.view === 'workout' && state.workoutData && state.history) {
+      // Verifica se o treino que está atualmente selecionado já foi feito hoje
+      const currentIsDone = state.history.some(
+        h => h.workout_name === state.activeDay && h.workout_date === state.selectedDate
+      );
+
+      if (currentIsDone) {
+        const planKeys = Object.keys(state.workoutData);
+        // Procura o primeiro treino do seu plano que NÃO foi feito hoje
+        const nextAvailableDay = planKeys.find(
+          day => !state.history.some(h => h.workout_name === day && h.workout_date === state.selectedDate)
+        );
+
+        // Se encontrar um treino disponível, muda para ele automaticamente
+        if (nextAvailableDay) {
+          setters.setActiveDay(nextAvailableDay);
+        }
+      }
+    }
+  }, [state.view, state.activeDay, state.history, state.selectedDate, state.workoutData, setters]);
+
 
   // ==========================================
   // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
@@ -176,6 +199,42 @@ const WorkoutApp = () => {
     setTimeout(() => setShowCelebration(true), 400);
   };
 
+  // ==========================================
+  // 🔥 LÓGICA DE UI E TRAVAS
+  // ==========================================
+  const isRestTimerVisible = state.timerState?.active || restTimerConfig.isOpen;
+    
+  // Estado para o Modal de Aviso de Sobrecarga (O Soft Lock)
+  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, date: null });
+
+  // Nova inteligência de status do treino
+  const getWorkoutStatus = (dayName) => {
+    const hoje = new Date(state.selectedDate); 
+    hoje.setHours(0, 0, 0, 0);
+
+    let status = { isClearedToday: false, isRecent: false, lastDate: null };
+
+    // Puxa o histórico desse treino e ordena do mais recente pro mais antigo
+    const historyForDay = state.history
+      .filter(h => h.workout_name === dayName)
+      .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date));
+
+    if (historyForDay.length > 0) {
+      const lastWorkout = historyForDay[0];
+      const dataTreino = new Date(lastWorkout.workout_date);
+      dataTreino.setHours(0, 0, 0, 0);
+      
+      const diffEmDias = (hoje - dataTreino) / (1000 * 60 * 60 * 24);
+
+      if (diffEmDias === 0) {
+        status.isClearedToday = true; // Treinou hoje = LOCK
+      } else if (diffEmDias > 0 && diffEmDias <= 2) {
+        status.isRecent = true; // Treinou há 1 ou 2 dias = AVISO
+        status.lastDate = lastWorkout.date; // Data formatada para mostrar pro usuário
+      }
+    }
+    return status;
+  };
   // ==========================================
   // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
   // ==========================================
@@ -238,21 +297,65 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* ABAS DO TREINO */}
+      {/* ABAS DO TREINO COM ARQUITETURA LIMPA (LÓGICA NO CSS) */}
       {state.view === 'workout' && state.workoutData && (
         <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-4">
           {Object.keys(state.workoutData).map((day) => {
             const wData = state.workoutData[day];
             const isActive = state.activeDay === day;
+            const isLocked = state.workoutTimer?.isRunning && !isActive; 
+            
+            const status = getWorkoutStatus(day);
+            const isDoneOrRecent = status.isClearedToday || status.isRecent;
+
+            const handleTabClick = () => {
+              if (isLocked || status.isClearedToday) return;
+              if (status.isRecent && !isActive) {
+                setWarningModal({ isOpen: true, day, date: status.lastDate });
+              } else {
+                setters.setActiveDay(day);
+              }
+            };
+
             return (
-              <button key={day} onClick={() => setters.setActiveDay(day)}
+              <button 
+                key={day} 
+                onClick={handleTabClick}
+                disabled={isLocked || status.isClearedToday}
                 className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
-                  ${isActive ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] scale-[1.02]' : 'bg-card text-main dark:text-white border-border hover:border-primary/40'}`}>
-                {isActive && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
-                <span className={`text-3xl font-black tracking-tighter ${isActive ? 'text-black' : 'text-main dark:text-white'}`}>{day}</span>
-                <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive ? 'border-black/30' : 'border-border'}`}>
-                  <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px]">{wData?.title || "TREINO"}</span>
-                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive ? 'text-black/70' : 'text-muted'}`}>{wData?.focus || "SISTEMA"}</span>
+                  ${isActive && !status.isClearedToday ? 'bg-primary text-black scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.3)]' : ''}
+                  ${!isActive && !isDoneOrRecent ? 'bg-card text-main dark:text-white hover:border-primary/40' : ''}
+                  ${isDoneOrRecent ? 'tab-cleared' : 'border-border'}
+                  ${status.isClearedToday ? 'cursor-not-allowed' : ''}
+                `}
+              >
+                {/* 🛡️ TAG CLEARED */}
+                {isDoneOrRecent && (
+                  <div className="tab-cleared-tag absolute top-0 right-0 px-2 py-0.5 rounded-bl-xl border-b border-l backdrop-blur-sm flex items-center gap-1.5">
+                    <span className="tab-cleared-tag-text text-[7px] font-black uppercase tracking-widest">
+                      Cleared
+                    </span>
+                    {status.isRecent && !status.isClearedToday && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]"></div>
+                    )}
+                  </div>
+                )}
+                
+                {isActive && !status.isClearedToday && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
+                
+                {/* LETRA GRANDE (A, B) */}
+                <span className={`text-3xl font-black tracking-tighter ${isActive && !status.isClearedToday ? 'text-black' : (isDoneOrRecent ? 'tab-cleared-letter' : 'text-main dark:text-white')}`}>
+                  {day}
+                </span>
+                
+                {/* BARRA LATERAL E TEXTOS */}
+                <div className={`tab-cleared-sidebar flex flex-col items-start text-left border-l-2 pl-2 ${isActive && !status.isClearedToday ? 'border-black/30' : (isDoneOrRecent ? '' : 'border-border')}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px] ${isDoneOrRecent ? 'tab-cleared-title' : ''}`}>
+                    {wData?.title || "TREINO"}
+                  </span>
+                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive && !status.isClearedToday ? 'text-black/70' : (isDoneOrRecent ? 'tab-cleared-focus' : 'text-muted')}`}>
+                    {wData?.focus || "SISTEMA"}
+                  </span>
                 </div>
               </button>
             );
@@ -263,11 +366,22 @@ const WorkoutApp = () => {
       {/* ROTEADOR DE VIEWS */}
       <div className="relative z-10 min-h-[50vh] px-4">
 
-        {state.view === 'workout' && state.workoutData && (
+         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
-            <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
-              setSessionNote={setters.setSessionNote} finishWorkout={handleFinishWorkoutWrapper} updateSetData={actions.updateSetData}
-              updateSessionSets={actions.updateSessionSets} toggleCheck={actions.toggleCheck} setRestTimerConfig={setRestTimerConfig} />
+            // 🔥 UX MINIMALISTA: Atualizado para usar a nova inteligência de status
+            getWorkoutStatus(state.activeDay).isClearedToday ? (
+              <div className="flex flex-col items-center justify-center h-[40vh] opacity-60 animate-in fade-in duration-700">
+                <Check size={48} className="text-[#00f3ff] mb-4 drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]" />
+                <span className="text-xl font-black text-[#00f3ff] uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]">
+                  Cleared
+                </span>
+              </div>
+            ) : (
+              // Roda o treino normalmente
+              <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
+                setSessionNote={setters.setSessionNote} finishWorkout={handleFinishWorkoutWrapper} updateSetData={actions.updateSetData}
+                updateSessionSets={actions.updateSessionSets} toggleCheck={actions.toggleCheck} setRestTimerConfig={setRestTimerConfig} />
+            )
           ) : (
             <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10 uppercase font-black">
                <p>DADOS INCONSISTENTES</p>
@@ -296,15 +410,14 @@ const WorkoutApp = () => {
         {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
       </div>
 
-      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) */}
-      {state.workoutTimer?.isRunning && state.view !== 'workout' && (
+      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) - OCULTA SE O TIMER ESTIVER ATIVO */}
+      {state.workoutTimer?.isRunning && state.view !== 'workout' && !isRestTimerVisible && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-[400px] animate-in slide-in-from-bottom-4 fade-in duration-500">
           <button 
             onClick={() => setters.setView('workout')}
             className="w-full flex items-center justify-between px-5 py-3.5 bg-[#050B14]/90 backdrop-blur-md border border-red-500/50 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.15)] group hover:border-red-500 transition-colors"
           >
             <div className="flex items-center gap-3">
-              {/* Ponto vermelho piscando (Recording) */}
               <div className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
@@ -319,7 +432,6 @@ const WorkoutApp = () => {
               </div>
             </div>
             
-            {/* Cronômetro Espelhado */}
             <div className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
               <span className="font-mono text-sm font-bold text-red-400 tracking-wider drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
                 {formatTimer(state.workoutTimer.elapsed)}
@@ -337,6 +449,45 @@ const WorkoutApp = () => {
           level={stats?.level || 1} 
           onClose={handleLevelUpClose} 
         />
+      )}
+      {/* ⚠️ MODAL DE AVISO: TREINO RECENTE (OVERTRAINING) */}
+      {warningModal.isOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 dark:bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[320px] bg-card border border-orange-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(249,115,22,0.15)] animate-in zoom-in-95 duration-500">
+            
+            <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-full flex items-center justify-center mb-4">
+              <Flame size={32} className="text-orange-500" />
+            </div>
+            
+            {/* 🔥 CORREÇÃO: Usa text-main no Modo Claro e text-white no Modo Escuro */}
+            <h2 className="text-lg font-black text-main dark:text-white uppercase tracking-widest mb-2">
+              Alerta de Fibras
+            </h2>
+            
+            <p className="text-xs font-bold text-muted uppercase tracking-wider leading-relaxed mb-6">
+              Você já executou o <span className="text-orange-500">Treino {warningModal.day}</span> em <span className="text-main dark:text-white">{warningModal.date}</span>.<br/><br/>
+              O sistema tático recomenda 72h de regeneração. Deseja ignorar o aviso e treinar novamente?
+            </p>
+
+            <div className="flex w-full gap-3">
+              <button 
+                onClick={() => setWarningModal({ isOpen: false, day: null, date: null })}
+                className="flex-1 py-3 bg-transparent border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-main dark:hover:text-white transition-colors"
+              >
+                Abortar
+              </button>
+              <button 
+                onClick={() => {
+                  setters.setActiveDay(warningModal.day);
+                  setWarningModal({ isOpen: false, day: null, date: null });
+                }}
+                className="flex-1 py-3 bg-orange-500 text-black font-black uppercase text-[10px] tracking-widest rounded-xl shadow-[0_0_15px_rgba(249,115,22,0.4)] active:scale-95 transition-all"
+              >
+                Forçar Acesso
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ALERTA DE NOVA CONQUISTA (ISOLADO) */}
@@ -380,6 +531,9 @@ const WorkoutApp = () => {
             setShowCelebration(false);
             setSuccessToast(true);
             setTimeout(() => setSuccessToast(false), 3500);
+
+            // 🔥 O CHUTE TÁTICO: Expulsa da tela de treino para o histórico!
+            setters.setView('history');
           }} 
           
           // 🔥 Lógica de Persistência: Tenta ler o cofre primeiro, se falhar, usa os stats

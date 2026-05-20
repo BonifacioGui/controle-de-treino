@@ -244,31 +244,38 @@
     --corner-width: 2px;
   }
 
-  /* ── Variáveis Light ── */
-  [data-theme='light'] {
-    --bg-page:  #f0f4ff;
-    --bg-card:  rgba(255,255,255,.85);
-    --bg-input: #ffffff;
+  /* ── MODO CLARO: Sci-Fi Industrial / Laboratório Tático ── */
+[data-theme='light'] {
+  /* 1. O Laboratório: Branco clínico e Gelo extremo */
+  --bg-page:  #f8fafc; /* Slate 50: Fundo gelo, muito limpo, corta a fadiga visual */
+  --bg-card:  #ffffff; /* Branco puro: Faz os cartões pularem da tela */
+  --bg-input: #f1f5f9; /* Slate 100: Contraste físico sutil para inputs e botões */
 
-    --text-main:  #0a0f2e;
-    --text-muted: #4a5580;
+  /* 2. O Titânio: Textos pesados e de alto contraste (A regra de ouro do Light Mode) */
+  --text-main:  #020617; /* Slate 950: Preto absoluto, agressivo e de leitura máxima */
+  --text-muted: #64748b; /* Slate 500: Cinza tático/chumbo para dados secundários */
 
-    --primary:   14,165,233;
-    --secondary: 168,85,247;
-    --accent:    99,38,200;
-    --gold:      200,140,0;
-    --success:   16,185,129;
-    --warning:   245,158,11;
+  /* 3. As Lâminas (Acentos): Mais densos para não evaporarem no fundo branco */
+  --primary:   8,145,178;  /* Cyan 600: Ciano profundo, elétrico mas legível */
+  --secondary: 192,38,211; /* Fuchsia 600: Magenta corporativo denso */
+  --accent:    126,34,206; /* Purple 700: Roxo escuro */
+  --gold:      217,119,6;  /* Amber 600 */
+  --success:   5,150,105;  /* Emerald 600 */
+  --warning:   234,88,12;  /* Orange 600 */
 
-    --border-color:    rgba(14,165,233,.15);
-    --border-hot:      rgba(14,165,233,.5);
-    --grid-color:      rgba(14,165,233,.06);
-    --grid-color-2:    rgba(168,85,247,.04);
-    --texture-opacity: .04;
-    --card-shadow:
-      0 4px 6px  rgba(0,0,0,.05),
-      0 20px 40px rgba(0,0,0,.08);
-  }
+  /* 4. Estrutura Física: Bordas nítidas como projetos de engenharia (Blueprints) */
+  --border-color:  rgba(2,6,23, 0.12); /* Bordas chumbo finas, sem aspecto de "vidro" */
+  --border-hot:    rgba(8,145,178, 0.4); /* O ciano vibrando levemente na borda ativa */
+  
+  --grid-color:    rgba(2,6,23, 0.03); /* Grid quase imperceptível, apenas textura tátil */
+  --grid-color-2:  rgba(2,6,23, 0.02);
+  --texture-opacity: 0.02;
+  
+  /* 5. Sombras Corporativas: Mais curtas e densas, simulando luz de teto */
+  --card-shadow:
+    0 4px 6px  rgba(2,6,23, 0.04),
+    0 15px 35px rgba(2,6,23, 0.06);
+}
 
   /* ── BODY (Estilos base + Background) ── */
   body {
@@ -951,5 +958,75 @@
   
   .cyber-grid-3d::before {
     animation: none !important;
+  }
+}
+
+/* ================================================
+   COMPONENTES: ABAS DE TREINO (CLEARED / BLOQUEADO)
+================================================ */
+@layer components {
+  /* 1. O Fundo do Cartão */
+  .tab-cleared {
+    background-color: #050505;
+    border-color: rgba(0,243,255, 0.3);
+    box-shadow: inset 0 0 15px rgba(0,243,255, 0.05);
+  }
+  [data-theme='light'] .tab-cleared {
+    background-color: #f1f5f9; /* Fundo Cinza Sólido */
+    border-color: transparent; /* Remove borda neon */
+    box-shadow: none;
+  }
+
+  /* 2. O Fundo da Tag "Cleared" no canto superior */
+  .tab-cleared-tag {
+    background-color: rgba(0,243,255, 0.1);
+    border-bottom-color: rgba(0,243,255, 0.3);
+    border-left-color: rgba(0,243,255, 0.3);
+  }
+  [data-theme='light'] .tab-cleared-tag {
+    background-color: #e2e8f0; 
+    border-color: #cbd5e1;
+  }
+
+  /* 3. O Texto dentro da Tag "Cleared" */
+  .tab-cleared-tag-text {
+    color: #00f3ff;
+    filter: drop-shadow(0 0 5px rgba(0,243,255, 0.8));
+  }
+  [data-theme='light'] .tab-cleared-tag-text {
+    color: #64748b; /* Texto Chumbo */
+    filter: none;   /* Desliga o brilho Neon */
+  }
+
+  /* 4. A Letra Grande (A, B, C) */
+  .tab-cleared-letter {
+    color: rgba(0,243,255, 0.4);
+  }
+  [data-theme='light'] .tab-cleared-letter {
+    color: #cbd5e1;
+  }
+
+  /* 5. A Linha da Barra Lateral */
+  .tab-cleared-sidebar {
+    border-left-color: rgba(0,243,255, 0.2);
+  }
+  [data-theme='light'] .tab-cleared-sidebar {
+    border-left-color: #cbd5e1;
+  }
+
+  /* 6. Textos Laterais (Título e Foco) */
+  .tab-cleared-title {
+    color: rgba(0,243,255, 0.6);
+  }
+  [data-theme='light'] .tab-cleared-title {
+    color: #94a3b8;
+  }
+
+  .tab-cleared-focus {
+    color: rgba(0,243,255, 0.4);
+  }
+  [data-theme='light'] .tab-cleared-focus {
+    color: #94a3b8;
+    opacity: 0.7;
   }
 }
