@@ -72,7 +72,7 @@ const SidebarMenu = ({ isOpen, onClose, theme, setTheme, setView }) => {
         <div className="space-y-4 mb-8">
           <span className="text-[10px] font-black text-primary/70 uppercase tracking-[0.2em] block mb-2">Visualização</span>
           <button onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group active:scale-95 shadow-sm ${theme === 'light' ? 'bg-white border-yellow-500 text-yellow-600' : 'bg-input/50 border-border hover:border-primary text-muted hover:text-primary'}`}>
-            <span className="font-black uppercase tracking-widest text-xs">{theme === 'light' ? 'Modo Diurno' : 'Modo Noturno'}</span>
+            <span className="font-black uppercase tracking-widest text-xs">{theme === 'light' ? 'Modo Claro' : 'Modo Escuro'}</span>
             {theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
