@@ -203,12 +203,37 @@ const WorkoutApp = () => {
   // 🔥 LÓGICA DE UI E TRAVAS
   // ==========================================
   const isRestTimerVisible = state.timerState?.active || restTimerConfig.isOpen;
-  
-  const isWorkoutCompletedToday = (dayName) => {
-    return state.history.some(h => 
-      h.workout_name === dayName && 
-      h.workout_date === state.selectedDate
-    );
+    
+  // Estado para o Modal de Aviso de Sobrecarga (O Soft Lock)
+  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, date: null });
+
+  // Nova inteligência de status do treino
+  const getWorkoutStatus = (dayName) => {
+    const hoje = new Date(state.selectedDate); 
+    hoje.setHours(0, 0, 0, 0);
+
+    let status = { isClearedToday: false, isRecent: false, lastDate: null };
+
+    // Puxa o histórico desse treino e ordena do mais recente pro mais antigo
+    const historyForDay = state.history
+      .filter(h => h.workout_name === dayName)
+      .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date));
+
+    if (historyForDay.length > 0) {
+      const lastWorkout = historyForDay[0];
+      const dataTreino = new Date(lastWorkout.workout_date);
+      dataTreino.setHours(0, 0, 0, 0);
+      
+      const diffEmDias = (hoje - dataTreino) / (1000 * 60 * 60 * 24);
+
+      if (diffEmDias === 0) {
+        status.isClearedToday = true; // Treinou hoje = LOCK
+      } else if (diffEmDias > 0 && diffEmDias <= 2) {
+        status.isRecent = true; // Treinou há 1 ou 2 dias = AVISO
+        status.lastDate = lastWorkout.date; // Data formatada para mostrar pro usuário
+      }
+    }
+    return status;
   };
   // ==========================================
   // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
@@ -272,45 +297,62 @@ const WorkoutApp = () => {
         </div>
       </header>
 
-      {/* ABAS DO TREINO COM TRAVAS DE SEGURANÇA E VISUAL CYBERPUNK */}
+      {/* ABAS DO TREINO COM AVISO INTELIGENTE E VISUAL CYBERPUNK UNIFICADO */}
       {state.view === 'workout' && state.workoutData && (
         <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-4">
           {Object.keys(state.workoutData).map((day) => {
             const wData = state.workoutData[day];
             const isActive = state.activeDay === day;
-            
-            const isDone = isWorkoutCompletedToday(day); 
             const isLocked = state.workoutTimer?.isRunning && !isActive; 
+            
+            const status = getWorkoutStatus(day);
+            const isDoneOrRecent = status.isClearedToday || status.isRecent;
+
+            const handleTabClick = () => {
+              if (isLocked || status.isClearedToday) return;
+              if (status.isRecent && !isActive) {
+                setWarningModal({ isOpen: true, day, date: status.lastDate });
+              } else {
+                setters.setActiveDay(day);
+              }
+            };
 
             return (
               <button 
                 key={day} 
-                onClick={() => !isLocked && !isDone && setters.setActiveDay(day)}
-                disabled={isLocked || isDone}
+                onClick={handleTabClick}
+                disabled={isLocked || status.isClearedToday}
                 className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
-                  ${isActive && !isDone ? 'bg-primary text-black scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.3)]' : ''}
-                  ${!isActive && !isDone ? 'bg-card text-main dark:text-white border-border hover:border-primary/40' : ''}
-                  ${isDone ? 'bg-[#050505] border-[#00f3ff]/30 shadow-[inset_0_0_15px_rgba(0,243,255,0.05)] cursor-not-allowed' : ''}
+                  ${isActive && !status.isClearedToday ? 'bg-primary text-black scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.3)]' : ''}
+                  ${!isActive && !isDoneOrRecent ? 'bg-card text-main dark:text-white hover:border-primary/40' : ''}
+                  ${isDoneOrRecent ? 'bg-[#050505] border-[#00f3ff]/30 shadow-[inset_0_0_15px_rgba(0,243,255,0.05)]' : 'border-border'}
+                  ${status.isClearedToday ? 'cursor-not-allowed' : ''}
                 `}
               >
                 {/* 🛡️ TAG NEON DE MISSÃO CUMPRIDA */}
-                {isDone && (
-                  <div className="absolute top-0 right-0 bg-[#00f3ff]/10 px-2 py-0.5 rounded-bl-xl border-b border-l border-[#00f3ff]/30 backdrop-blur-sm">
-                    <span className="text-[7px] font-black text-[#00f3ff] uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">Cleared</span>
+                {isDoneOrRecent && (
+                  <div className="absolute top-0 right-0 bg-[#00f3ff]/10 px-2 py-0.5 rounded-bl-xl border-b border-l border-[#00f3ff]/30 backdrop-blur-sm flex items-center gap-1.5">
+                    <span className="text-[7px] font-black text-[#00f3ff] uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">
+                      Cleared
+                    </span>
+                    {/* Alerta Laranja colado na tag se for um treino "forçável" */}
+                    {status.isRecent && !status.isClearedToday && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]"></div>
+                    )}
                   </div>
                 )}
                 
-                {isActive && !isDone && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
+                {isActive && !status.isClearedToday && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
                 
-                <span className={`text-3xl font-black tracking-tighter ${isActive && !isDone ? 'text-black' : (isDone ? 'text-[#00f3ff]/40' : 'text-main dark:text-white')}`}>
+                <span className={`text-3xl font-black tracking-tighter ${isActive && !status.isClearedToday ? 'text-black' : (isDoneOrRecent ? 'text-[#00f3ff]/40' : 'text-main dark:text-white')}`}>
                   {day}
                 </span>
                 
-                <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive && !isDone ? 'border-black/30' : (isDone ? 'border-[#00f3ff]/20' : 'border-border')}`}>
-                  <span className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px] ${isDone ? 'text-[#00f3ff]/60' : ''}`}>
+                <div className={`flex flex-col items-start text-left border-l-2 pl-2 ${isActive && !status.isClearedToday ? 'border-black/30' : (isDoneOrRecent ? 'border-[#00f3ff]/20' : 'border-border')}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px] ${isDoneOrRecent ? 'text-[#00f3ff]/60' : ''}`}>
                     {wData?.title || "TREINO"}
                   </span>
-                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive && !isDone ? 'text-black/70' : (isDone ? 'text-[#00f3ff]/40' : 'text-muted')}`}>
+                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive && !status.isClearedToday ? 'text-black/70' : (isDoneOrRecent ? 'text-[#00f3ff]/40' : 'text-muted')}`}>
                     {wData?.focus || "SISTEMA"}
                   </span>
                 </div>
@@ -323,10 +365,10 @@ const WorkoutApp = () => {
       {/* ROTEADOR DE VIEWS */}
       <div className="relative z-10 min-h-[50vh] px-4">
 
-        {state.view === 'workout' && state.workoutData && (
+         {state.view === 'workout' && state.workoutData && (
           state.workoutData[state.activeDay] ? (
-            // 🔥 UX MINIMALISTA: Se estiver concluído, mostra apenas um selo silencioso
-            isWorkoutCompletedToday(state.activeDay) ? (
+            // 🔥 UX MINIMALISTA: Atualizado para usar a nova inteligência de status
+            getWorkoutStatus(state.activeDay).isClearedToday ? (
               <div className="flex flex-col items-center justify-center h-[40vh] opacity-60 animate-in fade-in duration-700">
                 <Check size={48} className="text-[#00f3ff] mb-4 drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]" />
                 <span className="text-xl font-black text-[#00f3ff] uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]">
@@ -406,6 +448,44 @@ const WorkoutApp = () => {
           level={stats?.level || 1} 
           onClose={handleLevelUpClose} 
         />
+      )}
+      {/* ⚠️ MODAL DE AVISO: TREINO RECENTE (OVERTRAINING) */}
+      {warningModal.isOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[320px] bg-card border border-orange-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(249,115,22,0.15)] animate-in zoom-in-95 duration-500">
+            
+            <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-full flex items-center justify-center mb-4">
+              <Flame size={32} className="text-orange-500" />
+            </div>
+            
+            <h2 className="text-lg font-black text-white uppercase tracking-widest mb-2">
+              Alerta de Fibras
+            </h2>
+            
+            <p className="text-xs font-bold text-muted uppercase tracking-wider leading-relaxed mb-6">
+              Você já executou o <span className="text-orange-500">Treino {warningModal.day}</span> em <span className="text-white">{warningModal.date}</span>.<br/><br/>
+              O sistema tático recomenda 72h de regeneração. Deseja ignorar o aviso e treinar novamente?
+            </p>
+
+            <div className="flex w-full gap-3">
+              <button 
+                onClick={() => setWarningModal({ isOpen: false, day: null, date: null })}
+                className="flex-1 py-3 bg-transparent border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-white transition-colors"
+              >
+                Abortar
+              </button>
+              <button 
+                onClick={() => {
+                  setters.setActiveDay(warningModal.day);
+                  setWarningModal({ isOpen: false, day: null, date: null });
+                }}
+                className="flex-1 py-3 bg-orange-500 text-black font-black uppercase text-[10px] tracking-widest rounded-xl shadow-[0_0_15px_rgba(249,115,22,0.4)] active:scale-95 transition-all"
+              >
+                Forçar Acesso
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ALERTA DE NOVA CONQUISTA (ISOLADO) */}
