@@ -15,7 +15,7 @@ const CyberNav = ({ currentView, setView }) => {
     <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-card/95 backdrop-blur-xl border-t border-border px-1 sm:px-6 pb-6 pt-3 animate-in slide-in-from-bottom-full duration-500">
       
       {/* Mantivemos apenas a correção de espaçamento que você gostou (gap-3 em vez de justify-between) */}
-      <div className="flex justify-center items-center gap-3 sm:gap-6 max-w-[380px] mx-auto">
+      <div className="flex justify-center items-center gap-6 sm:gap-6 max-w-[380px] mx-auto">
         {navItems.map((item) => {
           const isActive = currentView === item.id;
           const Icon = item.icon;
