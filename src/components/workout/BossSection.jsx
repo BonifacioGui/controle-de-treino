@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Trophy, Zap, Award, Target } from 'lucide-react';
-import { isSameExercise, parseDateTimestamp, safeParseFloat } from '../../utils/workoutUtils';
+import { parseDateTimestamp, safeParseFloat } from '../../utils/workoutUtils';
 // 🔥 IMPORTAÇÕES WEBP SEM ERRO 🔥
 import scavengerImg from '../../assets/scavenger.webp';
 import t800Img from '../../assets/t-800.webp'; 
@@ -34,11 +34,22 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
 
   useEffect(() => {
     if (effectiveVolume > prevVolumeRef.current) {
-      setDamageAnim(true);
-      const timer = setTimeout(() => setDamageAnim(false), 300); 
-      return () => clearTimeout(timer);
+      // 1. Inicia a animação de forma assíncrona (resolve o erro do ESLint)
+      const startTimer = setTimeout(() => setDamageAnim(true), 0);
+      
+      // 2. Desliga a animação após 300ms
+      const endTimer = setTimeout(() => setDamageAnim(false), 200); 
+      
+      // 3. Atualiza a referência
+      prevVolumeRef.current = effectiveVolume;
+      
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(endTimer);
+      };
+    } else {
+      prevVolumeRef.current = effectiveVolume;
     }
-    prevVolumeRef.current = effectiveVolume;
   }, [effectiveVolume]);
 
   const currentBoss = useMemo(() => {
@@ -57,43 +68,87 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
   }, [selectedDate, activeDay, currentWorkout]);
 
   const bossStats = useMemo(() => {
-    if (!currentWorkout || !currentWorkout.exercises?.length) return { max: 5000, current: 5000, percent: 100, status: 'ALIVE' };
-    
-    let maxHp = 0;
-    const previousSession = history?.filter(h => h.exercises.some(e => isSameExercise(e.name, currentWorkout.exercises[0].name)))?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))[0];
-    
-    if (previousSession) {
-        let prevVolume = 0;
-        previousSession.exercises.forEach(ex => { ex.sets?.forEach(s => prevVolume += (safeParseFloat(s.weight) * safeParseFloat(s.reps))); });
-        maxHp = Math.max(Math.round(prevVolume * 1.05), 2000); 
-    } else { 
-        maxHp = 5000; 
+    // Fallback de segurança caso os dados não tenham carregado
+    if (!currentWorkout || !currentWorkout.exercises?.length) {
+        return { max: 5000, current: 5000, percent: 100, status: 'ALIVE' };
     }
     
+    let maxHp = 5000; // HP Base para novos utilizadores / novos treinos
+    
+    // 1. Filtra o histórico APENAS pelos treinos do mesmo protocolo (ex: "A")
+    // e capta os últimos 3 treinos registados para esse dia.
+    const pastSessions = history
+        ?.filter(h => h.dayName === activeDay)
+        ?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))
+        ?.slice(0, 3) || [];
+    
+    if (pastSessions.length > 0) {
+        let totalVolumeOfPastSessions = 0;
+
+        // 2. Soma o volume de todos esses últimos 3 treinos
+        pastSessions.forEach(session => {
+            let sessionVolume = 0;
+            session.exercises.forEach(ex => { 
+                ex.sets?.forEach(s => {
+                    sessionVolume += (safeParseFloat(s.weight) * safeParseFloat(s.reps));
+                }); 
+            });
+            totalVolumeOfPastSessions += sessionVolume;
+        });
+
+        // 3. Calcula a Média de Volume real da tua fase atual
+        const avgVolume = totalVolumeOfPastSessions / pastSessions.length;
+        
+        // 4. O HP do Boss passa a ser a tua Média + 5% de desafio
+        // O Math.max garante que o Boss nunca tem menos de 2000 HP, mesmo em dias de Deload
+        maxHp = Math.max(Math.round(avgVolume * 1.05), 2000); 
+    }
+    
+    // 5. Calcula a vida restante com base no que já levantaste hoje
     const remainingHp = Math.max(0, maxHp - effectiveVolume);
     const percent = (remainingHp / maxHp) * 100;
-    return { max: maxHp, current: remainingHp, percent, status: percent <= 0 ? 'DEFEATED' : 'ALIVE' };
-  }, [effectiveVolume, currentWorkout, history]);
+    
+    return { 
+        max: maxHp, 
+        current: remainingHp, 
+        percent, 
+        status: percent <= 0 ? 'DEFEATED' : 'ALIVE' 
+    };
+  }, [effectiveVolume, currentWorkout, history, activeDay]);
 
   useEffect(() => {
     if (wasAliveRef.current && bossStats.status === 'DEFEATED') {
-      const randomLootIndex = Math.floor(Math.random() * LOOT_TABLE.length);
-      setDroppedLoot(LOOT_TABLE[randomLootIndex]);
-      setShowLootOverlay(true);
-      setTimeout(() => setShowLootOverlay(false), 4000);
+      
+      // Envolvemos a mudança de estado num setTimeout(..., 0) para não travar o render
+      const dropTimer = setTimeout(() => {
+        const randomLootIndex = Math.floor(Math.random() * LOOT_TABLE.length);
+        setDroppedLoot(LOOT_TABLE[randomLootIndex]);
+        setShowLootOverlay(true);
+      }, 0);
+      
+      // Some com o Loot depois de 4 segundos
+      const hideTimer = setTimeout(() => setShowLootOverlay(false), 4000);
+      
       wasAliveRef.current = false; 
+
+      return () => {
+        clearTimeout(dropTimer);
+        clearTimeout(hideTimer);
+      };
+
     } else if (bossStats.status === 'ALIVE') { 
       wasAliveRef.current = true; 
     }
   }, [bossStats.status]);
 
   return (
-    <div className={`relative w-full mb-4 sm:mb-6 transition-transform duration-200 ${damageAnim ? 'scale-[1.01] translate-x-1' : 'scale-100'}`}>
+    <div className={`relative w-full mb-4 sm:mb-6 transition-all duration-75 ease-out ${damageAnim ? 'scale-[0.98] -translate-x-1 rotate-[0.5deg]' : 'scale-100 translate-x-0 rotate-0'}`}>
       
       {/* FRAME METÁLICO CHANFRADO */}
       <div 
-        className={`relative bg-card dark:bg-black border border-black dark:border-0 transition-all duration-500 shadow-xl sm:shadow-2xl border-red-600 ring-1 ring-red-600/30
-          ${bossStats.status === 'DEFEATED' ? 'border-green-600 ring-green-600/30 shadow-[0_0_15px_rgba(22,163,74,0.4)]' : ''}`}
+        className={`relative bg-card dark:bg-black border border-black dark:border-0 transition-colors duration-500 shadow-xl sm:shadow-2xl border-red-600 ring-1 ring-red-600/30
+          ${bossStats.status === 'DEFEATED' ? 'border-green-600 ring-green-600/30 shadow-[0_0_15px_rgba(22,163,74,0.4)]' : ''}
+          ${damageAnim ? 'bg-red-500/10 border-red-500' : ''}`}
         style={{ clipPath: 'polygon(0% 15%, 2% 0%, 98% 0%, 100% 15%, 100% 85%, 98% 100%, 2% 100%, 0% 85%)' }}
       >
         <div className="bg-transparent flex items-stretch relative overflow-hidden h-16 sm:h-22" 
@@ -101,6 +156,11 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
           
           {/* PORTRAIT DO BOSS */}
           <div className="relative w-20 h-20 sm:w-36 sm:h-32 shrink-0 bg-transparent flex items-center justify-center overflow-hidden">
+            
+            {/* 🔥 FLASH DE DANO BRANCO/VERMELHO (Fica por cima da imagem invisível, só aparece no hit) */}
+            <div className={`absolute inset-0 z-20 bg-white transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-60' : 'opacity-0'}`}></div>
+            <div className={`absolute inset-0 z-20 bg-red-600 mix-blend-color transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-80' : 'opacity-0'}`}></div>
+
             {bossStats.status === 'DEFEATED' ? (
               <div className="relative flex flex-col items-center justify-center">
                 <div className="absolute w-12 h-12 sm:w-20 sm:h-20 bg-green-500/30 rounded-full blur-xl animate-pulse"></div>
@@ -111,17 +171,17 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
                 />
               </div>
             ) : (
-              <>
-                <img 
-                  src={currentBoss.image} 
-                  alt={currentBoss.name} 
-                  className={`relative z-10 w-full h-full object-cover grayscale-[15%] transition-all duration-100 animate-pulse
-                    ${damageAnim ? 'brightness-150 scale-110 saturate-200' : 'opacity-90'}`}
-                  style={{ filter: `drop-shadow(0px 0px 8px ${currentBoss.aura})` }}
-                />
-              </>
+              <img 
+                src={currentBoss.image} 
+                alt={currentBoss.name} 
+                // 🔥 A imagem não estoura mais o brilho, apenas dá um leve solavanco (scale-105)
+                className={`relative z-10 w-full h-full object-cover grayscale-[15%] transition-transform duration-75 ${damageAnim ? 'scale-105' : 'scale-100 opacity-90'}`}
+                style={{ filter: `drop-shadow(0px 0px 8px ${currentBoss.aura})` }}
+              />
             )}
           </div>
+
+          {/* ... HUD CENTRAL CONTINUA IGUAL ... */}
 
           {/* HUD CENTRAL */}
           <div className="flex-1 flex flex-col justify-center px-2 sm:px-6">
