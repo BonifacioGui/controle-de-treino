@@ -89,7 +89,7 @@ const WorkoutHeader = ({
               >
                   <Play size={18} className="fill-primary drop-shadow-[0_0_5px_rgba(var(--primary),0.8)]" />
                   <span className="font-black text-sm tracking-[0.2em] uppercase text-primary drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
-                    INICIAR OPERAÇÃO
+                    INICIAR TREINO
                   </span>
               </button>
             ) : (

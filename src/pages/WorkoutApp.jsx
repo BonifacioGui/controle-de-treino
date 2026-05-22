@@ -452,27 +452,26 @@ const WorkoutApp = () => {
       )}
       {/* ⚠️ MODAL DE AVISO: TREINO RECENTE (OVERTRAINING) */}
       {warningModal.isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 dark:bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[320px] bg-card border border-orange-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(249,115,22,0.15)] animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[320px] bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center shadow-lg animate-in zoom-in-95 duration-300">
             
-            <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-full flex items-center justify-center mb-4">
-              <Flame size={32} className="text-orange-500" />
+            <div className="w-16 h-16 bg-orange-50/50 border border-orange-200 rounded-full flex items-center justify-center mb-4 text-orange-600">
+              <Flame size={32} />
             </div>
             
-            {/* 🔥 CORREÇÃO: Usa text-main no Modo Claro e text-white no Modo Escuro */}
-            <h2 className="text-lg font-black text-main dark:text-white uppercase tracking-widest mb-2">
+            <h2 className="text-lg font-black text-main uppercase tracking-widest mb-2">
               Alerta de Fibras
             </h2>
             
             <p className="text-xs font-bold text-muted uppercase tracking-wider leading-relaxed mb-6">
-              Você já executou o <span className="text-orange-500">Treino {warningModal.day}</span> em <span className="text-main dark:text-white">{warningModal.date}</span>.<br/><br/>
-              O sistema tático recomenda 72h de regeneração. Deseja ignorar o aviso e treinar novamente?
+              Você já executou o <span className="text-orange-600">Treino {warningModal.day}</span> em <span className="text-main">{warningModal.date}</span>.<br/><br/>
+              O sistema tático recomenda 72h de regeneração. Deseja ignorar o aviso e acessar o treino?
             </p>
 
             <div className="flex w-full gap-3">
               <button 
                 onClick={() => setWarningModal({ isOpen: false, day: null, date: null })}
-                className="flex-1 py-3 bg-transparent border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-main dark:hover:text-white transition-colors"
+                className="flex-1 py-3 bg-input border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-main transition-colors"
               >
                 Abortar
               </button>
@@ -481,7 +480,7 @@ const WorkoutApp = () => {
                   setters.setActiveDay(warningModal.day);
                   setWarningModal({ isOpen: false, day: null, date: null });
                 }}
-                className="flex-1 py-3 bg-orange-500 text-black font-black uppercase text-[10px] tracking-widest rounded-xl shadow-[0_0_15px_rgba(249,115,22,0.4)] active:scale-95 transition-all"
+                className="flex-1 py-3 bg-orange-600 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-sm hover:bg-orange-700 active:scale-95 transition-all"
               >
                 Forçar Acesso
               </button>

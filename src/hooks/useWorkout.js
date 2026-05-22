@@ -83,7 +83,11 @@ export const useWorkout = () => {
       if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: b.date.split('T')[0].split('-').reverse().join('/') })));
       
       const { data: trainData } = await supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false });
-      if (trainData) setHistory(trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name })));
+      let historyParsed = [];
+      if (trainData) {
+        historyParsed = trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name }));
+        setHistory(historyParsed);
+      }
 
       const { data: planList } = await supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1); 
       const planData = planList && planList.length > 0 ? planList[0] : null;
@@ -92,8 +96,30 @@ export const useWorkout = () => {
         const parsedData = typeof planData.plan_data === 'string' ? JSON.parse(planData.plan_data) : planData.plan_data;
         setWorkoutData(parsedData);
         
-        const savedDay = localStorage.getItem('active_day');
-        setActiveDay(currentDay => (savedDay && parsedData[savedDay]) ? savedDay : (parsedData[currentDay] ? currentDay : (Object.keys(parsedData)[0] || 'A')));
+        // 🔥 A MÁGICA COMEÇA AQUI: AUTO-ROUTING INTELIGENTE
+        const planKeys = Object.keys(parsedData);
+        if (historyParsed.length > 0 && planKeys.length > 0) {
+          const lastSession = historyParsed[0];
+          const lastWorkoutIndex = planKeys.indexOf(lastSession.dayName);
+          
+          // Formata a data de hoje para bater com a do banco
+          const todayStr = new Date().toISOString().split('T')[0].split('-').reverse().join('/');
+          
+          if (lastSession.date === todayStr) {
+            // Se ele já treinou HOJE, mantém a aba no treino feito para ele ver o card de "Sessão Concluída"
+            if (planKeys.includes(lastSession.dayName)) {
+              setActiveDay(lastSession.dayName);
+            }
+          } else if (lastWorkoutIndex !== -1) {
+            // Se ele treinou ONTEM ou ANTES, calcula o próximo treino e já joga ele lá!
+            const nextIndex = (lastWorkoutIndex + 1) % planKeys.length;
+            setActiveDay(planKeys[nextIndex]);
+          }
+        } else {
+          // Fallback caso não tenha histórico
+          const savedDay = localStorage.getItem('active_day');
+          setActiveDay(currentDay => (savedDay && parsedData[savedDay]) ? savedDay : (parsedData[currentDay] ? currentDay : (planKeys[0] || 'A')));
+        }
         
         localStorage.setItem('workout_plan', JSON.stringify(parsedData));
       }
@@ -242,7 +268,6 @@ export const useWorkout = () => {
         if(progress[key]?.swappedName) exercisesSwappedCount++;
       });
 
-      // 🔥 SISTEMA DE OVERLOAD REALISTA (COM JANELA DE TOLERÂNCIA) 🔥
       const treinosPassados = history.filter(t => t.workout_name === safeDay);
       let multiplicadorXP = 1.0;
       let overloadStatus = 'NORMAL';
@@ -251,35 +276,31 @@ export const useWorkout = () => {
         const volumeAnterior = treinosPassados[0].total_volume;
         
         if (totalVolume > volumeAnterior) {
-          multiplicadorXP = 1.2; // OVERLOAD: Bateu PR de volume (+20% XP)
+          multiplicadorXP = 1.2; 
           overloadStatus = 'OVERLOAD';
         } else if (totalVolume < volumeAnterior) {
-          multiplicadorXP = 0.8; // REGRESSÃO: Dia ruim, perdeu volume (-20% XP)
+          multiplicadorXP = 0.8; 
           overloadStatus = 'REGRESSÃO';
         } else {
-          // O volume é EXATAMENTE igual ao treino passado.
-          // Vamos ver há quanto tempo ele está preso nesse mesmo volume:
           let repeticoesDoVolume = 0;
           for (let i = 0; i < treinosPassados.length; i++) {
             if (treinosPassados[i].total_volume === totalVolume) {
               repeticoesDoVolume++;
             } else {
-              break; // O volume era diferente antes, quebrou a contagem
+              break; 
             }
           }
 
-          // Se ele já repetiu essa carga em 3 treinos anteriores (esta é a 4ª vez)
           if (repeticoesDoVolume >= 3) {
-            multiplicadorXP = 0.85; // ESTAGNAÇÃO: Tempo demais no conforto (-15% XP)
+            multiplicadorXP = 0.85; 
             overloadStatus = 'ESTAGNAÇÃO';
           } else {
-            multiplicadorXP = 1.0;  // MANUTENÇÃO: Consolidando a força (100% XP)
+            multiplicadorXP = 1.0; 
             overloadStatus = 'MANUTENÇÃO';
           }
         }
       }
 
-      // Calcula o XP Base e aplica o Multiplicador
       const xpBase = Math.floor(totalVolume * 0.05);
       const xpGained = Math.floor(xpBase * multiplicadorXP) + bonusXP;
 
@@ -297,7 +318,7 @@ export const useWorkout = () => {
         has_note: !!sessionNote,
         exercises_swapped: exercisesSwappedCount,
         prs_broken: 0,
-        overload_status: overloadStatus // Gravando no banco para usos futuros
+        overload_status: overloadStatus 
       };
 
       const statsAntes = calculateStats(history);
@@ -319,15 +340,12 @@ export const useWorkout = () => {
       setHistory(newHistory);
 
       if (userId) {
-        // 🔥 BLINDAGEM MÁXIMA DO BANCO DE DADOS
         const { error } = await supabase.from('workout_history').insert([sessionBase]);
         
         if (error) {
           console.error("[ERRO CRÍTICO SUPABASE] O treino não foi salvo na nuvem:", error.message);
           alert(`Falha no Banco de Dados: ${error.message}\nVerifique se todas as colunas existem no Supabase!`);
-          // Note que NÃO chamamos o fetchCloudData aqui. Assim seu treino local não é apagado!
         } else {
-          // Só puxa da nuvem se o salvamento foi um SUCESSO absoluto
           fetchCloudData();
         }
       }
@@ -440,7 +458,7 @@ export const useWorkout = () => {
         });
       },
     }
-  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, resetWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer, setWorkoutTimer]); // 🔥 Aviso do ESLint resolvido com o setWorkoutTimer no final da linha!
+  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, resetWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer, setWorkoutTimer]); 
 
   const globalRPG = useMemo(() => calculateStats(history), [history]);
 
