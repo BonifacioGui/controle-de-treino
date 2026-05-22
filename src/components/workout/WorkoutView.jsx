@@ -53,6 +53,13 @@ const WorkoutView = ({
     return null;
   }, [activeDay, history, selectedDate]);
 
+  const [errorToast, setErrorToast] = useState(null);
+
+  const showError = (msg) => {
+    setErrorToast(msg);
+    setTimeout(() => setErrorToast(null), 3500); // Some sozinho depois de 3.5s
+  };
+
   // LIGAR O CRONÓMETRO ATIVA O COMBATE AUTOMATICAMENTE
   useEffect(() => {
     if (!workoutTimer.isRunning) {
@@ -157,7 +164,7 @@ const WorkoutView = ({
       });
 
       if (completedSets === 0) {
-        alert("Sessão abortada: Nenhuma série foi registada.");
+        showError("Sessão abortada: Nenhuma série foi registrada.");
         setIsFinishing(false);
         return;
       }
@@ -448,6 +455,16 @@ const WorkoutView = ({
               </button>
             </div>
           </div>
+        </div>,
+        document.body
+      )}
+      {/* 🔥 TOAST DE ERRO CRÍTICO AQUI, BEM NO FINAL */}
+      {errorToast && createPortal(
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[99999] animate-in slide-in-from-top-5 fade-in duration-300">
+           <div className="bg-red-950/90 border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] rounded-full px-6 py-3 flex items-center gap-3 backdrop-blur-md">
+              <AlertTriangle size={18} className="text-red-500 animate-pulse" />
+              <span className="text-xs font-black text-red-100 uppercase tracking-widest">{errorToast}</span>
+           </div>
         </div>,
         document.body
       )}
