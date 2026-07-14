@@ -1,121 +1,155 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  throw new Error("VITE_GEMINI_API_KEY não configurada");
-}
-
-const genAI = new GoogleGenerativeAI(apiKey);
+import { supabase } from "./supabaseClient";
 
 class AIError extends Error {
   constructor(message, type = "UNKNOWN") {
     super(message);
+    this.name = "AIError";
     this.type = type;
   }
 }
 
 const cache = new Map();
 
-const SYSTEM_PROMPT_SMART = `Você é um especialista em musculação e um decodificador de treinos.
+function createCacheKey(rawText, file, autoFix) {
+  const fileSignature = file
+    ? `${file.name}:${file.size}:${file.lastModified}`
+    : "sem-arquivo";
 
-Corrija e melhore o treino:
-- Normalize nomes
-- Complete séries (ex: 3x10, TEMPO, etc)
-- Defina o foco muscular da sessão (ex: Peito, Costas, Perna, etc)
-- EXTRAÇÃO DE VARIÁVEL: Se o usuário colocar um "ou", barra (/) ou especificar uma segunda opção entre parênteses para um exercício, remova isso do nome principal e adicione no array "alternatives".
-
-Retorne JSON válido e EXATAMENTE no formato abaixo:
-{
-  "A": {
-    "title": "TREINO A",
-    "focus": "Grupo muscular",
-    "exercises": [
-      { 
-        "name": "Supino Reto (Barra)", 
-        "sets": "3x10", 
-        "note": "",
-        "alternatives": ["Supino Reto (Halter)"]
-      }
-    ]
-  }
-}`;
-
-const SYSTEM_PROMPT_RAW = `Converta exatamente o texto para JSON sem modificar conteúdo.`;
-
-function safeJsonParse(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start !== -1 && end !== -1) {
-      return JSON.parse(cleaned.slice(start, end + 1));
-    }
-    throw new AIError("Erro ao interpretar resposta da IA", "INVALID_JSON");
-  }
+  return JSON.stringify({
+    rawText,
+    fileSignature,
+    autoFix,
+  });
 }
 
-function validate(data) {
-  if (!data || typeof data !== "object") {
-    throw new AIError("Formato inválido", "INVALID_FORMAT");
+function validateWorkoutData(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new AIError(
+      "A inteligência artificial retornou um formato inválido.",
+      "INVALID_FORMAT",
+    );
   }
+
+  const workoutDays = Object.values(data);
+
+  if (workoutDays.length === 0) {
+    throw new AIError(
+      "Nenhum treino foi identificado no conteúdo enviado.",
+      "EMPTY_RESULT",
+    );
+  }
+
+  const hasInvalidDay = workoutDays.some(
+    (day) =>
+      !day ||
+      typeof day !== "object" ||
+      !Array.isArray(day.exercises),
+  );
+
+  if (hasInvalidDay) {
+    throw new AIError(
+      "A ficha retornada pela inteligência artificial está incompleta.",
+      "INVALID_FORMAT",
+    );
+  }
+
   return data;
 }
 
-async function retry(fn, times = 2) {
-  let last;
-  for (let i = 0; i <= times; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      last = e;
+async function getFunctionErrorMessage(error) {
+  try {
+    if (error?.context && typeof error.context.json === "function") {
+      const responseBody = await error.context.json();
+
+      return (
+        responseBody?.error ||
+        responseBody?.message ||
+        "A função de inteligência artificial retornou um erro."
+      );
     }
+  } catch {
+    // Usa a mensagem padrão abaixo caso a resposta não seja um JSON válido.
   }
-  throw last;
+
+  return (
+    error?.message ||
+    "Não foi possível conectar ao serviço de inteligência artificial."
+  );
 }
 
-export const parseWorkoutWithAI = async (rawText, file, autoFix = true) => {
-  const key = JSON.stringify({ rawText, autoFix });
+export const parseWorkoutWithAI = async (
+  rawText = "",
+  file = null,
+  autoFix = true,
+) => {
+  const normalizedText = rawText.trim();
 
-  if (cache.has(key)) return cache.get(key);
+  if (!normalizedText && !file) {
+    throw new AIError(
+      "Informe o treino em texto ou selecione um arquivo PDF.",
+      "EMPTY_INPUT",
+    );
+  }
+
+  if (file && file.type !== "application/pdf") {
+    throw new AIError(
+      "Apenas arquivos PDF são permitidos.",
+      "INVALID_FILE",
+    );
+  }
+
+  if (file && file.size > 5 * 1024 * 1024) {
+    throw new AIError(
+      "O arquivo PDF deve possuir no máximo 5 MB.",
+      "FILE_TOO_LARGE",
+    );
+  }
+
+  const cacheKey = createCacheKey(
+    normalizedText,
+    file,
+    autoFix,
+  );
+
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3-flash-preview",
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.2,
-      },
-    });
+    const formData = new FormData();
 
-    const prompt = autoFix ? SYSTEM_PROMPT_SMART : SYSTEM_PROMPT_RAW;
+    formData.append("rawText", normalizedText);
+    formData.append("autoFix", String(autoFix));
 
-    const run = async () => {
-      const result = await model.generateContent([
-        prompt,
-        `TREINO:\n${rawText}`,
-      ]);
-
-      const text = result.response.text();
-      const parsed = safeJsonParse(text);
-
-      return validate(parsed);
-    };
-
-    const final = await retry(run, 2);
-
-    cache.set(key, final);
-    return final;
-
-  } catch (err) {
-    if (err instanceof AIError) throw err;
-
-    if (err.message.includes("fetch")) {
-      throw new AIError("Erro de conexão com IA", "API_ERROR");
+    if (file) {
+      formData.append("file", file, file.name);
     }
 
-    throw new AIError("Erro inesperado", "UNKNOWN");
+    const { data, error } = await supabase.functions.invoke(
+      "parse-workout",
+      {
+        body: formData,
+      },
+    );
+
+    if (error) {
+      const message = await getFunctionErrorMessage(error);
+      throw new AIError(message, "API_ERROR");
+    }
+
+    const validatedData = validateWorkoutData(data);
+
+    cache.set(cacheKey, validatedData);
+
+    return validatedData;
+  } catch (error) {
+    if (error instanceof AIError) {
+      throw error;
+    }
+
+    throw new AIError(
+      error?.message || "Erro inesperado ao processar o treino.",
+      "UNKNOWN",
+    );
   }
 };
