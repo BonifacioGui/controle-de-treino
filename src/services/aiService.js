@@ -98,12 +98,14 @@ export const parseWorkoutWithAI = async (
     );
   }
 
-  if (file && file.size > 5 * 1024 * 1024) {
+  if (file && file.size > 2 * 1024 * 1024) {
     throw new AIError(
-      "O arquivo PDF deve possuir no máximo 5 MB.",
+      "O arquivo PDF deve possuir no máximo 2 MB.",
       "FILE_TOO_LARGE",
-    );
-  }
+      );
+    }
+
+  
 
   const cacheKey = createCacheKey(
     normalizedText,
