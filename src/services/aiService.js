@@ -148,7 +148,7 @@ export const parseWorkoutWithAI = async (
     }
 
     throw new AIError(
-      error?.message || "Erro inesperado ao processar o treino.",
+      error?.message || "Erro inesperado ao processar o treino. ",
       "UNKNOWN",
     );
   }
