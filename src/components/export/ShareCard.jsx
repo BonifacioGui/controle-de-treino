@@ -19,10 +19,9 @@ const VARIANTS    = ['rpg', 'data'];
 
 // ─── StatCell ─────────────────────────────────────────────────────────────────
 
-const StatCell = ({ icon: Icon, label, value, suffix, colorClass, hasDivider = false }) => (
+const StatCell = ({ label, value, suffix, colorClass, hasDivider = false }) => (
   <div className={`flex flex-col items-center justify-center text-center ${hasDivider ? 'border-l border-white/10' : ''}`}>
     <div className="flex items-center justify-center gap-3 mb-4">
-      <Icon size={36} className={colorClass} />
       <span style={{ fontSize: '26px' }} className="font-bold text-white/60 uppercase tracking-widest">
         {label}
       </span>

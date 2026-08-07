@@ -26,7 +26,6 @@ const WorkoutComplete = ({
 
   const earnedXp = parseInt(sessionPoints.replace(/\D/g, ''), 10) || 0;
   
-  const newBadges = JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || [];
   // ─── Geração do card ────────────────────────────────────────────────────────
 
   const generateShareCard = useCallback(async () => {

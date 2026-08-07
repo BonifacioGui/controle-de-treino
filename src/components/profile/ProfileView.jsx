@@ -14,11 +14,10 @@ import CharacterSheet from '../rpg/CharacterSheet';
 import BadgeList from '../rpg/BadgeList';
 import QuestBoard from '../rpg/QuestBoard';
 
-const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], deleteEntry }) => {
+const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEntry }) => {
   
   // ================= ESTADOS =================
   const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || localStorage.getItem('soldier_avatar') || null);
-  const [avatarFile, setAvatarFile] = useState(null); // 🔥 NOVO: Guarda o arquivo real para enviar pro Supabase
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
@@ -35,8 +34,8 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
 
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [, setIsUploadingAvatar] = useState(false);
 
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const sortedBody = [...bodyHistory].reverse();
   const latestBio = sortedBody[0] || null;
@@ -68,7 +67,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
   }, [bioWeight, bioBf]);
 
   const rpgData = useMemo(() => {
-    try { return calculateStats(history || []); } catch (e) { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
+    try { return calculateStats(history || []); } catch { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
   }, [history]);
 
   const dynamicDiscipline = useMemo(() => {
@@ -95,7 +94,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
 
   const maxStat = Math.max(10, ...radarData.map(d => d.A));
 
-  const { age, imc, imcClassification, rcq, rcqClass, currentWeight, goalProgress, isGoalMet } = useMemo(() => {
+  const { age, imcClassification, rcq, rcqClass, currentWeight, goalProgress, isGoalMet } = useMemo(() => {
     const sm = userMetadata || {};
     let cAge = '--';
     if (sm.birthdate) {
@@ -104,10 +103,10 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
       if (td.getMonth() < bD.getMonth() || (td.getMonth() === bD.getMonth() && td.getDate() < bD.getDate())) cAge--;
     }
     let wToUse = stats?.latest?.weight && stats.latest.weight !== '--' ? stats.latest.weight : sm.starting_weight;
-    let cImc = '--'; let clazz = 'Sem Dados';
+    let clazz = 'Sem Dados';
     const w = parseFloat(wToUse); const h = parseFloat(sm.height) / 100;
     if (w && h) {
-      const iV = w / (h * h); cImc = iV.toFixed(1);
+      const iV = w / (h * h);
       if (iV < 18.5) clazz = 'Abaixo do Peso'; else if (iV < 24.9) clazz = 'Peso Normal'; else if (iV < 29.9) clazz = 'Sobrepeso'; else clazz = 'Combate Pesado';
     }
     let cRcq = '--'; let rcqC = 'Sem Dados';
@@ -121,7 +120,7 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
       if (target === w) { prog = 100; gMet = true; } 
       else { prog = Math.max(0, Math.min(100, ((Math.abs(start - target) - Math.abs(w - target)) / Math.abs(start - target)) * 100)).toFixed(0); }
     }
-    return { age: cAge, imc: cImc, imcClassification: clazz, rcq: cRcq, rcqClass: rcqC, currentWeight: wToUse || '--', goalProgress: prog, isGoalMet: gMet };
+    return { age: cAge, imcClassification: clazz, rcq: cRcq, rcqClass: rcqC, currentWeight: wToUse || '--', goalProgress: prog, isGoalMet: gMet };
   }, [userMetadata, stats, latestBio]);
 
   const displayClass = { hypertrophy: 'Titã (Força Bruta)', weight_loss: 'Sombra (Definição)', endurance: 'Nômade (Resistência)' }[userMetadata?.goal] || 'Ciborgue';
@@ -265,12 +264,12 @@ const ProfileView = ({ userMetadata, setView, stats, history, bodyHistory = [], 
       <ProfileHeader 
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
         setIsEditing={setIsEditing} goalProgress={goalProgress} isGoalMet={isGoalMet} 
-        displayClass={displayClass} history={history} 
+        displayClass={displayClass}
         stats={stats}
       />
 
       <BiometricsDashboard 
-        age={age} currentWeight={currentWeight} latestBio={latestBio} imc={imc} 
+        age={age} currentWeight={currentWeight} latestBio={latestBio}
         imcClassification={imcClassification} rcq={rcq} rcqClass={rcqClass} 
         bfColorClass={bfColorClass} donutData={donutData} 
       />

@@ -13,11 +13,11 @@ import TopRecords from './TopRecords';
 import ExerciseSearchModal from '../workout/ExerciseSearchModal';
 
 // Componente auxiliar de Seção (mantido para padronizar blocos internos)
-const Section = ({ title, icon: Icon, children, h = "h-48" }) => (
+const Section = ({ title, children, h = "h-48" }) => (
   <section className="space-y-2">
     <div className="flex items-center justify-between px-1">
         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-            <Icon size={12} className="text-primary" /> {title}
+            {title}
         </h3>
     </div>
     <div className={`bg-card border border-border p-3 rounded-2xl ${h} w-full min-w-0 backdrop-blur-md relative shadow-inner overflow-hidden`}>

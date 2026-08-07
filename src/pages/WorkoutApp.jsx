@@ -47,7 +47,7 @@ const WorkoutApp = () => {
   const { state, setters, actions, stats } = useWorkout();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [theme, setTheme] = useState('driver');
+  const [theme, setTheme] = useState(() => localStorage.getItem('solo_theme') || 'driver');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   // ESTADOS DE FLUXO DE CELEBRAÇÃO
@@ -71,10 +71,10 @@ const WorkoutApp = () => {
 
   // 1. TEMPORIZADOR DO SPLASH
   useEffect(() => {
-    // Mantém a animação rodando por pelo menos 2.5 segundos para dar aquele efeito "Premium"
+    // Mantém a identidade visual sem atrasar o acesso ao treino.
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500);
+    }, 900);
     return () => clearTimeout(timer);
   }, []);
 
@@ -104,6 +104,7 @@ const WorkoutApp = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('solo_theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -291,7 +292,7 @@ const WorkoutApp = () => {
           <div className={`hidden sm:flex text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
              {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
           </div>
-          <button onClick={() => setIsMenuOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary transition-all shadow-sm">
+          <button onClick={() => setIsMenuOpen(true)} aria-label="Abrir menu" className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary transition-all shadow-sm">
             <Menu size={24} />
           </button>
         </div>

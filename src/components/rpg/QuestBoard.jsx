@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
 
 const QuestBoard = () => {
-  const [quests, setQuests] = useState([]);
+  const [quests, setQuests] = useState(() => JSON.parse(localStorage.getItem('daily_quests') || '[]'));
 
   const loadQuests = () => {
     const saved = JSON.parse(localStorage.getItem('daily_quests') || '[]');
@@ -10,7 +10,6 @@ const QuestBoard = () => {
   };
 
   useEffect(() => {
-    loadQuests();
     window.addEventListener('quest_update', loadQuests);
     window.addEventListener('storage', loadQuests);
 

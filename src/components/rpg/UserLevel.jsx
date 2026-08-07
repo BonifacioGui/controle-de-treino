@@ -1,23 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Trophy, Terminal } from 'lucide-react';
 
 // 🔥 PADRÃO OURO: Recebe 'stats' direto e confia na matemática do rpgSystem!
 const UserLevel = ({ stats }) => {
   
   // 🔥 ESTADO DE ANIMAÇÃO: Controla a largura da barra
-  const [barWidth, setBarWidth] = useState(0);
-
-  // 🔥 EFEITO GATILHO: Espera a tela renderizar e joga a barra para o valor real
-  useEffect(() => {
-    setBarWidth(0);
-    
-    const timer = setTimeout(() => {
-      // Usando o nome correto que veio do useWorkout!
-      setBarWidth(stats?.progress || 0);
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [stats?.progress]);
+  const barWidth = stats?.progress || 0;
 
   if (!stats) return null; // Prevenção contra carregamento fantasma
 

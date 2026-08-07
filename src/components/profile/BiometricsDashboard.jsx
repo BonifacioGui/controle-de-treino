@@ -6,7 +6,6 @@ const BiometricsDashboard = ({
   age, 
   currentWeight, 
   latestBio, 
-  imc, 
   imcClassification, 
   rcq, 
   rcqClass, 

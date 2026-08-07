@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Timer, X } from 'lucide-react';
 
+const playBeep = () => {
+  const beep = new Audio('https://www.myinstants.com/media/sounds/beep-ping.mp3');
+  beep.volume = 0.5;
+  beep.play().catch(() => {});
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+};
+
 const RestTimer = ({ initialSeconds = 90, onClose }) => {
   // Captura o exato momento em que o timer deve acabar
   const [endTime, setEndTime] = useState(() => Date.now() + initialSeconds * 1000);
@@ -31,13 +38,6 @@ const RestTimer = ({ initialSeconds = 90, onClose }) => {
 
     return () => clearInterval(interval);
   }, [endTime, timeLeft, onClose]);
-
-  const playBeep = () => {
-    const beep = new Audio('https://www.myinstants.com/media/sounds/beep-ping.mp3'); 
-    beep.volume = 0.5;
-    beep.play().catch(() => {});
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  };
 
   const addTime = (sec) => {
     setEndTime(prev => prev + sec * 1000);
@@ -70,7 +70,7 @@ const RestTimer = ({ initialSeconds = 90, onClose }) => {
             </button>
         </div>
 
-        <button onClick={onClose} className="absolute -top-2 -left-2 bg-red-500 text-black rounded-full p-1 hover:scale-110 transition shadow-lg flex items-center justify-center">
+        <button onClick={onClose} aria-label="Fechar temporizador" className="absolute -top-2 -left-2 bg-red-500 text-black rounded-full p-1 hover:scale-110 transition shadow-lg flex items-center justify-center">
             <X size={12} />
         </button>
       </div>

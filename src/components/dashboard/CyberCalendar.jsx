@@ -12,10 +12,12 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
     if (selectedDate && selectedDate.length === 10) {
       const [year, month, day] = selectedDate.split('-').map(Number);
       if (viewDate.getMonth() !== month - 1 || viewDate.getFullYear() !== year) {
+        // A data externa pode mudar enquanto o calendário está aberto.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setViewDate(new Date(year, month - 1, day));
       }
     }
-  }, [selectedDate]);
+  }, [selectedDate, viewDate]);
   
   const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
@@ -43,7 +45,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none hidden dark:block"></div>
 
       <div className="flex justify-between items-center mb-4 relative z-10">
-        <button onClick={handlePrevMonth} className="p-1 text-primary hover:bg-input rounded-full transition-all">
+        <button onClick={handlePrevMonth} aria-label="Mês anterior" className="p-2 text-primary hover:bg-input rounded-full transition-all">
           <ChevronLeft size={20} />
         </button>
         
@@ -70,7 +72,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
           </select>
         </div>
 
-        <button onClick={handleNextMonth} className="p-1 text-primary hover:bg-input rounded-full transition-all">
+        <button onClick={handleNextMonth} aria-label="Próximo mês" className="p-2 text-primary hover:bg-input rounded-full transition-all">
           <ChevronRight size={20} />
         </button>
       </div>

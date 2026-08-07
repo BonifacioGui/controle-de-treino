@@ -9,8 +9,7 @@ const ProfileHeader = ({
   setIsEditing, 
   goalProgress, 
   isGoalMet, 
-  displayClass, 
-  history,
+  displayClass,
   stats
 }) => {
   return (

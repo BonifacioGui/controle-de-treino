@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Shield, Zap, Heart, Star, Activity } from 'lucide-react';
 
 // 🔥 CONFIGURAÇÃO EM PORTUGUÊS (Glows blindados para o dark mode)
@@ -14,7 +14,6 @@ const StatCard = ({ statKey, data }) => {
   const Icon = Config.icon;
 
   // 🔥 LÓGICA DE ANIMAÇÃO
-  const [barWidth, setBarWidth] = useState(0);
 
   // O divisor base do seu RPG é 100 para a raiz quadrada. 
   // Para exibir o "resto" na barra, usamos a matemática da fórmula inversa.
@@ -29,18 +28,7 @@ const StatCard = ({ statKey, data }) => {
   
   const progress = Math.min(100, Math.max(0, (xpDentroDoNivel / xpGap) * 100));
 
-  useEffect(() => {
-    setBarWidth(0); 
-    
-    let timer;
-    requestAnimationFrame(() => {
-      timer = setTimeout(() => {
-        setBarWidth(progress);
-      }, 400); // Acelerei um pouco a animação para melhor UX
-    });
-
-    return () => clearTimeout(timer);
-  }, [progress]);
+  const barWidth = progress;
 
   return (
     <div className="group bg-input/50 dark:bg-zinc-900/50 p-3 sm:p-4 rounded-xl border border-border dark:border-white/5 hover:border-primary/30 dark:hover:border-white/20 transition-all duration-300 hover:-translate-y-0.5 shadow-sm">
