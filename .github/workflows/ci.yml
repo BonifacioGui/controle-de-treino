@@ -1,3 +1,5 @@
+# Validação automática de Pull Requests
+
 name: CI
 
 on:
