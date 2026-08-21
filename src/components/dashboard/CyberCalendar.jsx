@@ -38,7 +38,6 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
   };
 
   return (
-    // 🔥 AJUSTE: Sombra adaptável e bg-card/95 para transparência elegante
     <div className="bg-card/95 backdrop-blur-md border-2 border-primary shadow-xl dark:shadow-[0_0_30px_rgba(0,0,0,0.3)] p-4 rounded-2xl font-cyber animate-in zoom-in-95 duration-200 w-72 relative">
       
       {/* Textura sutil: Visível apenas no Dark Mode para não "sujar" o tema claro */}
@@ -55,7 +54,6 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
             <select 
               value={viewDate.getFullYear()} 
               onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
-              // 🔥 AJUSTE: Removido cores fixas das options para evitar invisibilidade no tema claro
               className="bg-transparent border-none outline-none appearance-none cursor-pointer text-primary text-center hover:bg-primary/20 rounded px-1 transition-colors"
             >
               {years.map(y => <option key={y} value={y} className="bg-card text-main">{y}</option>)}
@@ -65,7 +63,6 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
           <select 
             value={viewDate.getMonth()}
             onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
-            // 🔥 AJUSTE: text-main garante que fique preto no claro e branco no escuro
             className="bg-transparent border-none text-main font-black uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
           >
             {months.map((m, i) => <option key={i} value={i} className="bg-card text-main">{m}</option>)}
@@ -106,7 +103,6 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
                 onSelect(dateStr);
                 onClose();
               }}
-              // 🔥 AJUSTE: Transição de cores baseada em variáveis do sistema
               className={`relative h-8 w-8 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center justify-center
                 ${isSelected 
                   ? 'bg-primary text-black shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-110 rotate-3 z-10' 

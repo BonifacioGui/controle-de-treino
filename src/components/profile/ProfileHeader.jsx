@@ -15,7 +15,6 @@ const ProfileHeader = ({
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       
-      {/* 🔥 ID CARD CYBERPUNK ADAPTÁVEL */}
       <div 
         className="bg-card border border-primary/40 p-6 relative shadow-[0_0_20px_rgba(var(--primary),0.1)] mt-2 transition-colors group/profile"
         style={{ clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)' }}
@@ -30,7 +29,6 @@ const ProfileHeader = ({
         <div className="absolute top-0 left-0 w-8 h-1 bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]"></div>
         <div className="absolute bottom-0 right-0 w-12 h-1 bg-secondary shadow-[0_0_8px_rgba(var(--secondary),0.8)]"></div>
 
-        {/* 🔥 BOTÃO DE CONFIGURAÇÃO CORRIGIDO (Puxa as variáveis do tema e remove o bloco preto) */}
         <button 
           onClick={() => setIsEditing(true)} 
           className="absolute top-4 right-4 z-30 p-2.5 bg-input border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary transition-all shadow-[0_0_10px_rgba(var(--primary),0.1)] active:scale-95 flex items-center justify-center"

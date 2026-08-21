@@ -1,12 +1,5 @@
-// Converte a data do seu histórico (DD/MM/YYYY ou ISO) para um objeto Date real
-const parseSessionDate = (session) => {
-  if (session.created_at) return new Date(session.created_at);
-  if (session.date && session.date.includes('/')) {
-    const [day, month, year] = session.date.split('/');
-    return new Date(year, month - 1, day);
-  }
-  return new Date();
-};
+import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
+import { parseDecimalInput } from './numberUtils';
 
 // ============================================================================
 // --- FUNÇÕES DE CÁLCULO E LÓGICA CORE ---
@@ -16,7 +9,12 @@ export const calculateSessionVolume = (session) => {
     if (!session.exercises) return 0;
     return session.exercises.reduce((acc, ex) => {
        if (!ex.sets) return acc;
-       return acc + ex.sets.reduce((sAcc, s) => sAcc + (parseFloat(s.weight||0) * parseFloat(s.reps||0)), 0);
+       return acc + ex.sets.reduce((sAcc, s) => {
+         if (!s.completed) return sAcc;
+         const weight = parseDecimalInput(s.weight);
+         const reps = parseDecimalInput(s.reps);
+         return sAcc + (weight !== null && reps !== null ? weight * reps : 0);
+       }, 0);
     }, 0);
 };
 
@@ -30,19 +28,12 @@ export const calculateTotalXP = (history) => {
 export const calculateStreak = (history) => {
   if (!history || history.length === 0) return 0;
 
-  // 🔥 CORREÇÃO 1: Usando parseSessionDate no Sort
-  const sortedHistory = [...history].sort((a, b) => parseSessionDate(b) - parseSessionDate(a));
+  const sortedHistory = [...history].filter((entry) => entry.dateKey)
+    .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  if (sortedHistory.length === 0) return 0;
 
   let streak = 0;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  // 🔥 CORREÇÃO 2: Usando parseSessionDate para pegar o último treino
-  const dataUltimoTreino = parseSessionDate(sortedHistory[0]);
-  dataUltimoTreino.setHours(0, 0, 0, 0);
-
-  // Calcula a diferença em dias do último treino até HOJE
-  const diasDesdeUltimo = Math.floor((hoje - dataUltimoTreino) / (1000 * 60 * 60 * 24));
+  const diasDesdeUltimo = daysBetweenLocalDates(sortedHistory[0].dateKey, getLocalDateKey());
 
   // Se faz mais de 2 dias de descanso (3 dias completos ou mais sem treinar), perdeu o streak
   if (diasDesdeUltimo > 2) {
@@ -53,14 +44,7 @@ export const calculateStreak = (history) => {
 
   // Navega para trás no tempo para somar os dias
   for (let i = 0; i < sortedHistory.length - 1; i++) {
-    // 🔥 CORREÇÃO 3: Usando parseSessionDate dentro do Loop
-    const treinoAtual = parseSessionDate(sortedHistory[i]);
-    treinoAtual.setHours(0, 0, 0, 0);
-    
-    const treinoAnterior = parseSessionDate(sortedHistory[i+1]);
-    treinoAnterior.setHours(0, 0, 0, 0);
-
-    const diferencaDias = Math.floor((treinoAtual - treinoAnterior) / (1000 * 60 * 60 * 24));
+    const diferencaDias = daysBetweenLocalDates(sortedHistory[i + 1].dateKey, sortedHistory[i].dateKey);
 
     if (diferencaDias === 0) {
        continue; 
@@ -165,21 +149,8 @@ export const BADGES_LIST = [
     icon: 'RefreshCcw',
     condition: (history) => {
       if (history.length < 5) return false;
-      // Pega os 5 treinos mais recentes
       const last5 = history.slice(0, 5);
-      
-      // Converte as datas (DD/MM/YYYY) para milissegundos para comparar
-      const parseDate = (dStr) => {
-        const [d, m, y] = dStr.split('/');
-        return new Date(`${y}-${m}-${d}`).getTime();
-      };
-
-      const dateNewest = parseDate(last5[0].date);
-      const dateOldest = parseDate(last5[4].date);
-      
-      // Diferença em dias (1000ms * 60s * 60m * 24h = 86400000)
-      const diffDays = (dateNewest - dateOldest) / (1000 * 60 * 60 * 24);
-      
+      const diffDays = daysBetweenLocalDates(last5[4].dateKey, last5[0].dateKey);
       return diffDays <= 7;
     }
   },

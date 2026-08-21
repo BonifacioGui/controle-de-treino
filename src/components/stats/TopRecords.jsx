@@ -16,7 +16,6 @@ const TopRecords = ({ records }) => {
             {records.map(([name, weight]) => (
               <div 
                 key={name} 
-                // 🔥 AJUSTE: bg-input/50 para o claro e bg-black/20 para o escuro, dando contraste sem perder a harmonia
                 className="bg-input/50 dark:bg-black/20 p-2 rounded-xl border border-warning/30 relative overflow-hidden group transition-all hover:border-warning/60 shadow-sm"
               >
                 {/* Efeito hover cyberpunk sutil */}

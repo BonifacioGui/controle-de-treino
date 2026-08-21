@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-// 🔥 Função limpadora: tira acentos e joga pra minúsculo
 const removeAcentos = (str) => {
   if (!str) return "";
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();

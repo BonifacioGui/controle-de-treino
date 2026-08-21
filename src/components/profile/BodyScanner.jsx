@@ -3,9 +3,10 @@ import {
   Scale, X, Plus, CalendarDays, Save, Pencil, Trash2, 
   FileText, Archive, ChevronDown, ChevronUp 
 } from 'lucide-react';
+import { formatLocalDate, normalizeLocalDateKey } from '../../utils/dateUtils';
 
 const formatNumberInput = (value) => {
-  return value.replace(/[^0-9.]/g, '');
+  return value.replace(/[^0-9.,]/g, '').replace(/([.,].*)[.,]/g, '$1');
 };
 
 const BodyScanner = ({
@@ -30,7 +31,6 @@ const BodyScanner = ({
   sortedBody, handleEditBio, requestDelete, getBfColorClass
 }) => {
 
-  // 🔥 ESTADOS DE EXPANSÃO E ARQUIVO
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState(null); 
   const [expandedCardId, setExpandedCardId] = useState(null); 
@@ -49,7 +49,6 @@ const BodyScanner = ({
     return 'ALTO';
   };
 
-  // 🔥 CORRIGIDO: Sub-componente com as Panturrilhas inclusas!
   const ExpandedStats = ({ b, isCard }) => (
     <div className={`p-4 bg-black/5 dark:bg-black/20 border-t border-border animate-in slide-in-from-top-2 duration-200 ${isCard ? 'rounded-b-2xl' : ''}`}>
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -92,7 +91,6 @@ const BodyScanner = ({
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_left || '--'}</span>
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_right || '--'}</span>
          </div>
-         {/* 🔥 A PANTURRILHA ENTROU AQUI */}
          <div className="flex justify-between items-baseline px-2 py-0.5">
            <span className="text-[9px] text-main font-bold uppercase w-12">Pantur.</span>
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_left || '--'}</span>
@@ -246,7 +244,7 @@ const BodyScanner = ({
           >
             <div className="flex justify-between items-center border-b border-border/50 pb-2">
               <span className="font-black text-secondary text-xs tracking-widest flex items-center gap-1.5">
-                <CalendarDays size={14} /> {b.date}
+                <CalendarDays size={14} /> {formatLocalDate(normalizeLocalDateKey(b.date))}
               </span>
               <div className="flex gap-3">
                 <button onClick={() => handleEditBio(b)} className="text-muted hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
@@ -307,7 +305,7 @@ const BodyScanner = ({
       {isArchiveOpen && (
         <div className="mt-4 space-y-2 animate-in slide-in-from-top-4 fade-in duration-300">
           <div className="flex items-center gap-2 mb-3 px-2">
-            <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Registos Anteriores</h4>
+            <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Registros anteriores</h4>
             <div className="h-px bg-border flex-1"></div>
           </div>
 
@@ -320,7 +318,7 @@ const BodyScanner = ({
                   className="p-3 flex items-center justify-between cursor-pointer hover:bg-input/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-16 text-[10px] font-black text-main dark:text-white">{b.date}</span>
+                    <span className="w-20 text-[10px] font-black text-main dark:text-white">{formatLocalDate(normalizeLocalDateKey(b.date), { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                     <div className="flex gap-3 text-[10px] font-bold">
                       <span className="text-success">{b.weight}kg</span>
                       <span className={getBfColorClass(b.bf)}>{b.bf}% BF</span>

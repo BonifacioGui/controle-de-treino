@@ -3,7 +3,6 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { Flame } from 'lucide-react';
 
 const VolumeChart = ({ data }) => {
-  // 🔥 Lixo jogado fora: Removemos a detecção de tema via JS! O seu CSS puro vai resolver sozinho.
 
   return (
     <section className="space-y-2">

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Shield, Zap, Heart, Star, Activity } from 'lucide-react';
 
-// 🔥 CONFIGURAÇÃO EM PORTUGUÊS (Glows blindados para o dark mode)
 const STAT_CONFIG = {
   STR: { label: 'FOR', icon: Shield, color: 'text-red-500', bgIcon: 'bg-red-500/10', bar: 'bg-red-600 dark:bg-red-500', glow: 'dark:shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
   DEX: { label: 'DES', icon: Zap, color: 'text-blue-500', bgIcon: 'bg-blue-500/10', bar: 'bg-blue-600 dark:bg-blue-500', glow: 'dark:shadow-[0_0_10px_rgba(59,130,246,0.5)]' },
@@ -13,7 +12,6 @@ const StatCard = ({ statKey, data }) => {
   const Config = STAT_CONFIG[statKey] || { label: statKey, icon: Activity, color: 'text-zinc-500', bgIcon: 'bg-zinc-500/10', bar: 'bg-zinc-500', glow: '' };
   const Icon = Config.icon;
 
-  // 🔥 LÓGICA DE ANIMAÇÃO
 
   // O divisor base do seu RPG é 100 para a raiz quadrada. 
   // Para exibir o "resto" na barra, usamos a matemática da fórmula inversa.
@@ -73,7 +71,6 @@ const StatCard = ({ statKey, data }) => {
   );
 };
 
-// 🔥 PADRÃO OURO: O CharacterSheet agora APENAS RECEBE o rpgData já calculado pelo ProfileView.
 // Removida a propriedade 'history' desnecessária.
 const CharacterSheet = ({ rpgData }) => {
   // Se por acaso o rpgData não for passado, temos um fallback de segurança

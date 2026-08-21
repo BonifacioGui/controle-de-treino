@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, User, Users } from 'lucide-react';
+import { daysBetweenLocalDates, getLocalDateKey } from '../../utils/dateUtils';
 
 // Dicionário Tático (Separado biomecanicamente)
 const muscleMap = {
   "Supino Reto": "peito", "Supino Inclinado": "peito", "Crossover": "peito", "Peck Deck": "peito", "Crucifixo com Halteres": "peito",
   "Puxada Neutra": "costas", "Remada Baixa": "costas", "Serrote": "costas", "Puxada Frontal": "costas", "Remada": "costas",
   "Desenvolvimento": "ombros", "Elevação Lateral": "ombros", "Crucifixo Inverso": "ombros", "Face Pull": "ombros", "Elevação Frontal": "ombros",
-  // 🔥 Braços separados
   "Rosca Direta": "bíceps", "Rosca Martelo": "bíceps", "Rosca Alternada": "bíceps", "Rosca 45º": "bíceps", "Rosca Scott": "bíceps",
   "Tríceps Francês": "tríceps", "Tríceps Corda": "tríceps", "Tríceps Testa": "tríceps", "Tríceps Pulley": "tríceps", "Tríceps Coice": "tríceps",
   // 
@@ -20,28 +20,20 @@ const MuscleHeatmap = ({ history }) => {
   const [gender, setGender] = useState('male');
 
   const heatData = useMemo(() => {
-    // 🔥 Os 9 grupos musculares atualizados
     const data = { peito: 0, costas: 0, ombros: 0, bíceps: 0, tríceps: 0, core: 0, quadríceps: 0, posteriores: 0, panturrilhas: 0 };
     if (!history) return data;
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
     history.forEach(session => {
-      const [d, m, y] = session.date.split('/');
-      const sessionDate = new Date(`${y}-${m}-${d}`);
+      const daysAgo = daysBetweenLocalDates(session.dateKey, getLocalDateKey());
 
-      if (sessionDate >= oneWeekAgo && session.exercises) {
+      if (daysAgo >= 0 && daysAgo <= 7 && session.exercises) {
         session.exercises.forEach(ex => {
-          if (!ex.done) return;
-          
           let cleanName = ex.name.split('(')[0].trim();
           const muscle = muscleMap[cleanName] || muscleMap[Object.keys(muscleMap).find(k => cleanName.toLowerCase().includes(k.toLowerCase()))];
           
           if (muscle && data[muscle] !== undefined) {
-            const setsDone = ex.sets ? ex.sets.filter(s => s.reps && s.weight).length : 0;
-            const fallbackSets = ex.sets ? ex.sets.length : 3; 
-            data[muscle] += (setsDone > 0 ? setsDone : fallbackSets);
+            const setsDone = ex.sets ? ex.sets.filter((set) => set.completed).length : 0;
+            data[muscle] += setsDone;
           }
         });
       }
@@ -121,7 +113,6 @@ const MuscleHeatmap = ({ history }) => {
                <polygon points="140,80 130,80 125,120 140,120" {...polyProps('costas')}/>
                <polygon points="77,115 123,115 118,155 100,165 82,155" {...polyProps('core')}/>
                
-               {/* 🔥 Separação Visual: Parte superior = Bíceps, Inferior = Tríceps */}
                <rect x="40" y="80" width="18" height="45" rx="4" {...polyProps('bíceps')}/>
                <rect x="142" y="80" width="18" height="45" rx="4" {...polyProps('bíceps')}/>
                <rect x="35" y="130" width="15" height="40" rx="3" {...polyProps('tríceps')}/>
@@ -143,7 +134,6 @@ const MuscleHeatmap = ({ history }) => {
               <polygon points="130,75 122,75 118,110 130,110" {...polyProps('costas')}/>
               <polygon points="80,105 120,105 125,145 100,155 75,145" {...polyProps('core')}/>
               
-              {/* 🔥 Separação Visual Feminina */}
               <rect x="52" y="75" width="14" height="42" rx="4" {...polyProps('bíceps')}/>
               <rect x="134" y="75" width="14" height="42" rx="4" {...polyProps('bíceps')}/>
               <rect x="48" y="122" width="12" height="38" rx="3" {...polyProps('tríceps')}/>
@@ -175,7 +165,6 @@ const MuscleHeatmap = ({ history }) => {
         </div>
       </div>
 
-      {/* 🔥 GRID TÁTICO: Agora usa grid-cols-3 para englobar os 9 itens com simetria perfeita */}
       <div className="grid grid-cols-3 gap-1.5 mt-2 pt-3 border-t border-border/30 relative z-10">
         {Object.entries(heatData).map(([muscle, sets]) => {
           const isOverload = sets >= 12;

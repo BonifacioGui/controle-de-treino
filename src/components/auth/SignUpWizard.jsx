@@ -76,7 +76,9 @@ const SignUpWizard = ({ onSwitch }) => {
       if (error) throw error;
       if (data?.user) setIsSignedUp(true);
     } catch (err) {
-      setErrorMsg(err.message === 'User already registered' ? 'Este e-mail já está em uso por outro usuário.' : err.message);
+      setErrorMsg(err?.message === 'User already registered'
+        ? 'Este e-mail já está em uso por outro usuário.'
+        : 'Não foi possível criar sua conta agora. Confira os dados e tente novamente.');
     } finally {
       setLoading(false);
     }

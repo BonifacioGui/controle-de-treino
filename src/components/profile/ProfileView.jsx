@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom'; 
-import { LogOut, Shield, AlertTriangle } from 'lucide-react'; 
+import { createPortal } from 'react-dom';
+import { AlertTriangle } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { calculateStats } from '../../utils/rpgSystem';
+import { daysBetweenLocalDates, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
+import { parseDecimalInput } from '../../utils/numberUtils';
+import { readStoredText, STORAGE_KEYS, writeStoredText } from '../../utils/storage';
 
 // Importando o exército de componentes que criamos:
 import ProfileHeader from './ProfileHeader';
@@ -17,7 +20,7 @@ import QuestBoard from '../rpg/QuestBoard';
 const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEntry }) => {
   
   // ================= ESTADOS =================
-  const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || localStorage.getItem('soldier_avatar') || null);
+  const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || readStoredText(STORAGE_KEYS.avatar, '') || null);
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
@@ -26,7 +29,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
   const [isSaving, setIsSaving] = useState(false);
 
   const [showBioForm, setShowBioForm] = useState(false);
-  const [bioDate, setBioDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bioDate, setBioDate] = useState(getLocalDateKey);
   const [bioWeight, setBioWeight] = useState(''); const [bioBf, setBioBf] = useState(''); const [bioWaist, setBioWaist] = useState(''); const [bioAbdomen, setBioAbdomen] = useState(''); const [bioHip, setBioHip] = useState(''); 
   const [bioChest, setBioChest] = useState(''); const [bioShoulder, setBioShoulder] = useState('');
   const [bioArmL, setBioArmL] = useState(''); const [bioArmR, setBioArmR] = useState(''); const [bioLegL, setBioLegL] = useState(''); const [bioLegR, setBioLegR] = useState(''); const [bioCalfL, setBioCalfL] = useState(''); const [bioCalfR, setBioCalfR] = useState('');
@@ -35,9 +38,10 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [, setIsUploadingAvatar] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
 
-  const sortedBody = [...bodyHistory].reverse();
+  const sortedBody = [...bodyHistory].sort((a, b) => normalizeLocalDateKey(b.date).localeCompare(normalizeLocalDateKey(a.date)));
   const latestBio = sortedBody[0] || null;
 
   // ================= LÓGICA E CÁLCULOS =================
@@ -61,7 +65,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
   const bfColorClass = getBfColorClass(latestBio?.bf);
 
   const calculatedLeanMass = useMemo(() => {
-    const w = parseFloat(bioWeight); const bf = parseFloat(bioBf);
+    const w = parseDecimalInput(bioWeight); const bf = parseDecimalInput(bioBf);
     if (w > 0 && bf >= 0) return (w - (w * (bf / 100))).toFixed(1);
     return '--';
   }, [bioWeight, bioBf]);
@@ -73,9 +77,8 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
   const dynamicDiscipline = useMemo(() => {
     if (!history || history.length === 0) return 1;
     const baseDiscipline = Math.floor(history.length / 2);
-    const sortedHistory = [...history].sort((a, b) => new Date(b.date.split('/').reverse().join('-')) - new Date(a.date.split('/').reverse().join('-')));
-    const lastDateStr = sortedHistory[0].date.split('/');
-    const daysInactive = Math.floor((new Date() - new Date(lastDateStr[2], lastDateStr[1] - 1, lastDateStr[0])) / (1000 * 60 * 60 * 24));
+    const sortedHistory = [...history].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+    const daysInactive = daysBetweenLocalDates(sortedHistory[0].dateKey, getLocalDateKey());
     let penalty = daysInactive > 7 ? Math.floor((daysInactive - 7) / 3) : 0;
     return Math.max(1, baseDiscipline - penalty);
   }, [history]);
@@ -135,15 +138,16 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
 
   // ================= FUNÇÕES DE AÇÃO =================
 
-  // 🔥 UPLOAD LOCAL DA IMAGEM PARA PREVIEW
-  // 🔥 UPLOAD IMEDIATO E LIMPEZA DE LIXO TÁTICO
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // 1. Mostra o preview instantâneo na tela (UX perfeita)
     const reader = new FileReader();
-    reader.onloadend = () => setAvatarUrl(reader.result);
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result);
+      writeStoredText(STORAGE_KEYS.avatar, reader.result);
+    };
     reader.readAsDataURL(file);
 
     setIsUploadingAvatar(true);
@@ -153,7 +157,6 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
       const userId = session?.user?.id;
       if (!userId) throw new Error("Usuário não autenticado.");
 
-      // 2. EXTERMÍNIO DA FOTO ANTIGA (Para não gastar memória)
       const oldAvatarUrl = userMetadata?.avatar_url;
       if (oldAvatarUrl && oldAvatarUrl.includes('avatars/')) {
         // Pega só o nome do arquivo velho no final da URL
@@ -177,6 +180,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
       // 4. ATUALIZA O PERFIL AUTOMATICAMENTE
       const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const newUrl = data.publicUrl;
+      writeStoredText(STORAGE_KEYS.avatar, newUrl);
 
       const { error: updateError } = await supabase.auth.updateUser({ 
         data: { avatar_url: newUrl } 
@@ -184,18 +188,15 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
 
       if (updateError) throw updateError;
       
-      // Operação concluída sem precisar abrir a engrenagem!
       window.location.reload(); 
 
     } catch (error) {
-      alert("🚨 Falha na comunicação via satélite: " + error.message);
+      setFeedback(`Não foi possível atualizar a foto. Tente novamente. ${error.message}`);
     } finally {
       setIsUploadingAvatar(false);
     }
   };
 
-  // 🔥 SALVAR PERFIL (Apenas Dados de Texto)
-  // 🔥 SALVAR PERFIL BLINDADO
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
@@ -211,51 +212,48 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
       
       if (error) throw error;
       
-      setIsEditing(false); // Fecha o modal imediatamente
-      
-      // Dá um refresh suave sem travar o botão
+      setIsEditing(false);
       setTimeout(() => {
         window.location.reload(); 
       }, 300);
 
     } catch (error) { 
-      alert("🚨 Erro na operação: " + error.message); 
+      setFeedback(`Não foi possível salvar o perfil. Seus dados anteriores continuam seguros. ${error.message}`);
     } finally {
-      setIsSaving(false); // 🔥 ISSO IMPEDE O BOTÃO DE FICAR CARREGANDO PARA SEMPRE
+      setIsSaving(false);
     }
   };
 
   const handleToggleForm = () => {
     if (showBioForm) {
-      setBioDate(new Date().toISOString().split('T')[0]); setBioWeight(''); setBioBf(''); setBioWaist(''); setBioAbdomen(''); setBioHip(''); setBioChest(''); setBioShoulder(''); setBioArmL(''); setBioArmR(''); setBioLegL(''); setBioLegR(''); setBioCalfL(''); setBioCalfR(''); setBioNote('');
+      setBioDate(getLocalDateKey()); setBioWeight(''); setBioBf(''); setBioWaist(''); setBioAbdomen(''); setBioHip(''); setBioChest(''); setBioShoulder(''); setBioArmL(''); setBioArmR(''); setBioLegL(''); setBioLegR(''); setBioCalfL(''); setBioCalfR(''); setBioNote('');
     }
     setShowBioForm(!showBioForm);
   };
 
   const handleEditBio = (b) => {
-    if (b.date) { const [day, month, year] = b.date.split('/'); setBioDate(`${year}-${month}-${day}`); }
+    if (b.date) setBioDate(normalizeLocalDateKey(b.date));
     setBioWeight(b.weight || ''); setBioBf(b.bf || ''); setBioWaist(b.waist || ''); setBioAbdomen(b.abdomen || ''); setBioHip(b.hip || ''); setBioChest(b.chest || ''); setBioShoulder(b.shoulder || ''); setBioArmL(b.arm_left || ''); setBioArmR(b.arm_right || ''); setBioLegL(b.leg_left || ''); setBioLegR(b.leg_right || ''); setBioCalfL(b.calf_left || ''); setBioCalfR(b.calf_right || ''); setBioNote(b.note || '');
     setShowBioForm(true); 
   };
 
   const handleSaveBiometrics = async () => {
-    if (!bioWeight) { alert("Insira ao menos o Peso."); return; }
+    if (!bioWeight) { setFeedback('Informe ao menos o peso para salvar esta medição.'); return; }
     setIsSavingBio(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
         const payload = {
-          user_id: session.user.id, date: bioDate, weight: parseFloat(bioWeight) || null, bf: parseFloat(bioBf) || null, lean_mass: calculatedLeanMass !== '--' ? parseFloat(calculatedLeanMass) : null, waist: parseFloat(bioWaist) || null, abdomen: parseFloat(bioAbdomen) || null, hip: parseFloat(bioHip) || null, chest: parseFloat(bioChest) || null, shoulder: parseFloat(bioShoulder) || null, arm_left: parseFloat(bioArmL) || null, arm_right: parseFloat(bioArmR) || null, leg_left: parseFloat(bioLegL) || null, leg_right: parseFloat(bioLegR) || null, calf_left: parseFloat(bioCalfL) || null, calf_right: parseFloat(bioCalfR) || null, note: bioNote.trim() || null
+          user_id: session.user.id, date: bioDate, weight: parseDecimalInput(bioWeight), bf: parseDecimalInput(bioBf), lean_mass: calculatedLeanMass !== '--' ? parseDecimalInput(calculatedLeanMass) : null, waist: parseDecimalInput(bioWaist), abdomen: parseDecimalInput(bioAbdomen), hip: parseDecimalInput(bioHip), chest: parseDecimalInput(bioChest), shoulder: parseDecimalInput(bioShoulder), arm_left: parseDecimalInput(bioArmL), arm_right: parseDecimalInput(bioArmR), leg_left: parseDecimalInput(bioLegL), leg_right: parseDecimalInput(bioLegR), calf_left: parseDecimalInput(bioCalfL), calf_right: parseDecimalInput(bioCalfR), note: bioNote.trim() || null
         };
         const { error } = await supabase.from('body_stats').upsert(payload, { onConflict: 'unique_user_date' });
-        if (error) { alert(`Erro: ${error.message}`); setIsSavingBio(false); return; }
+        if (error) throw error;
         window.location.reload(); 
       }
-    } catch (err) { alert("Erro: " + err.message); setIsSavingBio(false); }
+    } catch (err) { setFeedback(`Não foi possível salvar a medição. Os dados anteriores continuam seguros. ${err.message}`); setIsSavingBio(false); }
   };
 
   const requestDelete = (id, type) => setItemToDelete({ id, type });
-  const handleLogout = async () => { if(window.confirm("Encerrar sessão de combate?")) { await supabase.auth.signOut(); window.location.reload(); } };
 
   // ================= RENDERIZAÇÃO DO MAESTRO =================
   return (
@@ -267,6 +265,8 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
         displayClass={displayClass}
         stats={stats}
       />
+
+      {feedback && <div role="alert" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-warning/10 p-4 text-sm text-muted"><AlertTriangle className="shrink-0 text-warning" size={19} /><div className="flex-1">{feedback}</div><button type="button" onClick={() => setFeedback('')} aria-label="Fechar aviso" className="font-black text-main">×</button></div>}
 
       <BiometricsDashboard 
         age={age} currentWeight={currentWeight} latestBio={latestBio}
@@ -290,15 +290,6 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
       <CharacterSheet history={history} stats={stats} rpgData={rpgData} />
       <BadgeList history={history} stats={stats} rpgData={rpgData} />
       <QuestBoard />
-
-      <div className="space-y-3 pt-4">
-        <button onClick={() => alert("Compartilhar relatório em breve.")} className="w-full bg-card border-2 border-primary text-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-black transition-all shadow-sm">
-          <Shield size={18} /> Compartilhar Ficha
-        </button>
-        <button onClick={handleLogout} className="w-full bg-red-500/10 border-2 border-red-500/50 text-red-500 font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all shadow-sm">
-          <LogOut size={18} /> Evacuar Sistema
-        </button>
-      </div>
 
       <ProfileSettingsModal 
         isEditing={isEditing} setIsEditing={setIsEditing} editForm={editForm} setEditForm={setEditForm} 

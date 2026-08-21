@@ -10,7 +10,6 @@ const LoginForm = ({ onSwitch }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 🔥 A MÁGICA: Agora recebe o evento 'e' e previne o refresh da página
   const handleLogin = async (e) => {
     if (e) e.preventDefault(); 
     
@@ -31,7 +30,6 @@ const LoginForm = ({ onSwitch }) => {
   };
 
   return (
-    // 🔥 MUDANÇA: 'form' com 'onSubmit' permite o ENTER e o botão 'IR' do celular
     <form onSubmit={handleLogin} className="space-y-6 animate-in slide-in-from-left duration-300">
       
       {errorMsg && (
@@ -66,7 +64,7 @@ const LoginForm = ({ onSwitch }) => {
         
         {/* Campo E-mail */}
         <div className="group">
-          <label htmlFor="email-input" className="text-[10px] font-black uppercase text-muted mb-1.5 block group-focus-within:text-primary transition-colors cursor-pointer">
+          <label htmlFor="email-input" className="mb-1.5 block cursor-pointer text-xs font-black uppercase text-muted transition-colors group-focus-within:text-primary">
             E-mail de Acesso
           </label>
           <div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary focus-within:shadow-[0_0_15px_rgba(0,243,255,0.15)] transition-all duration-300">
@@ -85,7 +83,7 @@ const LoginForm = ({ onSwitch }) => {
 
         {/* Campo Senha */}
         <div className="relative group">
-          <label htmlFor="password-input" className="text-[10px] font-black uppercase text-muted mb-1.5 block group-focus-within:text-primary transition-colors cursor-pointer">
+          <label htmlFor="password-input" className="mb-1.5 block cursor-pointer text-xs font-black uppercase text-muted transition-colors group-focus-within:text-primary">
             Senha de Acesso
           </label>
           <div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary focus-within:shadow-[0_0_15px_rgba(0,243,255,0.15)] transition-all duration-300">
@@ -100,9 +98,10 @@ const LoginForm = ({ onSwitch }) => {
               onChange={(e) => setPassword(e.target.value)} 
             />
             <button 
-              type="button" // 🔥 Evita que este botão submeta o formulário
+              type="button"
               onClick={() => setShowPassword(!showPassword)} 
-              className="text-muted hover:text-primary transition-colors p-1"
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              className="touch-target flex items-center justify-center rounded-xl text-muted transition-colors hover:text-primary"
             >
               {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
             </button>
@@ -110,7 +109,6 @@ const LoginForm = ({ onSwitch }) => {
         </div>
       </div>
 
-      {/* 🔥 BOTÃO SUBMIT: O 'type="submit"' é o que fecha o pacto com o Enter */}
       <button 
         type="submit"
         disabled={loading || !email || !password} 
@@ -126,9 +124,9 @@ const LoginForm = ({ onSwitch }) => {
       {/* Link de Switch */}
       <div className="text-center pt-2">
         <button 
-          type="button" // 🔥 Importante ser type="button" para não tentar logar ao clicar aqui
+          type="button"
           onClick={onSwitch} 
-          className="text-[10px] font-black text-muted hover:text-primary uppercase tracking-[0.2em] transition-colors py-2 px-4 rounded-lg hover:bg-white/5"
+          className="touch-target rounded-lg px-4 text-xs font-black text-muted transition-colors hover:bg-white/5 hover:text-primary"
         >
           Novo no SOLO? <span className="hover:underline">Criar Conta</span>
         </button>

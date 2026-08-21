@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
+import { readStoredJSON, STORAGE_KEYS } from '../../utils/storage';
 
 const QuestBoard = () => {
-  const [quests, setQuests] = useState(() => JSON.parse(localStorage.getItem('daily_quests') || '[]'));
+  const [quests, setQuests] = useState(() => readStoredJSON(STORAGE_KEYS.quests, []));
 
   const loadQuests = () => {
-    const saved = JSON.parse(localStorage.getItem('daily_quests') || '[]');
-    setQuests(saved);
+    setQuests(readStoredJSON(STORAGE_KEYS.quests, []));
   };
 
   useEffect(() => {
@@ -19,14 +19,13 @@ const QuestBoard = () => {
     };
   }, []);
 
-  // 🔥 A MÁGICA: Se não tem missão, ele simplesmente não renderiza NADA.
   if (quests.length === 0) return null;
 
   return (
     <div className="pt-1 pb-3 relative z-10 w-full">
       <div className="flex items-center gap-2 mb-3 border-b border-[#00f3ff]/10 pb-2">
         <Target className="text-[#00f3ff]" size={16} />
-        <h3 className="font-black text-main dark:text-white uppercase tracking-[0.2em] text-[11px]">Ordens do Dia</h3>
+        <h3 className="text-sm font-black text-main dark:text-white">Missões do dia</h3>
       </div>
 
       <div className="space-y-2 relative z-10">
@@ -45,10 +44,10 @@ const QuestBoard = () => {
               </div>
 
               <div>
-                <span className={`text-[11px] font-black uppercase tracking-wide block leading-tight ${quest.completed ? 'text-[#00f3ff]' : 'text-main dark:text-white'}`}>
+                <span className={`block text-sm font-black leading-tight ${quest.completed ? 'text-[#00f3ff]' : 'text-main dark:text-white'}`}>
                   {quest.title}
                 </span>
-                <span className="text-[9px] text-muted font-bold block leading-tight mt-0.5 uppercase">
+                <span className="mt-1 block text-xs font-medium leading-tight text-muted">
                   {quest.desc}
                 </span>
               </div>

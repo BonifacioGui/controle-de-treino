@@ -104,42 +104,35 @@ const ManageView = ({
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
           <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
-            EDITANDO: <span className="text-secondary">{activeDay}</span>
+            {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
         </div>
         
         <div className="flex gap-2 items-center">
-          {activeDay !== 'INÍCIO' && (
+          {workoutData[activeDay] && (
             <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
               <Plus size={18} strokeWidth={2.5} />
             </button>
           )}
 
-          <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar Protocolo">
-            <Trash2 size={18} strokeWidth={2.5} />
-          </button>
+          {workoutData[activeDay] && <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar treino"><Trash2 size={18} strokeWidth={2.5} /></button>}
         </div>
       </div>
 
-      {/* 🔥 BOTÃO DA IA EM DESTAQUE E ISOLADO */}
       <div className="px-1 border-b border-secondary/30 pb-4 mb-4">
         <button 
           onClick={() => setView('importer')}
           className="w-full py-3 px-4 border border-dashed border-primary/50 text-primary bg-primary/10 rounded-xl font-bold uppercase tracking-wider hover:bg-primary/20 transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
         >
           <Cpu size={18} className="animate-pulse" />
-          <span>Decodificar Treino com IA </span>
+          <span>Importar treino com IA</span>
         </button>
       </div>
 
-      {activeDay === 'INÍCIO' ? (
-        <div className="mt-8 p-6 border-2 border-dashed border-red-500/30 rounded-xl text-center bg-red-500/5 animate-pulse mx-1">
-          <span className="text-xs font-black uppercase text-red-500 tracking-widest block mb-2">
-            ⚠️ ACESSO NEGADO
-          </span>
-          <span className="text-[10px] font-bold uppercase text-muted tracking-widest">
-            Este é um protocolo do sistema. Crie um + NOVO protocolo para equipar exercícios.
-          </span>
+      {!workoutData[activeDay] ? (
+        <div className="mx-1 mt-6 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center">
+          <span className="block text-base font-black text-main">Seu plano está vazio</span>
+          <span className="mt-2 block text-sm leading-relaxed text-muted">Use o botão “Novo” acima para criar um treino ou importe uma ficha já existente.</span>
         </div>
       ) : (
         <div className="space-y-3 px-1">
@@ -160,7 +153,6 @@ const ManageView = ({
                 />
               </div>
 
-              {/* 🔥 2. NOVO: ARMAMENTO SECUNDÁRIO (SWAP) */}
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-yellow-500/70 uppercase tracking-[0.1em] ml-1 flex items-center gap-1">
                   Exercício secundário (Swap)
@@ -202,15 +194,14 @@ const ManageView = ({
       </div>
       )}
 
-      <div className="pt-4 px-1">
+      {workoutData[activeDay] && <div className="pt-4 px-1">
         <button 
           onClick={() => setView('workout')} 
-          // 🔥 Adicionado 'active:' para as cores mudarem no exato momento do toque na tela do celular
           className="w-full py-4 border-2 border-primary text-primary bg-primary/10 hover:bg-primary active:bg-primary hover:text-white dark:hover:text-black active:text-white dark:active:text-black rounded-xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.5)]"
         >
           <Save size={18} strokeWidth={2.5} /> EFETIVAR ALTERAÇÕES
         </button>
-      </div>
+      </div>}
 
       {/* MODAL DO ARSENAL */}
       {isCatalogOpen && createPortal(

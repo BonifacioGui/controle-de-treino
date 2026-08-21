@@ -4,6 +4,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 // 🛠️ Importando as lógicas pesadas
 import { getCanonicalName, getMuscleGroup } from '../../utils/exerciseParser';
+import { daysBetweenLocalDates, formatLocalDate, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
+import { calculateCompletedVolume } from '../../utils/sessionModel';
 
 // 🧩 Importando os Módulos (Nossos novos soldados)
 import MuscleHeatmap from '../profile/MuscleHeatmap';
@@ -46,7 +48,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     
     // 1. Biometria
     const biometry = b.map(e => ({ 
-      date: e.date.split('/').slice(0, 2).join('/'), 
+      date: formatLocalDate(normalizeLocalDateKey(e.date), { day: '2-digit', month: '2-digit' }),
       peso: parseFloat(e.weight) || null,
       bf: parseFloat(e.bf) || null,
       lean_mass: parseFloat(e.lean_mass) || null,
@@ -64,30 +66,30 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
 
     // 2. Heatmap, Volume & Consistência
     const muscleCounts = { PEITO: 0, COSTAS: 0, PERNAS: 0, BRAÇOS: 0, OMBROS: 0, CORE: 0 };
-    const limit = new Date(); limit.setDate(limit.getDate() - 30);
     let recentCount = 0;
 
     const volume = h.map(s => {
-      let vol = 0;
-      const [d, m, y] = s.date.split('/');
-      const isRecent = new Date(y, m - 1, d) >= limit;
+      const isRecent = daysBetweenLocalDates(s.dateKey, getLocalDateKey()) <= 30;
+      const vol = Number(s.totalVolume) || s.exercises.reduce(
+        (sum, exercise) => sum + calculateCompletedVolume(exercise.sets || []),
+        0,
+      );
       
       if (isRecent) recentCount++;
 
       s.exercises.forEach(ex => {
-        ex.sets?.forEach(st => vol += (parseFloat(st.weight) || 0) * (parseFloat(st.reps) || 0));
         if (isRecent) {
           const g = getMuscleGroup(ex.name);
-          if (muscleCounts[g] !== undefined) muscleCounts[g] += (ex.sets?.length || 0);
+          if (muscleCounts[g] !== undefined) muscleCounts[g] += (ex.sets || []).filter((set) => set.completed).length;
         }
       });
-      return { date: s.date.split('/').slice(0, 2).join('/'), volume: Math.round(vol), full: s.date };
+      return { date: formatLocalDate(s.dateKey, { day: '2-digit', month: '2-digit' }), volume: Math.round(vol), full: s.dateKey };
     }).filter(v => v.volume > 0).reverse();
 
     // 3. Recordes (Hall of Fame)
     const prs = {};
     h.forEach(s => s.exercises.forEach(ex => {
-      const n = getCanonicalName(ex.name), max = Math.max(...(ex.sets?.map(st => parseFloat(st.weight) || 0) || [0]));
+      const n = getCanonicalName(ex.name), max = Math.max(...((ex.sets || []).filter((set) => set.completed).map(st => parseFloat(st.weight) || 0) || [0]), 0);
       if (max > (prs[n] || 0)) prs[n] = max;
     }));
 
@@ -104,15 +106,14 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     if (!selectedExercise) return [];
     return history.filter(s => s.exercises.some(ex => getCanonicalName(ex.name) === selectedExercise))
       .map(s => ({ 
-        date: s.date.split('/').slice(0, 2).join('/'), 
-        carga: Math.max(...s.exercises.find(e => getCanonicalName(e.name) === selectedExercise).sets.map(st => parseFloat(st.weight) || 0)), 
-        full: s.date 
+        date: formatLocalDate(s.dateKey, { day: '2-digit', month: '2-digit' }),
+        carga: Math.max(...s.exercises.find(e => getCanonicalName(e.name) === selectedExercise).sets.filter((set) => set.completed).map(st => parseFloat(st.weight) || 0), 0),
+        full: s.dateKey,
       }))
-      .sort((a, b) => new Date(a.full.split('/').reverse().join('-')) - new Date(b.full.split('/').reverse().join('-')));
+      .sort((a, b) => a.full.localeCompare(b.full));
   }, [history, selectedExercise]);
 
 
-  // 🔥 LÓGICA DO DASHBOARD DE CONSISTÊNCIA
   const monthlyTarget = 20; 
   const consistencyProgress = Math.min(100, Math.round((recentWorkoutsCount / monthlyTarget) * 100));
   
@@ -235,7 +236,6 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         </button>
         
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
-          {/* 🔥 O SEGREDO: Caixa com altura definida (h-56) garante que o gráfico saiba seu tamanho */}
           <div className="w-full h-56 mt-4">
             {selectedExercise && loadData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">

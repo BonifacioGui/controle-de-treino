@@ -1,5 +1,7 @@
 // src/utils/questSystem.js
 import { QUEST_RULES } from './questRules'; // Importa para usar aqui dentro
+import { getLocalDateKey } from './dateUtils';
+import { readStoredJSON, STORAGE_KEYS, writeStoredJSON } from './storage';
 
 const QUEST_POOL = [
   { id: 'q1', title: 'Sobrecarga Crítica', desc: 'Bata 1 Novo PR no treino de hoje', reward: 150, type: 'pr', completed: false },
@@ -10,8 +12,8 @@ const QUEST_POOL = [
 ];
 
 export const generateDailyQuests = () => {
-  const today = new Date().toISOString().split('T')[0];
-  const savedData = JSON.parse(localStorage.getItem('daily_quests_data') || '{}');
+  const today = getLocalDateKey();
+  const savedData = readStoredJSON(STORAGE_KEYS.questData, {});
 
   if (savedData.date !== today) {
     const shuffled = QUEST_POOL.sort(() => 0.5 - Math.random());
@@ -22,14 +24,14 @@ export const generateDailyQuests = () => {
       quests: dailyQuests
     };
 
-    localStorage.setItem('daily_quests_data', JSON.stringify(newData));
-    localStorage.setItem('daily_quests', JSON.stringify(dailyQuests));
+    writeStoredJSON(STORAGE_KEYS.questData, newData);
+    writeStoredJSON(STORAGE_KEYS.quests, dailyQuests);
     window.dispatchEvent(new Event('quest_update'));
   }
 };
 
 export const validateWorkoutQuests = (sessionData) => {
-  const dailyQuests = JSON.parse(localStorage.getItem('daily_quests') || '[]');
+  const dailyQuests = readStoredJSON(STORAGE_KEYS.quests, []);
   let questsUpdated = false;
 
   const updatedQuests = dailyQuests.map(quest => {
@@ -45,7 +47,7 @@ export const validateWorkoutQuests = (sessionData) => {
   });
 
   if (questsUpdated) {
-    localStorage.setItem('daily_quests', JSON.stringify(updatedQuests));
+    writeStoredJSON(STORAGE_KEYS.quests, updatedQuests);
     window.dispatchEvent(new Event('quest_update'));
   }
 };

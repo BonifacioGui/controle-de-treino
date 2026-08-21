@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Trophy, Zap, Award, Target } from 'lucide-react';
-import { parseDateTimestamp, safeParseFloat } from '../../utils/workoutUtils';
-// 🔥 IMPORTAÇÕES WEBP SEM ERRO 🔥
+import { Trophy, Zap, Award } from 'lucide-react';
+import { getLocalDateKey } from '../../utils/dateUtils';
+import { calculateCompletedVolume } from '../../utils/sessionModel';
 import scavengerImg from '../../assets/scavenger.webp';
 import t800Img from '../../assets/t-800.webp'; 
 import mechagodzillaImg from '../../assets/mechagodzilla.webp';
@@ -53,7 +53,7 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
   }, [effectiveVolume]);
 
   const currentBoss = useMemo(() => {
-    const dateStr = selectedDate || new Date().toISOString().split('T')[0];
+    const dateStr = selectedDate || getLocalDateKey();
     const workoutStr = (activeDay || "") + (currentWorkout?.title || "") + (currentWorkout?.focus || "");
     if (!workoutStr) return BOSS_ROSTER[0];
 
@@ -76,10 +76,10 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
     let maxHp = 5000; // HP Base para novos utilizadores / novos treinos
     
     // 1. Filtra o histórico APENAS pelos treinos do mesmo protocolo (ex: "A")
-    // e capta os últimos 3 treinos registados para esse dia.
+    // e considera os últimos 3 treinos registrados para esse dia.
     const pastSessions = history
-        ?.filter(h => h.dayName === activeDay)
-        ?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))
+        ?.filter(h => h.workoutName === activeDay)
+        ?.sort((a, b) => b.dateKey.localeCompare(a.dateKey))
         ?.slice(0, 3) || [];
     
     if (pastSessions.length > 0) {
@@ -87,12 +87,10 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
 
         // 2. Soma o volume de todos esses últimos 3 treinos
         pastSessions.forEach(session => {
-            let sessionVolume = 0;
-            session.exercises.forEach(ex => { 
-                ex.sets?.forEach(s => {
-                    sessionVolume += (safeParseFloat(s.weight) * safeParseFloat(s.reps));
-                }); 
-            });
+            const sessionVolume = Number(session.totalVolume) || session.exercises.reduce(
+              (sum, exercise) => sum + calculateCompletedVolume(exercise.sets || []),
+              0,
+            );
             totalVolumeOfPastSessions += sessionVolume;
         });
 
@@ -157,7 +155,6 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
           {/* PORTRAIT DO BOSS */}
           <div className="relative w-20 h-20 sm:w-36 sm:h-32 shrink-0 bg-transparent flex items-center justify-center overflow-hidden">
             
-            {/* 🔥 FLASH DE DANO BRANCO/VERMELHO (Fica por cima da imagem invisível, só aparece no hit) */}
             <div className={`absolute inset-0 z-20 bg-white transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-60' : 'opacity-0'}`}></div>
             <div className={`absolute inset-0 z-20 bg-red-600 mix-blend-color transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-80' : 'opacity-0'}`}></div>
 
@@ -174,7 +171,6 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
               <img 
                 src={currentBoss.image} 
                 alt={currentBoss.name} 
-                // 🔥 A imagem não estoura mais o brilho, apenas dá um leve solavanco (scale-105)
                 className={`relative z-10 w-full h-full object-cover grayscale-[15%] transition-transform duration-75 ${damageAnim ? 'scale-105' : 'scale-100 opacity-90'}`}
                 style={{ filter: `drop-shadow(0px 0px 8px ${currentBoss.aura})` }}
               />
@@ -205,7 +201,6 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
             </div>
 
             {/* BARRA DE VIDA PLASMA */}
-            {/* 🔥 Correção: Usando border-border no claro para ficar uma linha limpa, e zinc-800 no escuro */}
             <div className="relative h-2 sm:h-6 w-full bg-input dark:bg-zinc-900 border border-border dark:border-zinc-800 shadow-[inset_0_1px_5px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_1px_5px_rgba(0,0,0,1)] overflow-hidden">
               <div 
                 className={`h-full transition-all duration-700 ease-out relative 
@@ -222,13 +217,11 @@ const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activ
             </div>
 
             <div className="flex justify-between mt-1 sm:mt-2 items-center px-0.5 sm:px-1 text-[8px] sm:text-[11px] font-black uppercase tracking-widest">
-               {/* 🔥 Correção: Removida a opacidade quebrada. Fonte bold com a cor exata do tema. */}
                <span className="text-muted dark:text-zinc-500 font-bold leading-none truncate pr-1">
                  LIMIT: <span className="text-main tabular-nums font-black">{bossStats.max.toLocaleString()} KG</span>
                </span>
                <div className="text-red-600 dark:text-red-500 font-black leading-none flex gap-1 items-center shrink-0">
                 <span>{Math.round(100 - bossStats.percent)}% DANO</span>
-                {/* 🔥 Correção: "Integridade" agora está visível, com contraste real (text-muted) */}
                 <span className="text-[8px] hidden sm:inline text-muted dark:text-zinc-500 font-bold ml-1">Integridade: 100%</span>
                </div>
             </div>

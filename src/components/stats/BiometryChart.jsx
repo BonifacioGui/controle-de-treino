@@ -5,7 +5,6 @@ import { Activity, Filter } from 'lucide-react';
 const BiometryChart = ({ data }) => {
   const [bioChartFilter, setBioChartFilter] = useState('macro');
 
-  // 🔥 Lixo jogado fora: O gráfico agora é 100% blindado com CSS nativo!
 
   const renderBioChart = () => {
     switch (bioChartFilter) {

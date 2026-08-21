@@ -1,589 +1,323 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, Flame, Wifi, WifiOff, Medal, Zap, Check } from 'lucide-react';
-import { useWorkout } from '../hooks/useWorkout'; 
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Check,
+  Cloud,
+  CloudOff,
+  Flame,
+  Loader2,
+  Medal,
+  Menu,
+  RefreshCw,
+  Zap,
+} from 'lucide-react';
+import { useWorkout } from '../hooks/useWorkout';
 import logoSolo from '../assets/logo-solo.svg';
 import { supabase } from '../services/supabaseClient';
-import { createPortal } from 'react-dom'
-
-// 1. Shared & Layout (Globais)
 import CyberNav from '../components/shared/CyberNav';
 import SidebarMenu from '../components/shared/SidebarMenu';
 import LoadingScreen from '../components/shared/LoadingScreen';
-
-// 2. Auth (Acesso)
-import AuthLayout from '../components/auth/AuthLayout'; // 🔥 AJUSTE AQUI: Trocado de AuthView para AuthLayout
-
-// 3. Dashboard (Visão Geral)
-import HistoryView from '../components/dashboard/HistoryView';
-
-// 4. Workout (O Treino Ativo)
+import AuthLayout from '../components/auth/AuthLayout';
 import WorkoutView from '../components/workout/WorkoutView';
 import RestTimer from '../components/workout/RestTimer';
-
-// 5. RPG (Gamificação do SOLO)
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import { getFlameStyle } from '../utils/rpgSystem';
-import { generateDailyQuests } from '../utils/questSystem'; // 🔥 IMPORTAÇÃO DO MOTOR DE MISSÕES AQUI
+import { generateDailyQuests } from '../utils/questSystem';
+import { daysBetweenLocalDates, formatLocalDate } from '../utils/dateUtils';
+import { formatTime } from '../utils/workoutUtils';
+import { readStoredJSON, STORAGE_KEYS, writeStoredJSON } from '../utils/storage';
+import { SESSION_STATUS } from '../utils/sessionModel';
 
-// 6. Profile (Identidade e Corpo)
-import ProfileView from '../components/profile/ProfileView';
+const HistoryView = lazy(() => import('../components/dashboard/HistoryView'));
+const ProfileView = lazy(() => import('../components/profile/ProfileView'));
+const StatsView = lazy(() => import('../components/stats/StatsView'));
+const ManageView = lazy(() => import('../components/admin/ManageView'));
+const Importer = lazy(() => import('../components/admin/Importer'));
+const WorkoutComplete = lazy(() => import('../components/export/WorkoutComplete'));
 
-// 7. Stats (Inteligência Tática)
-import StatsView from '../components/stats/StatsView';
+const ViewFallback = () => (
+  <div className="flex min-h-56 items-center justify-center gap-3 text-sm font-bold text-muted">
+    <Loader2 className="animate-spin text-primary" /> Carregando seção...
+  </div>
+);
 
-// 8. Admin (Gestão de Dados)
-import ManageView from '../components/admin/ManageView';
-import Importer from '../components/admin/Importer';
+const SYNC_COPY = {
+  synced: { label: 'Sincronizado', Icon: Cloud, className: 'text-green-500' },
+  syncing: { label: 'Sincronizando...', Icon: RefreshCw, className: 'text-primary' },
+  offline: { label: 'Salvo neste dispositivo', Icon: CloudOff, className: 'text-warning' },
+  error: { label: 'Sincronização pendente', Icon: CloudOff, className: 'text-warning' },
+};
 
-// 9. Export (Relatórios)
-import WorkoutComplete from '../components/export/WorkoutComplete';
-
-const WorkoutApp = () => { 
-
-  const [showSplash, setShowSplash] = useState(true);
-  const [session, setSession] = useState(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(true); // 🔥 Estado que bloqueia o flash branco
-
+const WorkoutApp = () => {
+  const [authSession, setAuthSession] = useState(null);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
   const { state, setters, actions, stats } = useWorkout();
-  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('solo_theme') || 'driver');
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  
-  // ESTADOS DE FLUXO DE CELEBRAÇÃO
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [theme, setTheme] = useState(() => readStoredJSON(STORAGE_KEYS.settings, {}).theme || 'driver');
+  const [showCelebration, setShowCelebration] = useState(
+    () => Boolean(readStoredJSON(STORAGE_KEYS.pendingShareCard, null)),
+  );
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [showBadgeAlert, setShowBadgeAlert] = useState(false); // 🔥 ADICIONE ESTA LINHA
-  const [restTimerConfig, setRestTimerConfig] = useState({ isOpen: false, duration: 60 });
+  const [showBadgeAlert, setShowBadgeAlert] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
+  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, days: null, dateKey: null });
+  const [pendingReport, setPendingReport] = useState(() => readStoredJSON(STORAGE_KEYS.pendingShareCard, null));
 
-  const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;  
-  // ✅ CORREÇÃO 2: Executamos a função importada para gerar o estilo do fogo
   const flameStyle = getFlameStyle(stats?.streak || 0);
+  const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
+    .includes(state.session?.status);
+  const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;
+  const syncCopy = SYNC_COPY[state.syncStatus] || SYNC_COPY.error;
+  const SyncIcon = syncCopy.Icon;
 
-  // 🔥 FORMATADOR DO HUD TÁTICO
-  const formatTimer = (totalSeconds) => {
-    if (!totalSeconds) return "00:00";
-    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-    const s = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
-
-  // 1. TEMPORIZADOR DO SPLASH
-  useEffect(() => {
-    // Mantém a identidade visual sem atrasar o acesso ao treino.
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 900);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // 2. BUSCA DA SESSÃO (SUPABASE)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsSessionLoading(false); // Só libera quando a nuvem responder
+      setAuthSession(session);
+      setIsSessionLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      setAuthSession(session);
       setIsSessionLoading(false);
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  // 3. BUSCA DE DADOS AO LOGAR
-  useEffect(() => {
-    if (session?.user?.id) actions.fetchCloudData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id]); // 🚨 Tiramos o 'actions' daqui!
-
-  // 🔥 4. O GATILHO DAS MISSÕES: Roda o motor ao abrir o app
-  useEffect(() => {
-    generateDailyQuests();
-  }, []);
+  useEffect(() => { generateDailyQuests(); }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('solo_theme', theme);
+    const settings = readStoredJSON(STORAGE_KEYS.settings, {});
+    writeStoredJSON(STORAGE_KEYS.settings, { ...settings, theme });
   }, [theme]);
 
-  useEffect(() => {
-    const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatus);
-    window.addEventListener('offline', handleStatus);
-    return () => { 
-      window.removeEventListener('online', handleStatus); 
-      window.removeEventListener('offline', handleStatus); 
+  const workoutStatuses = useMemo(() => Object.fromEntries(
+    Object.keys(state.workoutData || {}).map((day) => {
+      const latest = state.history.find((entry) => entry.workoutName === day);
+      const days = latest ? daysBetweenLocalDates(latest.dateKey, state.selectedDate) : null;
+      return [day, {
+        completedOnDate: days === 0,
+        recent: days !== null && days > 0 && days < 3,
+        days,
+        dateKey: latest?.dateKey || null,
+      }];
+    }),
+  ), [state.history, state.selectedDate, state.workoutData]);
+
+  const handleFinishWorkout = async (options) => {
+    const result = await actions.finishWorkout(options);
+    if (result?.requiresConfirmation) return result;
+
+    const report = {
+      volume: result.sessionVolume,
+      duration: result.sessionDuration,
+      xp: result.sessionXp,
+      level: result.newLevel,
+      streak: result.newStreak,
+      newBadges: result.newBadges,
+      completedSets: result.completedSets,
+      prsBroken: result.prsBroken,
+      partial: result.partial,
+      syncStatus: result.syncStatus,
     };
-  }, []);
+    writeStoredJSON(STORAGE_KEYS.pendingShareCard, report);
+    setPendingReport(report);
 
-  useEffect(() => {
-    // Quando o app carrega (ou recarrega por causa da câmera), ele verifica se tem card pendente
-    const pendingCard = localStorage.getItem('pending_share_card');
-    if (pendingCard) {
-      // Abre a tela de comemoração instantaneamente
-      setShowCelebration(true);
-    }
-  }, []);
-
-  // 🔥 REDIRECIONAMENTO AUTOMÁTICO DE PROTOCOLO CONCLUÍDO
-  useEffect(() => {
-    if (state.view === 'workout' && state.workoutData && state.history) {
-      // Verifica se o treino que está atualmente selecionado já foi feito hoje
-      const currentIsDone = state.history.some(
-        h => h.workout_name === state.activeDay && h.workout_date === state.selectedDate
-      );
-
-      if (currentIsDone) {
-        const planKeys = Object.keys(state.workoutData);
-        // Procura o primeiro treino do seu plano que NÃO foi feito hoje
-        const nextAvailableDay = planKeys.find(
-          day => !state.history.some(h => h.workout_name === day && h.workout_date === state.selectedDate)
-        );
-
-        // Se encontrar um treino disponível, muda para ele automaticamente
-        if (nextAvailableDay) {
-          setters.setActiveDay(nextAvailableDay);
-        }
-      }
-    }
-  }, [state.view, state.activeDay, state.history, state.selectedDate, state.workoutData, setters]);
-
-
-  // ==========================================
-  // 🚀 A LÓGICA DE FINALIZAÇÃO BLINDADA E DIRETA
-  // ==========================================
-
-  const handleFinishWorkoutWrapper = async (xpOuDados) => {
-    // 🔥 LÊ O XP CORRETAMENTE: Aceita tanto número puro quanto objeto
-    const bonusParaSalvar = typeof xpOuDados === 'number' ? xpOuDados : (xpOuDados?.bonusXp || 0);
-    
-    const resultado = await actions.finishWorkout(bonusParaSalvar);
-    
-    const relatorioTatico = {
-      volume: resultado.sessionVolume,
-      duration: resultado.sessionDuration,
-      xp: resultado.sessionXp,
-      level: resultado.newLevel,
-      streak: resultado.newStreak,
-      newBadges: resultado.newBadges 
-    };
-    localStorage.setItem('pending_share_card', JSON.stringify(relatorioTatico));
-
-    // A Escadinha: 1º Nível -> 2º Conquistas -> 3º Relatório
-    if (resultado.subiuDeNivel) {
-      setShowLevelUp(true); 
-    } else if (resultado.newBadges && resultado.newBadges.length > 0) {
-      setShowBadgeAlert(true);
-    } else {
-      setShowCelebration(true); 
-    }
+    if (result.subiuDeNivel) setShowLevelUp(true);
+    else if (result.newBadges?.length > 0) setShowBadgeAlert(true);
+    else setShowCelebration(true);
+    return result;
   };
 
   const handleLevelUpClose = () => {
     setShowLevelUp(false);
-    const relatorioTatico = JSON.parse(localStorage.getItem('pending_share_card') || '{}');
-    
-    setTimeout(() => {
-      // Se tiver conquista, mostra ela. Se não, vai pro relatório.
-      if (relatorioTatico.newBadges && relatorioTatico.newBadges.length > 0) {
-        setShowBadgeAlert(true);
-      } else {
-        setShowCelebration(true); 
-      }
-    }, 400); 
+    if (pendingReport?.newBadges?.length > 0) setShowBadgeAlert(true);
+    else setShowCelebration(true);
   };
 
-  const handleBadgeAlertClose = () => {
-    setShowBadgeAlert(false);
-    // Depois de comemorar a conquista, abre o relatório final
-    setTimeout(() => setShowCelebration(true), 400);
+  const closeReport = () => {
+    localStorage.removeItem(STORAGE_KEYS.pendingShareCard);
+    setPendingReport(null);
+    setShowCelebration(false);
+    setSuccessToast(true);
+    window.setTimeout(() => setSuccessToast(false), 3500);
+    setters.setView('history');
   };
 
-  // ==========================================
-  // 🔥 LÓGICA DE UI E TRAVAS
-  // ==========================================
-  const isRestTimerVisible = state.timerState?.active || restTimerConfig.isOpen;
-    
-  // Estado para o Modal de Aviso de Sobrecarga (O Soft Lock)
-  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, date: null });
+  if (isSessionLoading) return <LoadingScreen logo={logoSolo} />;
+  if (!authSession) return <AuthLayout />;
 
-  // Nova inteligência de status do treino
-  const getWorkoutStatus = (dayName) => {
-    const hoje = new Date(state.selectedDate); 
-    hoje.setHours(0, 0, 0, 0);
-
-    let status = { isClearedToday: false, isRecent: false, lastDate: null };
-
-    // Puxa o histórico desse treino e ordena do mais recente pro mais antigo
-    const historyForDay = state.history
-      .filter(h => h.workout_name === dayName)
-      .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date));
-
-    if (historyForDay.length > 0) {
-      const lastWorkout = historyForDay[0];
-      const dataTreino = new Date(lastWorkout.workout_date);
-      dataTreino.setHours(0, 0, 0, 0);
-      
-      const diffEmDias = (hoje - dataTreino) / (1000 * 60 * 60 * 24);
-
-      if (diffEmDias === 0) {
-        status.isClearedToday = true; // Treinou hoje = LOCK
-      } else if (diffEmDias > 0 && diffEmDias <= 2) {
-        status.isRecent = true; // Treinou há 1 ou 2 dias = AVISO
-        status.lastDate = lastWorkout.date; // Data formatada para mostrar pro usuário
-      }
-    }
-    return status;
-  };
-  // ==========================================
-  // 🛡️ PORTÕES DE RENDERIZAÇÃO (A ORDEM IMPORTA)
-  // ==========================================
-  
-  // Portão 1: Tela de animação
-  if (showSplash) return <LoadingScreen logo={logoSolo} />;
-  
-  // Portão 2: Evita o piscar branco enquanto o Supabase pensa
-  if (isSessionLoading) return <div className="min-h-screen bg-black" />;
-  
-  // Portão 3: Sem sessão = Login
-  if (!session) return <AuthLayout />; // 🔥 AJUSTE AQUI: Trocado de AuthView para AuthLayout
-
-  // Portão 4: Sistema Carregado
   return (
-    <div className="min-h-screen bg-page text-main font-cyber pb-8 cyber-grid transition-colors duration-500 relative overflow-x-hidden">
-      
-      {/* HEADER TÁTICO */}
-      <header className="sticky top-0 z-40 backdrop-blur-md border-b border-border bg-page/80 px-4 py-3 flex items-center justify-between shadow-lg mb-6 h-20">
-        <div className="flex flex-col select-none sm:border-l-2 border-border sm:pl-4 py-1.5">
-          <div className="flex items-center gap-3 relative group">
-            <h1 className="hidden sm:block font-sans font-black text-3xl md:text-4xl tracking-[0.2em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_8px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_15px_rgba(255,0,255,0.6)] transition-all duration-500">
-              SOLO
-            </h1>
-            {/* Logo com tamanho contido e proporcional ao texto */}
-            <div className="relative h-8 sm:h-6.7 w-auto flex items-center justify-center shrink-0">
-              <img 
-                src={logoSolo} 
-                alt="SOLO Logo" 
-                className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] hover:drop-shadow-[0_0_12px_rgba(0,243,255,1)] active:scale-95 active:drop-shadow-[0_0_20px_rgba(0,243,255,1)] transition-all duration-300 relative z-10" 
-              />
-            </div>
+    <div className="relative min-h-screen overflow-x-hidden bg-page pb-8 font-cyber text-main transition-colors duration-500 cyber-grid">
+      <header className="sticky top-0 z-40 mb-5 flex h-20 items-center justify-between border-b border-border bg-page/85 px-4 shadow-lg backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <img src={logoSolo} alt="SOLO" className="h-9 w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)]" />
+          <div className="hidden sm:block">
+            <h1 className="text-2xl font-black tracking-[0.18em] text-main">SOLO</h1>
+            <p className="mt-1 text-xs text-muted">Seu treino, seu progresso.</p>
           </div>
-          <p className="hidden sm:block font-mono text-[9px] md:text-[10px] text-muted uppercase tracking-[0.35em] mt-2 pl-1.5 border-l-2 border-border">
-            Where <span className="text-main dark:text-slate-100 font-bold">Discipline</span> Becomes{' '}
-            <span className="text-secondary drop-shadow-[0_0_8px_rgba(var(--secondary),0.6)] font-extrabold">Dopamine</span>
-          </p>
         </div>
 
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className={`flex flex-col items-center justify-center px-4 h-14 rounded-2xl border transition-all duration-500 min-w-[80px] ${flameStyle.shadow} relative overflow-hidden`}>
-              <div className="relative mb-0.5 z-10">
-                  <Flame size={38} className={`${flameStyle.iconClass}`} />
-              </div>
-              <div className="flex items-center justify-center gap-1 z-10">
-                  <span className={`text-[8px] font-bold uppercase tracking-widest opacity-80 ${flameStyle.color}`}>
-                      STREAK {stats?.streak || 0}
-                  </span>
-              </div>
+          <div className={`flex h-14 min-w-[82px] flex-col items-center justify-center rounded-2xl border px-4 ${flameStyle.shadow}`}>
+            <Flame size={30} className={flameStyle.iconClass} />
+            <span className={`text-xs font-bold ${flameStyle.color}`}>{stats?.streak || 0} dias</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 z-10">
-          <div className={`hidden sm:flex text-[10px] font-black opacity-50 ${isOnline ? 'text-green-500' : 'text-red-500'}`}>
-             {isOnline ? <Wifi size={16}/> : <WifiOff size={16}/>}
-          </div>
-          <button onClick={() => setIsMenuOpen(true)} aria-label="Abrir menu" className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary transition-all shadow-sm">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => state.hasPendingChanges && actions.syncPendingSessions()}
+            disabled={!state.hasPendingChanges || state.syncStatus === 'syncing'}
+            aria-label={syncCopy.label}
+            className={`hidden min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold sm:flex ${syncCopy.className}`}
+          >
+            <SyncIcon size={17} className={state.syncStatus === 'syncing' ? 'animate-spin' : ''} /> {syncCopy.label}
+          </button>
+          <button type="button" onClick={() => setIsMenuOpen(true)} aria-label="Abrir menu" className="touch-target flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary">
             <Menu size={24} />
           </button>
         </div>
       </header>
 
-      {/* ABAS DO TREINO COM ARQUITETURA LIMPA (LÓGICA NO CSS) */}
       {state.view === 'workout' && state.workoutData && (
-        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-4 px-4">
-          {Object.keys(state.workoutData).map((day) => {
-            const wData = state.workoutData[day];
+        <nav aria-label="Treinos do plano" className="mb-4 flex gap-3 overflow-x-auto px-4 pb-3 scrollbar-hide">
+          {Object.entries(state.workoutData).map(([day, workout]) => {
             const isActive = state.activeDay === day;
-            const isLocked = state.workoutTimer?.isRunning && !isActive; 
-            
-            const status = getWorkoutStatus(day);
-            const isDoneOrRecent = status.isClearedToday || status.isRecent;
-
-            const handleTabClick = () => {
-              if (isLocked || status.isClearedToday) return;
-              if (status.isRecent && !isActive) {
-                setWarningModal({ isOpen: true, day, date: status.lastDate });
-              } else {
-                setters.setActiveDay(day);
-              }
+            const locked = sessionActive && !isActive;
+            const status = workoutStatuses[day];
+            const selectWorkout = () => {
+              if (locked || isActive) return;
+              if (status?.recent) {
+                setWarningModal({ isOpen: true, day, days: status.days, dateKey: status.dateKey });
+              } else setters.setActiveDay(day);
             };
-
             return (
-              <button 
-                key={day} 
-                onClick={handleTabClick}
-                disabled={isLocked || status.isClearedToday}
-                className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border min-w-[140px] shrink-0 overflow-hidden group
-                  ${isActive && !status.isClearedToday ? 'bg-primary text-black scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.3)]' : ''}
-                  ${!isActive && !isDoneOrRecent ? 'bg-card text-main dark:text-white hover:border-primary/40' : ''}
-                  ${isDoneOrRecent ? 'tab-cleared' : 'border-border'}
-                  ${status.isClearedToday ? 'cursor-not-allowed' : ''}
-                `}
+              <button
+                type="button"
+                key={day}
+                onClick={selectWorkout}
+                disabled={locked}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative min-h-16 min-w-[156px] shrink-0 rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-40 ${isActive ? 'border-primary bg-primary text-black shadow-[0_0_18px_rgba(var(--primary),0.25)]' : 'border-border bg-card text-main'}`}
               >
-                {/* 🛡️ TAG CLEARED */}
-                {isDoneOrRecent && (
-                  <div className="tab-cleared-tag absolute top-0 right-0 px-2 py-0.5 rounded-bl-xl border-b border-l backdrop-blur-sm flex items-center gap-1.5">
-                    <span className="tab-cleared-tag-text text-[7px] font-black uppercase tracking-widest">
-                      Cleared
-                    </span>
-                    {status.isRecent && !status.isClearedToday && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]"></div>
-                    )}
-                  </div>
-                )}
-                
-                {isActive && !status.isClearedToday && <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rounded-full -mr-8 -mt-8"></div>}
-                
-                {/* LETRA GRANDE (A, B) */}
-                <span className={`text-3xl font-black tracking-tighter ${isActive && !status.isClearedToday ? 'text-black' : (isDoneOrRecent ? 'tab-cleared-letter' : 'text-main dark:text-white')}`}>
-                  {day}
-                </span>
-                
-                {/* BARRA LATERAL E TEXTOS */}
-                <div className={`tab-cleared-sidebar flex flex-col items-start text-left border-l-2 pl-2 ${isActive && !status.isClearedToday ? 'border-black/30' : (isDoneOrRecent ? '' : 'border-border')}`}>
-                  <span className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 truncate max-w-[80px] ${isDoneOrRecent ? 'tab-cleared-title' : ''}`}>
-                    {wData?.title || "TREINO"}
-                  </span>
-                  <span className={`text-[7px] font-bold uppercase tracking-widest truncate max-w-[80px] ${isActive && !status.isClearedToday ? 'text-black/70' : (isDoneOrRecent ? 'tab-cleared-focus' : 'text-muted')}`}>
-                    {wData?.focus || "SISTEMA"}
-                  </span>
-                </div>
+                <span className="block text-base font-black">{workout.title || `Treino ${day}`}</span>
+                <span className={`mt-1 block text-xs ${isActive ? 'text-black/70' : 'text-muted'}`}>{workout.focus || 'Foco geral'}</span>
+                {status?.completedOnDate && <span className="absolute right-2 top-2 flex items-center gap-1 text-[11px] font-black"><Check size={13} /> Feito</span>}
               </button>
             );
           })}
-        </div>
+        </nav>
       )}
 
-      {/* ROTEADOR DE VIEWS */}
       <div className="relative z-10 min-h-[50vh] px-4">
-
-         {state.view === 'workout' && state.workoutData && (
-          state.workoutData[state.activeDay] ? (
-            // 🔥 UX MINIMALISTA: Atualizado para usar a nova inteligência de status
-            getWorkoutStatus(state.activeDay).isClearedToday ? (
-              <div className="flex flex-col items-center justify-center h-[40vh] opacity-60 animate-in fade-in duration-700">
-                <Check size={48} className="text-[#00f3ff] mb-4 drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]" />
-                <span className="text-xl font-black text-[#00f3ff] uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]">
-                  Cleared
-                </span>
-              </div>
-            ) : (
-              // Roda o treino normalmente
-              <WorkoutView {...state} actions={actions} setActiveDay={setters.setActiveDay} setSelectedDate={actions.handleDateChange} 
-                setSessionNote={setters.setSessionNote} finishWorkout={handleFinishWorkoutWrapper} updateSetData={actions.updateSetData}
-                updateSessionSets={actions.updateSessionSets} toggleCheck={actions.toggleCheck} setRestTimerConfig={setRestTimerConfig} />
-            )
-          ) : (
-            <div className="text-center text-red-500 p-10 border border-red-500 rounded-xl bg-red-500/10 uppercase font-black">
-               <p>DADOS INCONSISTENTES</p>
-               <p className="text-[10px] mt-2 opacity-70">Dia não encontrado. Reinicie o sistema em Gerenciar.</p>
-            </div>
-          )
-        )}
-
-        {state.view === 'importer' && (
-          <Importer 
-            setWorkoutData={setters.setWorkoutData} 
-            setView={setters.setView} 
-            setActiveDay={setters.setActiveDay} // 🔥 ADICIONE ESTA LINHA AQUI
-          />
-        )}
-        
-        {state.view === 'manage' && (
-          <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay}
-            addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} 
-            addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} 
-            setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} />
-        )}
-
-        {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
-        {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
-        {state.view === 'profile' && <ProfileView userMetadata={session?.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={JSON.parse(localStorage.getItem('daily_quests') || '[]')} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
+        <Suspense fallback={<ViewFallback />}>
+          {state.view === 'workout' && state.workoutData?.[state.activeDay] && (
+            <WorkoutView
+              {...state}
+              actions={actions}
+              setActiveDay={setters.setActiveDay}
+              setSelectedDate={actions.handleDateChange}
+              setSessionNote={setters.setSessionNote}
+              finishWorkout={handleFinishWorkout}
+            />
+          )}
+          {state.view === 'workout' && !state.workoutData?.[state.activeDay] && (
+            <section className="rounded-2xl border border-dashed border-primary/40 bg-card/70 p-6 text-center">
+              <h2 className="text-xl font-black text-main">Nenhum treino cadastrado</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">Importe sua ficha em PDF ou cole o treino em texto. Você poderá revisar tudo antes de salvar.</p>
+              <ol className="mx-auto mt-5 max-w-sm space-y-2 text-left text-sm text-muted"><li><span className="font-black text-primary">1.</span> Importe ou crie seu treino.</li><li><span className="font-black text-primary">2.</span> Escolha o protocolo.</li><li><span className="font-black text-primary">3.</span> Inicie e confirme cada série.</li></ol>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setters.setView('importer')} className="touch-target rounded-xl bg-primary font-black text-black">Importar treino</button><button type="button" onClick={() => setters.setView('manage')} className="touch-target rounded-xl border border-primary font-black text-primary">Criar manualmente</button></div>
+            </section>
+          )}
+          {state.view === 'importer' && (
+            <Importer setWorkoutData={setters.setWorkoutData} setView={setters.setView} setActiveDay={setters.setActiveDay} existingWorkoutData={state.workoutData} />
+          )}
+          {state.view === 'manage' && (
+            <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay} addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} />
+          )}
+          {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
+          {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
+          {state.view === 'profile' && <ProfileView userMetadata={authSession.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={readStoredJSON(STORAGE_KEYS.quests, [])} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
+        </Suspense>
       </div>
 
-      {/* 🔴 HUD DE MISSÃO ATIVA (SOFT LOCK) - OCULTA SE O TIMER ESTIVER ATIVO */}
-      {state.workoutTimer?.isRunning && state.view !== 'workout' && !isRestTimerVisible && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-[400px] animate-in slide-in-from-bottom-4 fade-in duration-500">
-          <button 
-            onClick={() => setters.setView('workout')}
-            className="w-full flex items-center justify-between px-5 py-3.5 bg-[#050B14]/90 backdrop-blur-md border border-red-500/50 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.15)] group hover:border-red-500 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em] leading-none mb-1">
-                  Operação em Andamento
-                </span>
-                <span className="text-xs font-bold text-white uppercase tracking-widest leading-none">
-                  Retornar ao Combate
-                </span>
-              </div>
-            </div>
-            
-            <div className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
-              <span className="font-mono text-sm font-bold text-red-400 tracking-wider drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
-                {formatTimer(state.workoutTimer.elapsed)}
-              </span>
-            </div>
-          </button>
-        </div>
+      {sessionActive && state.view !== 'workout' && !state.timerState?.active && (
+        <button type="button" onClick={() => setters.setView('workout')} className="fixed bottom-24 left-1/2 z-40 flex min-h-14 w-[90%] max-w-sm -translate-x-1/2 items-center justify-between rounded-2xl border border-primary/50 bg-card/95 px-5 shadow-xl backdrop-blur-md">
+          <span><span className="block text-xs font-bold text-primary">Treino em andamento</span><span className="block text-sm font-black text-main">Voltar ao treino</span></span>
+          <span className="font-mono font-black text-primary">{formatTime(state.workoutTimer.elapsed)}</span>
+        </button>
       )}
-      
-      {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
-      
-      {/* 🚀 MODAIS DE CELEBRAÇÃO */}
-      {showLevelUp && (
-        <LevelUpModal 
-          level={stats?.level || 1} 
-          onClose={handleLevelUpClose} 
-        />
-      )}
-      {/* ⚠️ MODAL DE AVISO: TREINO RECENTE (OVERTRAINING) */}
-      {warningModal.isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[320px] bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center shadow-lg animate-in zoom-in-95 duration-300">
-            
-            <div className="w-16 h-16 bg-orange-50/50 border border-orange-200 rounded-full flex items-center justify-center mb-4 text-orange-600">
-              <Flame size={32} />
-            </div>
-            
-            <h2 className="text-lg font-black text-main uppercase tracking-widest mb-2">
-              Alerta de Fibras
-            </h2>
-            
-            <p className="text-xs font-bold text-muted uppercase tracking-wider leading-relaxed mb-6">
-              Você já executou o <span className="text-orange-600">Treino {warningModal.day}</span> em <span className="text-main">{warningModal.date}</span>.<br/><br/>
-              O sistema tático recomenda 72h de regeneração. Deseja ignorar o aviso e acessar o treino?
-            </p>
 
-            <div className="flex w-full gap-3">
-              <button 
-                onClick={() => setWarningModal({ isOpen: false, day: null, date: null })}
-                className="flex-1 py-3 bg-input border border-border text-muted font-black uppercase text-[10px] tracking-widest rounded-xl hover:text-main transition-colors"
-              >
-                Abortar
-              </button>
-              <button 
-                onClick={() => {
-                  setters.setActiveDay(warningModal.day);
-                  setWarningModal({ isOpen: false, day: null, date: null });
-                }}
-                className="flex-1 py-3 bg-orange-600 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-sm hover:bg-orange-700 active:scale-95 transition-all"
-              >
-                Forçar Acesso
-              </button>
+      {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
+
+      {warningModal.isOpen && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-warning/50 bg-card p-6">
+            <Flame className="mb-4 text-warning" size={32} />
+            <h2 className="text-lg font-black text-main">Treinar novamente?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">Você realizou este treino há {warningModal.days} {warningModal.days === 1 ? 'dia' : 'dias'} ({formatLocalDate(warningModal.dateKey)}). Se estiver recuperado, pode continuar.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setWarningModal({ isOpen: false, day: null, days: null, dateKey: null })} className="touch-target rounded-xl border border-border font-bold text-main">Voltar</button>
+              <button type="button" onClick={() => { setters.setActiveDay(warningModal.day); setWarningModal({ isOpen: false, day: null, days: null, dateKey: null }); }} className="touch-target rounded-xl bg-warning font-black text-black">Abrir treino</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ALERTA DE NOVA CONQUISTA (ISOLADO) */}
+      {showLevelUp && <LevelUpModal level={stats?.level || 1} onClose={handleLevelUpClose} />}
+
       {showBadgeAlert && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[320px] bg-card border border-yellow-500/50 rounded-3xl p-6 flex flex-col items-center text-center shadow-[0_0_40px_rgba(250,204,21,0.2)] animate-in zoom-in-95 duration-500">
-            
-            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-bounce relative">
-              <Medal size={48} className="text-black drop-shadow-md z-10" />
-              <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-20"></div>
-            </div>
-            
-            <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Zap className="fill-yellow-400" size={20} /> Conquista!
-            </h2>
-            
-            <div className="w-full space-y-3 mb-8">
-              {(JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []).map((badge, idx) => (
-                 <div key={idx} className="bg-black/50 border border-yellow-500/30 p-4 rounded-xl flex flex-col items-center">
-                   <p className="text-lg font-black text-white uppercase text-center leading-tight">{badge.title}</p>
-                   {badge.desc && <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-wider">{badge.desc}</p>}
-                 </div>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-3xl border border-yellow-500/50 bg-card p-6 text-center">
+            <Medal size={54} className="mx-auto text-yellow-400" />
+            <h2 className="mt-4 flex items-center justify-center gap-2 text-xl font-black text-yellow-400"><Zap size={20} /> Nova conquista</h2>
+            <div className="my-6 space-y-3">
+              {(pendingReport?.newBadges || []).map((badge) => (
+                <div key={badge.id || badge.title} className="rounded-xl border border-yellow-500/30 bg-input p-4">
+                  <p className="font-black text-main">{badge.title}</p>
+                  {badge.desc && <p className="mt-1 text-sm text-muted">{badge.desc}</p>}
+                </div>
               ))}
             </div>
-
-            <button 
-              onClick={handleBadgeAlertClose}
-              className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-xs tracking-widest rounded-xl hover:bg-yellow-300 transition-colors shadow-[0_0_20px_rgba(250,204,21,0.4)] active:scale-95"
-            >
-              Avançar
-            </button>
+            <button type="button" onClick={() => { setShowBadgeAlert(false); setShowCelebration(true); }} className="touch-target w-full rounded-xl bg-yellow-400 font-black text-black">Ver resumo</button>
           </div>
         </div>
       )}
 
-     {showCelebration && (
-        <WorkoutComplete 
-          onClose={() => {
-            // 🔥 Limpa a memória para o usuário seguir a vida
-            localStorage.removeItem('pending_share_card');
-            setShowCelebration(false);
-            setSuccessToast(true);
-            setTimeout(() => setSuccessToast(false), 3500);
-
-            // 🔥 O CHUTE TÁTICO: Expulsa da tela de treino para o histórico!
-            setters.setView('history');
-          }} 
-          
-          // 🔥 Lógica de Persistência: Tenta ler o cofre primeiro, se falhar, usa os stats
-          sessionDuration={`${JSON.parse(localStorage.getItem('pending_share_card') || '{}').duration || stats.lastSessionStats?.duration || '00:00'} min`} 
-          sessionVolume={`${JSON.parse(localStorage.getItem('pending_share_card') || '{}').volume || stats.lastSessionStats?.volume || 0} kg`} 
-          sessionPoints={`+${JSON.parse(localStorage.getItem('pending_share_card') || '{}').xp || stats.lastSessionStats?.xp || 0} XP`} 
-          
-          bossName={state.workoutData?.[state.activeDay]?.title || "ALVO ELIMINADO"} 
-          bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
-          
-          streak={JSON.parse(localStorage.getItem('pending_share_card') || '{}').streak || stats?.streak || 0}
-          currentLevel={JSON.parse(localStorage.getItem('pending_share_card') || '{}').level || stats?.level || 1}
-          totalXp={stats?.xp || 0} 
-          newBadges={JSON.parse(localStorage.getItem('pending_share_card') || '{}').newBadges || []}
-        />
-      )}
-      
-      {/* MENU LATERAL MODULARIZADO */}
-      <SidebarMenu 
-        isOpen={isMenuOpen} 
-        onClose={() => setIsMenuOpen(false)} 
-        theme={theme} 
-        setTheme={setTheme} 
-        setView={setters.setView} 
-      />
-
-      {/* 🔥 REST TIMER */}
-      <div className="relative z-[9999]">
-        {(state.timerState?.active || restTimerConfig.isOpen) && (
-          <RestTimer 
-            initialSeconds={state.timerState?.active ? state.timerState.seconds : restTimerConfig.duration} 
-            onClose={() => { 
-              if(state.timerState?.active) actions.closeTimer(); 
-              setRestTimerConfig(p => ({ ...p, isOpen: false })); 
-            }} 
+      {showCelebration && pendingReport && (
+        <Suspense fallback={<ViewFallback />}>
+          <WorkoutComplete
+            onClose={closeReport}
+            sessionDuration={`${pendingReport.duration || stats.lastSessionStats?.duration || 0} min`}
+            sessionVolume={`${pendingReport.volume || stats.lastSessionStats?.volume || 0} kg`}
+            sessionPoints={`+${pendingReport.xp || stats.lastSessionStats?.xp || 0} XP`}
+            sessionPrs={pendingReport.prsBroken || 0}
+            completedSets={pendingReport.completedSets || 0}
+            partial={pendingReport.partial === true}
+            syncStatus={pendingReport.syncStatus}
+            bossName={state.workoutData?.[state.activeDay]?.title || 'Treino concluído'}
+            bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
+            streak={pendingReport.streak || stats?.streak || 0}
+            currentLevel={pendingReport.level || stats?.level || 1}
+            totalXp={stats?.xp || 0}
+            newBadges={pendingReport.newBadges || []}
           />
-        )}
-        {/* 🔥 TOAST DE SUCESSO GLOBAL */}
-        {successToast && createPortal(
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] animate-in slide-in-from-top-10 fade-in duration-500">
-            <div className="bg-[#050505]/95 backdrop-blur-md border border-[#00f3ff]/40 px-6 py-3 rounded-full shadow-[0_0_20px_rgba(0,243,255,0.2)] flex items-center gap-3">
-              <div className="w-2 h-2 bg-[#00f3ff] rounded-full animate-ping shadow-[0_0_8px_rgba(0,243,255,0.8)]"></div>
-              <span className="text-xs font-black text-white uppercase tracking-[0.15em]">
-                Operação Registrada
-              </span>
-            </div>
-          </div>,
-          document.body
-        )}
-      </div>
+        </Suspense>
+      )}
+
+      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingSessions} />
+
+      {state.timerState?.active && state.timerState.endTime && (
+        <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />
+      )}
+
+      {successToast && createPortal(
+        <div role="status" className="fixed left-1/2 top-4 z-[99999] -translate-x-1/2 rounded-full border border-primary/40 bg-card/95 px-6 py-3 text-sm font-black text-main shadow-xl backdrop-blur-md">
+          Treino salvo com sucesso
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };

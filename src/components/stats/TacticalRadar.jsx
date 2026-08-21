@@ -23,7 +23,6 @@ const TacticalRadar = ({ radarData, maxStat }) => {
   // Estado para o atributo selecionado (hover ou toque)
   const [activeAttr, setActiveAttr] = useState(null);
 
-  // 🔥 Lixo jogado fora: Removemos a detecção de tema via JS! 
 
   return (
     <div className="bg-card border-2 border-border rounded-3xl p-5 shadow-sm space-y-4 transition-all duration-500">

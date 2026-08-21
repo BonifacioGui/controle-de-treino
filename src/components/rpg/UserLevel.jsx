@@ -1,10 +1,8 @@
 import React from 'react';
 import { Trophy, Terminal } from 'lucide-react';
 
-// 🔥 PADRÃO OURO: Recebe 'stats' direto e confia na matemática do rpgSystem!
 const UserLevel = ({ stats }) => {
   
-  // 🔥 ESTADO DE ANIMAÇÃO: Controla a largura da barra
   const barWidth = stats?.progress || 0;
 
   if (!stats) return null; // Prevenção contra carregamento fantasma
@@ -51,7 +49,6 @@ const UserLevel = ({ stats }) => {
         <div className="flex justify-between text-[9px] font-black text-muted mb-1.5 uppercase tracking-wider">
           <span>PROGRESSO DE NÍVEL</span>
           <span className="text-yellow-600 dark:text-yellow-500/80">
-            {/* 🔥 Usa o xpRemaining que já veio calculado do servidor */}
             {Math.max(0, stats.xpRemaining || 0).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}
           </span>
         </div>

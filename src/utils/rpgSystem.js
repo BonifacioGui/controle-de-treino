@@ -1,4 +1,6 @@
 import { calculateSessionVolume } from './gameLogic';
+import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
+import { parseDecimalInput } from './numberUtils';
 
 // --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
 const STAT_XP_MULTIPLIER = 0.05;
@@ -25,11 +27,11 @@ export const DAILY_QUESTS_POOL = [
   { id: 'vol_pro', title: 'Hércules', desc: 'Mova 25.000kg totais.', reward: 800, minLevel: 25, maxLevel: 999, check: (s) => calculateSessionVolume(s) >= 25000 },
   { id: 'reps_100', title: 'Centenário', desc: 'Faça 100+ repetições.', reward: 150, minLevel: 1, maxLevel: 999, check: (s) => calculateTotalReps(s) >= 100 },
   { id: 'reps_200', title: 'Maratonista', desc: 'Faça 200+ repetições.', reward: 400, minLevel: 15, maxLevel: 999, check: (s) => calculateTotalReps(s) >= 200 },
-  { id: 'focus_chest', title: 'Peito de Aço', desc: '8+ séries de empurrar.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.done && /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + (e.sets.length || 0), 0) >= 8 },
-  { id: 'focus_legs', title: 'Não pule o Leg Day', desc: 'Treino de Pernas.', reward: 500, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.done && /agachamento|leg|extensora|flexora/i.test(e.name)) },
-  { id: 'focus_arms', title: 'Esmaga que Cresce', desc: '4+ exercícios de braço.', reward: 250, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.done && /rosca|tríceps|triceps/i.test(e.name)).length >= 4 },
-  { id: 'focus_abs', title: 'Tanque de Guerra', desc: 'Exercícios de Core.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.done && /prancha|abdominal|vacuum/i.test(e.name)) },
-  { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.length > 0 && s.exercises.every(ex => ex.done === true) },
+  { id: 'focus_chest', title: 'Peito de Aço', desc: '8+ séries de empurrar.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + e.sets.filter(set => set.completed).length, 0) >= 8 },
+  { id: 'focus_legs', title: 'Não pule o Leg Day', desc: 'Treino de pernas registrado.', reward: 500, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.sets.some(set => set.completed) && /agachamento|leg|extensora|flexora/i.test(e.name)) },
+  { id: 'focus_arms', title: 'Esmaga que Cresce', desc: '4+ exercícios de braço.', reward: 250, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.sets.some(set => set.completed) && /rosca|tríceps|triceps/i.test(e.name)).length >= 4 },
+  { id: 'focus_abs', title: 'Tanque de Guerra', desc: 'Exercícios de core registrados.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.sets.some(set => set.completed) && /prancha|abdominal|vacuum/i.test(e.name)) },
+  { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.length > 0 && !s.partial && s.exercises.every(ex => ex.skipped || ex.sets.every(set => set.completed)) },
   { id: 'meta_insane', title: 'God Mode', desc: '20ton + 150 Reps.', reward: 1500, minLevel: 30, maxLevel: 999, check: (s) => calculateSessionVolume(s) >= 20000 && calculateTotalReps(s) >= 150 },
   { id: 'time_early', title: 'Clube das 5', desc: 'Treine antes das 12h.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() < 12 },
   { id: 'time_night', title: 'Morcego', desc: 'Treine após as 19h.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() >= 19 }
@@ -99,9 +101,8 @@ export const calculateStats = (history) => {
   let totalXp = 0;
 
   history.forEach(session => {
-    // 🔥 1. ADICIONA O BÔNUS DE MISSÃO (XP LIVRE)
     // Se a sessão tiver bonus_xp salvo (como o das missões), joga pro total!
-    const bonusDaSessao = parseInt(session.bonus_xp) || 0;
+    const bonusDaSessao = parseDecimalInput(session.bonusXp) || 0;
     totalXp += bonusDaSessao;
 
     if (!session.exercises) return;
@@ -110,9 +111,9 @@ export const calculateStats = (history) => {
       
       const vol = ex.sets.reduce((acc, s) => {
         if (!s.completed) return acc; 
-        const w = parseFloat(s.weight);
-        const r = parseFloat(s.reps);
-        if (isNaN(w) || isNaN(r)) return acc;
+        const w = parseDecimalInput(s.weight);
+        const r = parseDecimalInput(s.reps);
+        if (w === null || r === null) return acc;
         return acc + (w * r);
       }, 0);
       
@@ -121,7 +122,7 @@ export const calculateStats = (history) => {
       
       const gainedXp = (vol * STAT_XP_MULTIPLIER);
       stats[statType].xp += gainedXp;
-      totalXp += gainedXp; // 🔥 2. ADICIONA O XP DE TREINO (VOLUME)
+      totalXp += gainedXp;
     });
   });
   
@@ -180,54 +181,19 @@ export const getFlameStyle = (streak) => {
 export const calculateStreak = (history) => {
   if (!Array.isArray(history) || history.length === 0) return 0;
 
-  // 1. Extrai as datas de forma segura (lidando com formatos variados do banco)
-  const validDates = history.reduce((acc, h) => {
-    if (!h) return acc;
-    const rawDate = h.date || h.workout_date;
-    if (typeof rawDate === 'string' && rawDate.trim() !== '') {
-      let year, month, day;
-      if (rawDate.includes('/')) {
-        [day, month, year] = rawDate.split('/');
-      } else {
-        const datePart = rawDate.split('T')[0];
-        [year, month, day] = datePart.split('-');
-      }
-      acc.push(new Date(year, month - 1, day).getTime());
-    }
-    return acc;
-  }, []);
-
-  if (validDates.length === 0) return 0;
-
-  // 2. Remove datas duplicadas e ordena da mais recente para a mais antiga
-  const uniqueDates = [...new Set(validDates)].sort((a, b) => b - a);
-
-  // 3. Define "Hoje" à meia-noite (padronizando o relógio)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTime = today.getTime();
-
-  const msInDay = 1000 * 60 * 60 * 24;
-  
-  // 🔥 REGRA DE NEGÓCIO: Janela de descanso de até 3 dias.
+  const uniqueDates = [...new Set(history.map((entry) => entry?.dateKey).filter(Boolean))]
+    .sort((left, right) => right.localeCompare(left));
+  if (uniqueDates.length === 0) return 0;
   const toleranceDays = 3; 
-
-  // Se o último treino registrado foi há MAIS de 3 dias de HOJE, a ofensiva zerou.
-  if ((todayTime - uniqueDates[0]) / msInDay > toleranceDays) {
+  if (daysBetweenLocalDates(uniqueDates[0], getLocalDateKey()) > toleranceDays) {
     return 0;
   }
-
-  // Se chegou aqui, a ofensiva está ativa. Vamos calcular o tamanho da corrente.
   let currentStreak = 1;
-
   for (let i = 0; i < uniqueDates.length - 1; i++) {
-    const diffInDays = (uniqueDates[i] - uniqueDates[i + 1]) / msInDay;
-
-    // Se o espaço entre os treinos for aceitável (até 3 dias), a corrente cresce
+    const diffInDays = daysBetweenLocalDates(uniqueDates[i + 1], uniqueDates[i]);
     if (diffInDays <= toleranceDays) {
       currentStreak++;
     } else {
-      // Se tiver um buraco maior que 3 dias, a contagem da corrente para aqui
       break;
     }
   }
