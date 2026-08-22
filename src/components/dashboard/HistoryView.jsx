@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Cloud,
   CloudOff,
@@ -18,6 +20,7 @@ import { formatLocalDate } from '../../utils/dateUtils';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
+const SESSIONS_PER_PAGE = 6;
 
 const formatDuration = (seconds) => {
   const safe = Math.max(0, Number(seconds) || 0);
@@ -143,8 +146,24 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [cardAction, setCardAction] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const shareCardRef = useRef(null);
-  const groups = groupByMonth(history);
+  const historyTopRef = useRef(null);
+  const totalPages = Math.max(1, Math.ceil(history.length / SESSIONS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const firstSessionIndex = (safePage - 1) * SESSIONS_PER_PAGE;
+  const paginatedHistory = history.slice(firstSessionIndex, firstSessionIndex + SESSIONS_PER_PAGE);
+  const groups = groupByMonth(paginatedHistory);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const goToPage = (page) => {
+    const nextPage = Math.min(totalPages, Math.max(1, page));
+    setCurrentPage(nextPage);
+    window.requestAnimationFrame(() => historyTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   useEffect(() => {
     if (!cardAction || !shareCardRef.current) return undefined;
@@ -191,7 +210,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
 
   return (
     <>
-      <main className="space-y-5 pb-24">
+      <main ref={historyTopRef} className="scroll-mt-4 space-y-5 pb-24">
         <header className="flex items-center justify-between border-b border-border pb-4">
           <div><h2 className="flex items-center gap-2 text-xl font-black text-main"><Database className="text-primary" /> Histórico</h2><p className="mt-1 text-sm text-muted">{history.length} {history.length === 1 ? 'sessão registrada' : 'sessões registradas'}</p></div>
         </header>
@@ -201,6 +220,19 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
         ) : Object.entries(groups).map(([month, sessions]) => (
           <section key={month} className="space-y-3"><h3 className="text-sm font-black capitalize text-muted">{month}</h3>{sessions.map((session) => <SessionCard key={session.id || session.localId} session={session} onDelete={setItemToDelete} onUpdate={updateEntry} onCardAction={(entry, type) => setCardAction({ session: entry, type })} />)}</section>
         ))}
+
+        {history.length > 0 && (
+          <nav aria-label="Paginação do histórico" className="rounded-2xl border border-border bg-card p-3">
+            <p className="mb-3 text-center text-xs font-bold text-muted">
+              Exibindo {firstSessionIndex + 1}–{Math.min(firstSessionIndex + SESSIONS_PER_PAGE, history.length)} de {history.length}
+            </p>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <button type="button" onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="touch-target inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 text-sm font-bold text-main disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={18} /> Anterior</button>
+              <span className="px-2 text-center text-sm font-black text-primary" aria-live="polite">{safePage}/{totalPages}</span>
+              <button type="button" onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="touch-target inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 text-sm font-bold text-main disabled:cursor-not-allowed disabled:opacity-35">Próxima <ChevronRight size={18} /></button>
+            </div>
+          </nav>
+        )}
 
         <button type="button" onClick={() => setView('workout')} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Voltar ao treino</button>
       </main>
