@@ -1,6 +1,7 @@
 import { calculateSessionVolume } from './gameLogic';
 import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
 import { parseDecimalInput } from './numberUtils';
+import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER } from './xpModel';
 
 // --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
 const STAT_XP_MULTIPLIER = 0.05;
@@ -101,9 +102,10 @@ export const calculateStats = (history) => {
   let totalXp = 0;
 
   history.forEach(session => {
-    // Se a sessão tiver bonus_xp salvo (como o das missões), joga pro total!
-    const bonusDaSessao = parseDecimalInput(session.bonusXp) || 0;
-    totalXp += bonusDaSessao;
+    totalXp += calculateSessionXp(session);
+    const overloadMultiplier = String(session.overloadStatus || '').toUpperCase() === 'OVERLOAD'
+      ? OVERLOAD_XP_MULTIPLIER
+      : 1;
 
     if (!session.exercises) return;
     session.exercises.forEach(ex => {
@@ -120,9 +122,8 @@ export const calculateStats = (history) => {
       const normalizedName = ex.name.trim().toLowerCase();
       const statType = EXERCISE_STATS[normalizedName] || 'STR';
       
-      const gainedXp = (vol * STAT_XP_MULTIPLIER);
+      const gainedXp = vol * STAT_XP_MULTIPLIER * overloadMultiplier;
       stats[statType].xp += gainedXp;
-      totalXp += gainedXp;
     });
   });
   

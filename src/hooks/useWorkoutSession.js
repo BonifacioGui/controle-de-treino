@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SESSION_STATUS } from '../utils/sessionModel';
-import { readStoredJSON, STORAGE_KEYS, writeStoredJSON } from '../utils/storage';
+import {
+  readUserStoredJSON,
+  removeUserStoredItem,
+  STORAGE_KEYS,
+  writeUserStoredJSON,
+} from '../utils/storage';
 
 const EMPTY_SESSION = Object.freeze({
   status: SESSION_STATUS.idle,
@@ -19,21 +24,38 @@ const calculateElapsed = (session, now = Date.now()) => {
   return stored + Math.max(0, Math.floor((now - session.startedAt) / 1000));
 };
 
-export const useWorkoutSession = () => {
-  const [session, setSession] = useState(() => {
-    const saved = readStoredJSON(STORAGE_KEYS.activeSession, null);
-    if (!saved || saved.status === SESSION_STATUS.completed) return { ...EMPTY_SESSION };
-    return { ...EMPTY_SESSION, ...saved, recovered: saved.status !== SESSION_STATUS.idle };
-  });
+export const useWorkoutSession = (userId) => {
+  const [session, setSession] = useState({ ...EMPTY_SESSION });
+  const [hydratedUserId, setHydratedUserId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (!userId) {
+        setSession({ ...EMPTY_SESSION });
+        setHydratedUserId(null);
+        return;
+      }
+      const saved = readUserStoredJSON(userId, STORAGE_KEYS.activeSession, null);
+      setSession(!saved || saved.status === SESSION_STATUS.completed
+        ? { ...EMPTY_SESSION }
+        : { ...EMPTY_SESSION, ...saved, recovered: saved.status !== SESSION_STATUS.idle });
+      setHydratedUserId(userId);
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
+
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
+    if (!userId || hydratedUserId !== userId) return;
     if (session.status === SESSION_STATUS.idle || session.status === SESSION_STATUS.completed) {
-      localStorage.removeItem(STORAGE_KEYS.activeSession);
+      removeUserStoredItem(userId, STORAGE_KEYS.activeSession);
       return;
     }
-    writeStoredJSON(STORAGE_KEYS.activeSession, { ...session, recovered: false });
-  }, [session]);
+    writeUserStoredJSON(userId, STORAGE_KEYS.activeSession, { ...session, recovered: false });
+  }, [hydratedUserId, session, userId]);
 
   useEffect(() => {
     if (session.status !== SESSION_STATUS.active) return undefined;
@@ -127,6 +149,7 @@ export const useWorkoutSession = () => {
 
   return {
     session,
+    isHydrated: Boolean(userId && hydratedUserId === userId),
     workoutTimer,
     startSession,
     pauseSession,

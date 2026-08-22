@@ -1,7 +1,7 @@
 // src/utils/questSystem.js
 import { QUEST_RULES } from './questRules'; // Importa para usar aqui dentro
 import { getLocalDateKey } from './dateUtils';
-import { readStoredJSON, STORAGE_KEYS, writeStoredJSON } from './storage';
+import { readUserStoredJSON, STORAGE_KEYS, writeUserStoredJSON } from './storage';
 
 const QUEST_POOL = [
   { id: 'q1', title: 'Sobrecarga Crítica', desc: 'Bata 1 Novo PR no treino de hoje', reward: 150, type: 'pr', completed: false },
@@ -11,9 +11,10 @@ const QUEST_POOL = [
   { id: 'q5', title: 'Força Bruta', desc: 'Levante mais de 2.000kg totais', reward: 100, type: 'volume_2000', completed: false }
 ];
 
-export const generateDailyQuests = () => {
+export const generateDailyQuests = (userId) => {
+  if (!userId) return [];
   const today = getLocalDateKey();
-  const savedData = readStoredJSON(STORAGE_KEYS.questData, {});
+  const savedData = readUserStoredJSON(userId, STORAGE_KEYS.questData, {});
 
   if (savedData.date !== today) {
     const shuffled = QUEST_POOL.sort(() => 0.5 - Math.random());
@@ -24,14 +25,17 @@ export const generateDailyQuests = () => {
       quests: dailyQuests
     };
 
-    writeStoredJSON(STORAGE_KEYS.questData, newData);
-    writeStoredJSON(STORAGE_KEYS.quests, dailyQuests);
+    writeUserStoredJSON(userId, STORAGE_KEYS.questData, newData);
+    writeUserStoredJSON(userId, STORAGE_KEYS.quests, dailyQuests);
     window.dispatchEvent(new Event('quest_update'));
+    return dailyQuests;
   }
+  return savedData.quests || [];
 };
 
-export const validateWorkoutQuests = (sessionData) => {
-  const dailyQuests = readStoredJSON(STORAGE_KEYS.quests, []);
+export const validateWorkoutQuests = (sessionData, userId) => {
+  if (!userId) return [];
+  const dailyQuests = readUserStoredJSON(userId, STORAGE_KEYS.quests, []);
   let questsUpdated = false;
 
   const updatedQuests = dailyQuests.map(quest => {
@@ -47,9 +51,10 @@ export const validateWorkoutQuests = (sessionData) => {
   });
 
   if (questsUpdated) {
-    writeStoredJSON(STORAGE_KEYS.quests, updatedQuests);
+    writeUserStoredJSON(userId, STORAGE_KEYS.quests, updatedQuests);
     window.dispatchEvent(new Event('quest_update'));
   }
+  return updatedQuests;
 };
 
 export { QUEST_RULES };

@@ -15,4 +15,17 @@ describe('XP', () => {
     expect(first.xp).toBe(5);
     expect(afterAnotherSession.xp).toBeGreaterThanOrEqual(first.xp);
   });
+
+  it('usa o mesmo XP oficial persistido na soma global', () => {
+    const result = calculateStats([{
+      dateKey: '2026-08-20',
+      earnedXp: 640,
+      totalVolume: 10_000,
+      bonusXp: 40,
+      overloadStatus: 'OVERLOAD',
+      exercises: [{ name: 'Supino reto', sets: [{ weight: 100, reps: 100, completed: true }] }],
+    }]);
+
+    expect(result.xp).toBe(640);
+  });
 });

@@ -20,6 +20,7 @@ import {
 import { formatLocalDate } from '../../utils/dateUtils';
 import { groupHistoryByDate } from '../../utils/historyGrouping';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
+import { calculateSessionXp } from '../../utils/xpModel';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
 
@@ -347,7 +348,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
 
       {cardAction && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={shareCardRef} stats={{ duration: formatDuration(cardAction.session.duration), volume: Math.round(cardAction.session.totalVolume || cardAction.session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0)).toString(), prs: cardAction.session.prsBroken || 0 }} bossName={cardAction.session.workoutName} streak={cardAction.session.streak || 1} xp={cardAction.session.bonusXp || 0} currentLevel={cardAction.session.level || 1} totalXp={0} bossHp={5000} variant="rpg" />
+          <ShareCard cardRef={shareCardRef} stats={{ duration: formatDuration(cardAction.session.duration), volume: Math.round(cardAction.session.totalVolume || cardAction.session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0)).toString(), prs: cardAction.session.prsBroken || 0 }} bossName={cardAction.session.workoutName} streak={cardAction.session.streak || 1} xp={calculateSessionXp(cardAction.session)} currentLevel={cardAction.session.level || 1} totalXp={0} bossHp={5000} variant="rpg" />
         </Suspense>
       )}
 

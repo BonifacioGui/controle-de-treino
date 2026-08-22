@@ -16,7 +16,7 @@ import CyberCalendar from '../dashboard/CyberCalendar';
 import QuestBoard from '../rpg/QuestBoard';
 import { formatLocalDate } from '../../utils/dateUtils';
 import { formatTime } from '../../utils/workoutUtils';
-import { readStoredJSON, STORAGE_KEYS } from '../../utils/storage';
+import { readUserStoredJSON, STORAGE_KEYS } from '../../utils/storage';
 
 const WorkoutHeader = ({
   selectedDate,
@@ -28,17 +28,20 @@ const WorkoutHeader = ({
   onAbandon,
   isTutorialDay,
   sessionActive,
+  userId,
 }) => {
   const [isAbandonModalOpen, setIsAbandonModalOpen] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
   const [hasQuests, setHasQuests] = useState(false);
 
   useEffect(() => {
-    const checkQuests = () => setHasQuests(readStoredJSON(STORAGE_KEYS.quests, []).length > 0);
+    const checkQuests = () => setHasQuests(userId
+      ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []).length > 0
+      : false);
     checkQuests();
     window.addEventListener('quest_update', checkQuests);
     return () => window.removeEventListener('quest_update', checkQuests);
-  }, []);
+  }, [userId]);
 
   const confirmAbandon = () => {
     onAbandon();
@@ -77,7 +80,7 @@ const WorkoutHeader = ({
               <span className="flex items-center gap-2"><Crosshair size={16} /> Missões diárias</span>
               {showQuests ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
-            {showQuests && <div className="mt-2"><QuestBoard /></div>}
+            {showQuests && <div className="mt-2"><QuestBoard userId={userId} /></div>}
           </div>
         )}
 

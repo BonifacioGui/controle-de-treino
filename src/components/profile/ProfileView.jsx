@@ -5,7 +5,7 @@ import { supabase } from '../../services/supabaseClient';
 import { calculateStats } from '../../utils/rpgSystem';
 import { daysBetweenLocalDates, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
 import { parseDecimalInput } from '../../utils/numberUtils';
-import { readStoredText, STORAGE_KEYS, writeStoredText } from '../../utils/storage';
+import { readUserStoredText, STORAGE_KEYS, writeUserStoredText } from '../../utils/storage';
 
 // Importando o exército de componentes que criamos:
 import ProfileHeader from './ProfileHeader';
@@ -17,10 +17,10 @@ import CharacterSheet from '../rpg/CharacterSheet';
 import BadgeList from '../rpg/BadgeList';
 import QuestBoard from '../rpg/QuestBoard';
 
-const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEntry }) => {
+const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], deleteEntry }) => {
   
   // ================= ESTADOS =================
-  const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || readStoredText(STORAGE_KEYS.avatar, '') || null);
+  const [avatarUrl, setAvatarUrl] = useState(() => userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.photo || (userId ? readUserStoredText(userId, STORAGE_KEYS.avatar, '') : '') || null);
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
@@ -146,7 +146,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
     const reader = new FileReader();
     reader.onloadend = () => {
       setAvatarUrl(reader.result);
-      writeStoredText(STORAGE_KEYS.avatar, reader.result);
+      writeUserStoredText(userId, STORAGE_KEYS.avatar, reader.result);
     };
     reader.readAsDataURL(file);
 
@@ -180,7 +180,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
       // 4. ATUALIZA O PERFIL AUTOMATICAMENTE
       const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const newUrl = data.publicUrl;
-      writeStoredText(STORAGE_KEYS.avatar, newUrl);
+      writeUserStoredText(userId, STORAGE_KEYS.avatar, newUrl);
 
       const { error: updateError } = await supabase.auth.updateUser({ 
         data: { avatar_url: newUrl } 
@@ -289,7 +289,7 @@ const ProfileView = ({ userMetadata, stats, history, bodyHistory = [], deleteEnt
 
       <CharacterSheet history={history} stats={stats} rpgData={rpgData} />
       <BadgeList history={history} stats={stats} rpgData={rpgData} />
-      <QuestBoard />
+      <QuestBoard userId={userId} />
 
       <ProfileSettingsModal 
         isEditing={isEditing} setIsEditing={setIsEditing} editForm={editForm} setEditForm={setEditForm} 

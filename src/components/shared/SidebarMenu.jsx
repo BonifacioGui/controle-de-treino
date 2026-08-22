@@ -24,6 +24,7 @@ const SidebarMenu = ({
   hasPendingChanges,
   syncStatus,
   onSync,
+  userId,
 }) => {
   const [confirmLogout, setConfirmLogout] = useState(false);
 
@@ -38,7 +39,7 @@ const SidebarMenu = ({
   };
 
   const handleBackup = () => {
-    const data = JSON.stringify(getSoloBackup(), null, 2);
+    const data = JSON.stringify(getSoloBackup(userId), null, 2);
     const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;

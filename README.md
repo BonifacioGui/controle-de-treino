@@ -33,10 +33,15 @@ VITE_SUPABASE_ANON_KEY=sua-chave-publica
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
 O build de produção é gerado em `dist/`.
+
+## Migrações do Supabase
+
+Antes de publicar uma versão que altere o modelo de dados, execute no SQL Editor do projeto Supabase os arquivos de `supabase/migrations`, em ordem. A migração `202608220001_history_integrity.sql` adiciona e preenche o estado de treino parcial e o XP oficial de cada sessão.
 
 ## Tecnologias
 

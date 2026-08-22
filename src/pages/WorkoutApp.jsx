@@ -25,7 +25,14 @@ import { getFlameStyle } from '../utils/rpgSystem';
 import { generateDailyQuests } from '../utils/questSystem';
 import { daysBetweenLocalDates, formatLocalDate } from '../utils/dateUtils';
 import { formatTime } from '../utils/workoutUtils';
-import { readStoredJSON, STORAGE_KEYS, writeStoredJSON } from '../utils/storage';
+import {
+  readStoredJSON,
+  readUserStoredJSON,
+  removeUserStoredItem,
+  STORAGE_KEYS,
+  writeStoredJSON,
+  writeUserStoredJSON,
+} from '../utils/storage';
 import { SESSION_STATUS } from '../utils/sessionModel';
 
 const HistoryView = lazy(() => import('../components/dashboard/HistoryView'));
@@ -51,22 +58,26 @@ const SYNC_COPY = {
 const WorkoutApp = () => {
   const [authSession, setAuthSession] = useState(null);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
-  const { state, setters, actions, stats } = useWorkout();
+  const userId = authSession?.user?.id || null;
+  const { state, setters, actions, stats } = useWorkout(userId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState(() => readStoredJSON(STORAGE_KEYS.settings, {}).theme || 'driver');
-  const [showCelebration, setShowCelebration] = useState(
-    () => Boolean(readStoredJSON(STORAGE_KEYS.pendingShareCard, null)),
-  );
+  const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
-  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, days: null, dateKey: null });
-  const [pendingReport, setPendingReport] = useState(() => readStoredJSON(STORAGE_KEYS.pendingShareCard, null));
+  const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, days: null, dateKey: null, userId: null });
+  const [pendingReport, setPendingReport] = useState(null);
+  const [reportUserId, setReportUserId] = useState(null);
 
   const flameStyle = getFlameStyle(stats?.streak || 0);
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(state.session?.status);
-  const isAnyModalOpen = showCelebration || showLevelUp || showBadgeAlert || isMenuOpen;
+  const currentPendingReport = reportUserId === userId ? pendingReport : null;
+  const showCurrentCelebration = reportUserId === userId && showCelebration;
+  const showCurrentLevelUp = reportUserId === userId && showLevelUp;
+  const showCurrentBadgeAlert = reportUserId === userId && showBadgeAlert;
+  const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen;
   const syncCopy = SYNC_COPY[state.syncStatus] || SYNC_COPY.error;
   const SyncIcon = syncCopy.Icon;
 
@@ -82,7 +93,19 @@ const WorkoutApp = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => { generateDailyQuests(); }, []);
+  useEffect(() => {
+    if (!userId || !state.isHydrated) return;
+    generateDailyQuests(userId);
+    const report = readUserStoredJSON(userId, STORAGE_KEYS.pendingShareCard, null);
+    const timer = window.setTimeout(() => {
+      setPendingReport(report);
+      setReportUserId(userId);
+      setShowCelebration(Boolean(report));
+      setShowLevelUp(false);
+      setShowBadgeAlert(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [state.isHydrated, userId]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -119,8 +142,9 @@ const WorkoutApp = () => {
       partial: result.partial,
       syncStatus: result.syncStatus,
     };
-    writeStoredJSON(STORAGE_KEYS.pendingShareCard, report);
+    writeUserStoredJSON(userId, STORAGE_KEYS.pendingShareCard, report);
     setPendingReport(report);
+    setReportUserId(userId);
 
     if (result.subiuDeNivel) setShowLevelUp(true);
     else if (result.newBadges?.length > 0) setShowBadgeAlert(true);
@@ -130,13 +154,14 @@ const WorkoutApp = () => {
 
   const handleLevelUpClose = () => {
     setShowLevelUp(false);
-    if (pendingReport?.newBadges?.length > 0) setShowBadgeAlert(true);
+    if (currentPendingReport?.newBadges?.length > 0) setShowBadgeAlert(true);
     else setShowCelebration(true);
   };
 
   const closeReport = () => {
-    localStorage.removeItem(STORAGE_KEYS.pendingShareCard);
+    removeUserStoredItem(userId, STORAGE_KEYS.pendingShareCard);
     setPendingReport(null);
+    setReportUserId(null);
     setShowCelebration(false);
     setSuccessToast(true);
     window.setTimeout(() => setSuccessToast(false), 3500);
@@ -145,6 +170,7 @@ const WorkoutApp = () => {
 
   if (isSessionLoading) return <LoadingScreen logo={logoSolo} />;
   if (!authSession) return <AuthLayout />;
+  if (!state.isHydrated) return <LoadingScreen logo={logoSolo} />;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-page pb-8 font-cyber text-main transition-colors duration-500 cyber-grid">
@@ -167,7 +193,7 @@ const WorkoutApp = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => state.hasPendingChanges && actions.syncPendingSessions()}
+            onClick={() => state.hasPendingChanges && actions.syncPendingChanges()}
             disabled={!state.hasPendingChanges || state.syncStatus === 'syncing'}
             aria-label={syncCopy.label}
             className={`hidden min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold sm:flex ${syncCopy.className}`}
@@ -189,7 +215,7 @@ const WorkoutApp = () => {
             const selectWorkout = () => {
               if (locked || isActive) return;
               if (status?.recent) {
-                setWarningModal({ isOpen: true, day, days: status.days, dateKey: status.dateKey });
+                setWarningModal({ isOpen: true, day, days: status.days, dateKey: status.dateKey, userId });
               } else setters.setActiveDay(day);
             };
             return (
@@ -238,7 +264,7 @@ const WorkoutApp = () => {
           )}
           {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
           {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
-          {state.view === 'profile' && <ProfileView userMetadata={authSession.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={readStoredJSON(STORAGE_KEYS.quests, [])} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
+          {state.view === 'profile' && <ProfileView key={userId} userId={userId} userMetadata={authSession.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={readUserStoredJSON(userId, STORAGE_KEYS.quests, [])} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
         </Suspense>
       </div>
 
@@ -251,7 +277,7 @@ const WorkoutApp = () => {
 
       {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
 
-      {warningModal.isOpen && (
+      {warningModal.isOpen && warningModal.userId === userId && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-warning/50 bg-card p-6">
             <Flame className="mb-4 text-warning" size={32} />
@@ -265,15 +291,15 @@ const WorkoutApp = () => {
         </div>
       )}
 
-      {showLevelUp && <LevelUpModal level={stats?.level || 1} onClose={handleLevelUpClose} />}
+      {showCurrentLevelUp && <LevelUpModal level={stats?.level || 1} onClose={handleLevelUpClose} />}
 
-      {showBadgeAlert && (
+      {showCurrentBadgeAlert && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-3xl border border-yellow-500/50 bg-card p-6 text-center">
             <Medal size={54} className="mx-auto text-yellow-400" />
             <h2 className="mt-4 flex items-center justify-center gap-2 text-xl font-black text-yellow-400"><Zap size={20} /> Nova conquista</h2>
             <div className="my-6 space-y-3">
-              {(pendingReport?.newBadges || []).map((badge) => (
+              {(currentPendingReport?.newBadges || []).map((badge) => (
                 <div key={badge.id || badge.title} className="rounded-xl border border-yellow-500/30 bg-input p-4">
                   <p className="font-black text-main">{badge.title}</p>
                   {badge.desc && <p className="mt-1 text-sm text-muted">{badge.desc}</p>}
@@ -285,28 +311,28 @@ const WorkoutApp = () => {
         </div>
       )}
 
-      {showCelebration && pendingReport && (
+      {showCurrentCelebration && currentPendingReport && (
         <Suspense fallback={<ViewFallback />}>
           <WorkoutComplete
             onClose={closeReport}
-            sessionDuration={`${pendingReport.duration || stats.lastSessionStats?.duration || 0} min`}
-            sessionVolume={`${pendingReport.volume || stats.lastSessionStats?.volume || 0} kg`}
-            sessionPoints={`+${pendingReport.xp || stats.lastSessionStats?.xp || 0} XP`}
-            sessionPrs={pendingReport.prsBroken || 0}
-            completedSets={pendingReport.completedSets || 0}
-            partial={pendingReport.partial === true}
-            syncStatus={pendingReport.syncStatus}
+            sessionDuration={`${currentPendingReport.duration || stats.lastSessionStats?.duration || 0} min`}
+            sessionVolume={`${currentPendingReport.volume || stats.lastSessionStats?.volume || 0} kg`}
+            sessionPoints={`+${currentPendingReport.xp || stats.lastSessionStats?.xp || 0} XP`}
+            sessionPrs={currentPendingReport.prsBroken || 0}
+            completedSets={currentPendingReport.completedSets || 0}
+            partial={currentPendingReport.partial === true}
+            syncStatus={currentPendingReport.syncStatus}
             bossName={state.workoutData?.[state.activeDay]?.title || 'Treino concluído'}
             bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
-            streak={pendingReport.streak || stats?.streak || 0}
-            currentLevel={pendingReport.level || stats?.level || 1}
+            streak={currentPendingReport.streak || stats?.streak || 0}
+            currentLevel={currentPendingReport.level || stats?.level || 1}
             totalXp={stats?.xp || 0}
-            newBadges={pendingReport.newBadges || []}
+            newBadges={currentPendingReport.newBadges || []}
           />
         </Suspense>
       )}
 
-      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingSessions} />
+      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
 
       {state.timerState?.active && state.timerState.endTime && (
         <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />

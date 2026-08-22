@@ -37,6 +37,7 @@ const WorkoutView = ({
   workoutTimer,
   syncStatus,
   actions,
+  userId,
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [finishConfirmation, setFinishConfirmation] = useState(null);
@@ -136,6 +137,7 @@ const WorkoutView = ({
           onAbandon={actions.resetWorkoutTimer}
           isTutorialDay={isTutorialDay}
           sessionActive={sessionActive}
+          userId={userId}
         />
 
         <section className="rounded-2xl border border-border bg-card p-3 shadow-sm">

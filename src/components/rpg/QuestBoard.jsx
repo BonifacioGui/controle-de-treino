@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
-import { readStoredJSON, STORAGE_KEYS } from '../../utils/storage';
+import { readUserStoredJSON, STORAGE_KEYS } from '../../utils/storage';
 
-const QuestBoard = () => {
-  const [quests, setQuests] = useState(() => readStoredJSON(STORAGE_KEYS.quests, []));
+const QuestBoard = ({ userId }) => {
+  const [quests, setQuests] = useState([]);
 
-  const loadQuests = () => {
-    setQuests(readStoredJSON(STORAGE_KEYS.quests, []));
-  };
+  const loadQuests = useCallback(() => {
+    setQuests(userId ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []) : []);
+  }, [userId]);
 
   useEffect(() => {
     window.addEventListener('quest_update', loadQuests);
@@ -17,7 +17,7 @@ const QuestBoard = () => {
       window.removeEventListener('quest_update', loadQuests);
       window.removeEventListener('storage', loadQuests);
     };
-  }, []);
+  }, [loadQuests]);
 
   if (quests.length === 0) return null;
 

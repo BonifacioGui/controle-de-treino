@@ -9,18 +9,30 @@ import {
   normalizeHistoryEntry,
   normalizeWorkoutSet,
   sortHistoryNewestFirst,
+  isExtendedHistorySchemaError,
   toSupabaseHistoryRow,
 } from '../utils/historyModel';
+import {
+  getVisibleHistory,
+  HISTORY_SYNC_STATUS,
+  isPendingHistoryEntry,
+  mergeCloudAndLocalHistory,
+  sessionFingerprint,
+} from '../utils/historySync';
 import { countLoadPrs } from '../utils/progressionUtils';
+import { DEFAULT_PLAN_SYNC, markPlanDirty, markPlanSynced, normalizePlanSync } from '../utils/planSync';
 import { calculateCompletedVolume, getSessionCompletion, SESSION_STATUS } from '../utils/sessionModel';
 import { QUEST_RULES } from '../utils/questRules';
 import {
-  readStoredJSON,
-  readStoredText,
+  migrateLegacyStorage,
+  readUserStoredJSON,
+  readUserStoredText,
+  removeUserStoredItem,
   STORAGE_KEYS,
-  writeStoredJSON,
-  writeStoredText,
+  writeUserStoredJSON,
+  writeUserStoredText,
 } from '../utils/storage';
+import { calculateSessionXp } from '../utils/xpModel';
 import { useWorkoutSession } from './useWorkoutSession';
 
 const getInitialWorkout = (data) => Object.keys(data || {})[0] || 'A';
@@ -33,24 +45,18 @@ const normalizeBodyHistory = (entries) => Array.isArray(entries)
   ? entries.map((entry) => ({ ...entry, date: normalizeLocalDateKey(entry.date) })).filter((entry) => entry.date)
   : [];
 
-const sessionFingerprint = (entry) => [
-  entry.dateKey,
-  entry.workoutName,
-  Math.round(entry.totalVolume || 0),
-  Math.round(entry.duration || 0),
-].join(':');
-
-const mergeCloudAndLocalHistory = (cloudEntries, localEntries) => {
-  const cloud = normalizeHistory(cloudEntries);
-  const cloudFingerprints = new Set(cloud.map(sessionFingerprint));
-  const pending = normalizeHistory(localEntries)
-    .filter((entry) => entry.syncStatus !== 'synced' && !cloudFingerprints.has(sessionFingerprint(entry)));
-  return sortHistoryNewestFirst([...pending, ...cloud]);
+const writeHistoryWithSchemaFallback = async (operation, entry, userId) => {
+  let result = await operation(toSupabaseHistoryRow(entry, userId));
+  if (result.error && isExtendedHistorySchemaError(result.error)) {
+    result = await operation(toSupabaseHistoryRow(entry, userId, { includeExtendedFields: false }));
+  }
+  return result;
 };
 
-export const useWorkout = () => {
+export const useWorkout = (userId) => {
   const {
     session,
+    isHydrated: isSessionHydrated,
     workoutTimer,
     startSession,
     pauseSession,
@@ -62,21 +68,13 @@ export const useWorkout = () => {
     resetSession,
     acknowledgeRecovery,
     updateSessionNote,
-  } = useWorkoutSession();
-  const [userId, setUserId] = useState(null);
-  const [workoutData, setWorkoutData] = useState(() => normalizeWorkoutPlan(readStoredJSON(
-    STORAGE_KEYS.workoutPlan,
-    initialWorkoutData,
-  )));
-  const [activeDay, setActiveDay] = useState(() => {
-    const savedDay = readStoredText(STORAGE_KEYS.activeDay, '');
-    const plan = normalizeWorkoutPlan(readStoredJSON(STORAGE_KEYS.workoutPlan, initialWorkoutData));
-    return savedDay && plan[savedDay] ? savedDay : getInitialWorkout(plan);
-  });
-  const [selectedDate, setSelectedDate] = useState(
-    () => session.dateKey || getLocalDateKey(),
-  );
-  const [sessionNote, setSessionNoteState] = useState(() => session.note || '');
+  } = useWorkoutSession(userId);
+  const [hydratedUserId, setHydratedUserId] = useState(null);
+  const [workoutData, setWorkoutDataState] = useState({});
+  const [planSync, setPlanSync] = useState(DEFAULT_PLAN_SYNC);
+  const [activeDay, setActiveDay] = useState('A');
+  const [selectedDate, setSelectedDate] = useState(getLocalDateKey);
+  const [sessionNote, setSessionNoteState] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [waistInput, setWaistInput] = useState('');
   const [view, setView] = useState('workout');
@@ -84,36 +82,79 @@ export const useWorkout = () => {
   const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
   const syncInFlight = useRef(false);
+  const activeUserRef = useRef(userId);
+  activeUserRef.current = userId;
 
-  const [progress, setProgress] = useState(() => readStoredJSON(STORAGE_KEYS.progress, {}));
-  const [history, setHistory] = useState(() => normalizeHistory(readStoredJSON(STORAGE_KEYS.history, [])));
-  const [bodyHistory, setBodyHistory] = useState(() => normalizeBodyHistory(
-    readStoredJSON(STORAGE_KEYS.bodyHistory, []),
-  ));
-  const [timerState, setTimerState] = useState(() => {
-    const saved = readStoredJSON(STORAGE_KEYS.restTimer, null);
-    return saved?.endTime > Date.now() ? saved : { active: false, endTime: null, duration: 90 };
-  });
+  const [progress, setProgress] = useState({});
+  const [history, setHistory] = useState([]);
+  const [bodyHistory, setBodyHistory] = useState([]);
+  const [timerState, setTimerState] = useState({ active: false, endTime: null, duration: 90 });
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  const isHydrated = Boolean(userId && hydratedUserId === userId && isSessionHydrated);
+  const visibleHistory = useMemo(() => getVisibleHistory(history), [history]);
+
+  const setWorkoutData = useCallback((update) => {
+    setWorkoutDataState((current) => (typeof update === 'function' ? update(current) : update));
+    setPlanSync(markPlanDirty);
+    setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setHydratedUserId(null);
+      setWorkoutDataState({});
+      setPlanSync(DEFAULT_PLAN_SYNC);
+      setActiveDay('A');
+      setProgress({});
+      setHistory([]);
+      setBodyHistory([]);
+      setTimerState({ active: false, endTime: null, duration: 90 });
+      setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
+      setView('workout');
+      setIsCloudSyncReady(false);
+      return;
+    }
+
+    migrateLegacyStorage(userId);
+    const plan = normalizeWorkoutPlan(readUserStoredJSON(
+      userId,
+      STORAGE_KEYS.workoutPlan,
+      initialWorkoutData,
+    ));
+    const savedDay = readUserStoredText(userId, STORAGE_KEYS.activeDay, '');
+    const savedTimer = readUserStoredJSON(userId, STORAGE_KEYS.restTimer, null);
+    setWorkoutDataState(plan);
+    setPlanSync(normalizePlanSync(readUserStoredJSON(userId, STORAGE_KEYS.planSync, DEFAULT_PLAN_SYNC)));
+    setActiveDay(savedDay && plan[savedDay] ? savedDay : getInitialWorkout(plan));
+    setProgress(readUserStoredJSON(userId, STORAGE_KEYS.progress, {}));
+    setHistory(normalizeHistory(readUserStoredJSON(userId, STORAGE_KEYS.history, [])));
+    setBodyHistory(normalizeBodyHistory(readUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, [])));
+    setTimerState(savedTimer?.endTime > Date.now()
+      ? savedTimer
+      : { active: false, endTime: null, duration: 90 });
+    setSelectedDate(getLocalDateKey());
+    setSessionNoteState('');
+    setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
+    setView('workout');
+    setIsCloudSyncReady(false);
+    setHydratedUserId(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isHydrated || session.status === SESSION_STATUS.idle) return;
+    if (session.workoutName) setActiveDay(session.workoutName);
+    if (session.dateKey) setSelectedDate(session.dateKey);
+    setSessionNoteState(session.note || '');
+  }, [isHydrated, session.dateKey, session.note, session.status, session.workoutName]);
 
   const setSessionNote = useCallback((note) => {
     setSessionNoteState(note);
     updateSessionNote(note);
   }, [updateSessionNote]);
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserId(session?.user?.id || null);
-    };
-    getSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   const fetchCloudData = useCallback(async () => {
-    if (!userId) return;
+    if (!isHydrated || !userId) return;
 
     try {
       setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
@@ -122,6 +163,7 @@ export const useWorkout = () => {
         supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false }),
         supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1),
       ]);
+      if (activeUserRef.current !== userId) return;
       if (bodyResult.error) throw bodyResult.error;
       if (historyResult.error) throw historyResult.error;
       if (planResult.error) throw planResult.error;
@@ -130,18 +172,15 @@ export const useWorkout = () => {
         setBodyHistory(normalizeBodyHistory(bodyResult.data));
       }
 
-      const cloudHistory = normalizeHistory(historyResult.data || []).map((entry) => ({
-        ...entry,
-        syncStatus: 'synced',
-      }));
+      const cloudHistory = normalizeHistory(historyResult.data || []);
       setHistory((current) => mergeCloudAndLocalHistory(cloudHistory, current));
 
       const planRow = planResult.data?.[0];
-      if (planRow?.plan_data) {
+      if (planRow?.plan_data && !planSync.dirty) {
         const parsedPlan = normalizeWorkoutPlan(typeof planRow.plan_data === 'string'
           ? JSON.parse(planRow.plan_data)
           : planRow.plan_data);
-        setWorkoutData(parsedPlan);
+        setWorkoutDataState(parsedPlan);
         const planKeys = Object.keys(parsedPlan);
         const latestSession = cloudHistory[0];
 
@@ -156,53 +195,103 @@ export const useWorkout = () => {
         } else {
           setActiveDay((current) => (parsedPlan[current] ? current : (planKeys[0] || 'A')));
         }
+      } else if (!planRow?.plan_data && Object.keys(workoutData).length > 0 && !planSync.dirty) {
+        setPlanSync(markPlanDirty);
       }
       setSyncStatus('synced');
     } catch {
-      setSyncStatus(navigator.onLine ? 'error' : 'offline');
+      if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
     } finally {
-      setIsCloudSyncReady(true);
+      if (activeUserRef.current === userId) setIsCloudSyncReady(true);
     }
-  }, [session.dateKey, session.status, session.workoutName, userId]);
-
-  useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
+  }, [isHydrated, planSync.dirty, session.dateKey, session.status, session.workoutName, userId, workoutData]);
 
   useEffect(() => {
-    writeStoredJSON(STORAGE_KEYS.workoutPlan, workoutData);
-    writeStoredJSON(STORAGE_KEYS.progress, progress);
-    writeStoredJSON(STORAGE_KEYS.history, history);
-    writeStoredJSON(STORAGE_KEYS.bodyHistory, bodyHistory);
-    writeStoredText(STORAGE_KEYS.activeDay, activeDay);
-  }, [activeDay, bodyHistory, history, progress, workoutData]);
+    if (isHydrated && !isCloudSyncReady) fetchCloudData();
+  }, [fetchCloudData, isCloudSyncReady, isHydrated]);
 
   useEffect(() => {
-    if (timerState.active) writeStoredJSON(STORAGE_KEYS.restTimer, timerState);
-    else localStorage.removeItem(STORAGE_KEYS.restTimer);
-  }, [timerState]);
+    if (!isHydrated) return;
+    writeUserStoredJSON(userId, STORAGE_KEYS.workoutPlan, workoutData);
+    writeUserStoredJSON(userId, STORAGE_KEYS.planSync, planSync);
+    writeUserStoredJSON(userId, STORAGE_KEYS.progress, progress);
+    writeUserStoredJSON(userId, STORAGE_KEYS.history, history);
+    writeUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, bodyHistory);
+    writeUserStoredText(userId, STORAGE_KEYS.activeDay, activeDay);
+  }, [activeDay, bodyHistory, history, isHydrated, planSync, progress, userId, workoutData]);
 
   useEffect(() => {
-    if (!isCloudSyncReady || !userId || Object.keys(workoutData).length === 0 || !navigator.onLine) return;
-    const syncPlan = async () => {
-      const { error } = await supabase
-        .from('workout_plans')
-        .upsert({ user_id: userId, plan_data: workoutData }, { onConflict: 'user_id' });
-      if (error) setSyncStatus('error');
-    };
-    syncPlan();
-  }, [isCloudSyncReady, userId, workoutData]);
+    if (!isHydrated) return;
+    if (timerState.active) writeUserStoredJSON(userId, STORAGE_KEYS.restTimer, timerState);
+    else removeUserStoredItem(userId, STORAGE_KEYS.restTimer);
+  }, [isHydrated, timerState, userId]);
 
-  const syncPendingSessions = useCallback(async () => {
-    if (!userId || !navigator.onLine || syncInFlight.current) return;
-    const pending = history.filter((entry) => entry.syncStatus !== 'synced');
-    if (pending.length === 0) {
-      setSyncStatus('synced');
-      return;
-    }
+  const syncPendingWorkoutPlan = useCallback(async () => {
+    if (!planSync.dirty) return;
+    const revision = planSync.revision;
+    const planSnapshot = workoutData;
+    const { error } = await supabase
+      .from('workout_plans')
+      .upsert({ user_id: userId, plan_data: planSnapshot }, { onConflict: 'user_id' });
+    if (error) throw error;
+    if (activeUserRef.current !== userId) return;
+    setPlanSync((current) => markPlanSynced(current, revision));
+  }, [planSync, userId, workoutData]);
 
-    syncInFlight.current = true;
-    setSyncStatus('syncing');
-    try {
-      for (const entry of pending) {
+  const syncPendingHistory = useCallback(async () => {
+    const pending = history.filter(isPendingHistoryEntry);
+    for (const entry of pending) {
+      if (entry.syncStatus === HISTORY_SYNC_STATUS.delete) {
+        if (entry.id) {
+          const { error } = await supabase
+            .from('workout_history')
+            .delete()
+            .eq('id', entry.id)
+            .eq('user_id', userId);
+          if (error) throw error;
+        } else {
+          const { data: possibleMatches, error: queryError } = await supabase
+            .from('workout_history')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('workout_date', entry.dateKey)
+            .eq('workout_name', entry.workoutName);
+          if (queryError) throw queryError;
+          const matchingIds = normalizeHistory(possibleMatches || [])
+            .filter((candidate) => sessionFingerprint(candidate) === sessionFingerprint(entry))
+            .map((candidate) => candidate.id)
+            .filter(Boolean);
+          if (matchingIds.length > 0) {
+            const { error } = await supabase
+              .from('workout_history')
+              .delete()
+              .in('id', matchingIds)
+              .eq('user_id', userId);
+            if (error) throw error;
+          }
+        }
+        if (activeUserRef.current !== userId) return;
+        setHistory((current) => current.filter((item) => item.localId !== entry.localId));
+        continue;
+      }
+
+      let syncedEntry;
+      if (entry.syncStatus === HISTORY_SYNC_STATUS.update && entry.id) {
+        const { data, error } = await writeHistoryWithSchemaFallback(
+          (row) => supabase
+            .from('workout_history')
+            .update(row)
+            .eq('id', entry.id)
+            .eq('user_id', userId)
+            .select()
+            .single(),
+          entry,
+          userId,
+        );
+        if (error) throw error;
+        if (activeUserRef.current !== userId) return;
+        syncedEntry = normalizeHistoryEntry(data);
+      } else {
         const { data: possibleMatches, error: queryError } = await supabase
           .from('workout_history')
           .select('*')
@@ -212,34 +301,82 @@ export const useWorkout = () => {
         if (queryError) throw queryError;
         const existing = normalizeHistory(possibleMatches || [])
           .find((candidate) => sessionFingerprint(candidate) === sessionFingerprint(entry));
-        let syncedEntry = existing;
+        syncedEntry = existing;
         if (!syncedEntry) {
-          const { data, error } = await supabase
-            .from('workout_history')
-            .insert([toSupabaseHistoryRow(entry, userId)])
-            .select()
-            .single();
+          const { data, error } = await writeHistoryWithSchemaFallback(
+            (row) => supabase.from('workout_history').insert([row]).select().single(),
+            entry,
+            userId,
+          );
           if (error) throw error;
+          if (activeUserRef.current !== userId) return;
           syncedEntry = normalizeHistoryEntry(data);
         }
-        setHistory((current) => current.map((item) => (
-          item.localId === entry.localId
-            ? { ...syncedEntry, localId: entry.localId, partial: entry.partial, syncStatus: 'synced' }
-            : item
-        )));
       }
-      setSyncStatus('synced');
-    } catch {
-      setSyncStatus('error');
-    } finally {
-      syncInFlight.current = false;
+
+      if (activeUserRef.current !== userId) return;
+      if (!historyRef.current.some((item) => item.localId === entry.localId)) {
+        if (syncedEntry.id) {
+          const { error } = await supabase
+            .from('workout_history')
+            .delete()
+            .eq('id', syncedEntry.id)
+            .eq('user_id', userId);
+          if (error) throw error;
+        }
+        continue;
+      }
+      setHistory((current) => current.map((item) => {
+        if (item.localId !== entry.localId) return item;
+        if (item.syncStatus === HISTORY_SYNC_STATUS.delete) {
+          return { ...item, id: syncedEntry.id };
+        }
+        if (item.localRevision !== entry.localRevision) {
+          return item.id ? item : {
+            ...item,
+            id: syncedEntry.id,
+            syncStatus: HISTORY_SYNC_STATUS.update,
+          };
+        }
+        return {
+          ...syncedEntry,
+          localId: entry.localId,
+          partial: entry.partial,
+          earnedXp: entry.earnedXp,
+          localRevision: entry.localRevision,
+          syncStatus: HISTORY_SYNC_STATUS.synced,
+        };
+      }));
     }
   }, [history, userId]);
+
+  const hasPendingChanges = planSync.dirty || history.some(isPendingHistoryEntry);
+
+  const syncPendingChanges = useCallback(async () => {
+    if (!isCloudSyncReady || !isHydrated || !userId || !navigator.onLine || syncInFlight.current) return;
+    if (!planSync.dirty && !history.some(isPendingHistoryEntry)) {
+      setSyncStatus('synced');
+      return;
+    }
+
+    syncInFlight.current = true;
+    setSyncStatus('syncing');
+    try {
+      await syncPendingWorkoutPlan();
+      await syncPendingHistory();
+      if (activeUserRef.current === userId) setSyncStatus('synced');
+    } catch {
+      if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    } finally {
+      syncInFlight.current = false;
+      if (activeUserRef.current !== userId) setIsCloudSyncReady(false);
+    }
+  }, [history, isCloudSyncReady, isHydrated, planSync.dirty, syncPendingHistory, syncPendingWorkoutPlan, userId]);
 
   useEffect(() => {
     const onOnline = () => {
       setSyncStatus('syncing');
-      syncPendingSessions();
+      setIsCloudSyncReady(false);
     };
     const onOffline = () => setSyncStatus('offline');
     window.addEventListener('online', onOnline);
@@ -248,16 +385,16 @@ export const useWorkout = () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
-  }, [syncPendingSessions]);
+  }, []);
 
   useEffect(() => {
-    if (history.some((entry) => entry.syncStatus !== 'synced') && navigator.onLine) {
-      syncPendingSessions();
+    if (hasPendingChanges && navigator.onLine && syncStatus !== 'error') {
+      syncPendingChanges();
     }
-  }, [history, syncPendingSessions]);
+  }, [hasPendingChanges, syncPendingChanges, syncStatus]);
 
-  const streak = useMemo(() => calculateStreak(history), [history]);
-  const globalRPG = useMemo(() => calculateStats(history), [history]);
+  const streak = useMemo(() => calculateStreak(visibleHistory), [visibleHistory]);
+  const globalRPG = useMemo(() => calculateStats(visibleHistory), [visibleHistory]);
 
   const updateSetData = useCallback((id, index, field, value) => {
     setProgress((currentProgress) => {
@@ -293,7 +430,7 @@ export const useWorkout = () => {
 
   const evaluateQuests = useCallback((sessionData, dateKey) => {
     if (!isSameLocalDay(dateKey, getLocalDateKey())) return { bonusXp: 0, newlyCompleted: [] };
-    const quests = readStoredJSON(STORAGE_KEYS.quests, []);
+    const quests = readUserStoredJSON(userId, STORAGE_KEYS.quests, []);
     const newlyCompleted = [];
     const updated = quests.map((quest) => {
       if (quest.completed) return quest;
@@ -307,13 +444,13 @@ export const useWorkout = () => {
       bonusXp: newlyCompleted.reduce((sum, quest) => sum + (Number(quest.reward) || 0), 0),
       newlyCompleted,
       commit: () => {
-        writeStoredJSON(STORAGE_KEYS.quests, updated);
-        const questData = readStoredJSON(STORAGE_KEYS.questData, {});
-        writeStoredJSON(STORAGE_KEYS.questData, { ...questData, quests: updated });
+        writeUserStoredJSON(userId, STORAGE_KEYS.quests, updated);
+        const questData = readUserStoredJSON(userId, STORAGE_KEYS.questData, {});
+        writeUserStoredJSON(userId, STORAGE_KEYS.questData, { ...questData, quests: updated });
         window.dispatchEvent(new Event('quest_update'));
       },
     };
-  }, []);
+  }, [userId]);
 
   const finishWorkout = useCallback(async ({ allowPartial = false } = {}) => {
     const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
@@ -340,12 +477,11 @@ export const useWorkout = () => {
     });
     const totalVolume = exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0);
     const durationSeconds = Math.max(1, workoutTimer.elapsed);
-    const previousSessions = history.filter((entry) => entry.workoutName === safeDay);
+    const previousSessions = visibleHistory.filter((entry) => entry.workoutName === safeDay);
     const previousVolume = previousSessions[0]?.totalVolume || 0;
     const overloadStatus = previousVolume > 0 && totalVolume > previousVolume ? 'OVERLOAD' : 'MANUTENÇÃO';
-    const xpMultiplier = overloadStatus === 'OVERLOAD' ? 1.2 : 1;
 
-    const prsBroken = countLoadPrs(exercises, history, safeDay);
+    const prsBroken = countLoadPrs(exercises, visibleHistory, safeDay);
     const exercisesSwapped = exercises
       .filter((exercise, index) => exercise.name !== workout.exercises[index].name).length;
     const questEvaluation = evaluateQuests({
@@ -358,9 +494,14 @@ export const useWorkout = () => {
       prsBroken,
       finished: true,
     }, selectedDate);
-    const xpGained = Math.floor(totalVolume * 0.05 * xpMultiplier) + questEvaluation.bonusXp;
-    const statsBefore = calculateStats(history);
-    const badgesBefore = new Set(getUnlockedBadges(history).filter((badge) => badge.unlocked).map((badge) => badge.id));
+    const partial = completion.incompleteSets > 0 || completion.skippedExercises > 0;
+    const xpGained = calculateSessionXp({
+      totalVolume,
+      bonusXp: questEvaluation.bonusXp,
+      overloadStatus,
+    });
+    const statsBefore = calculateStats(visibleHistory);
+    const badgesBefore = new Set(getUnlockedBadges(visibleHistory).filter((badge) => badge.unlocked).map((badge) => badge.id));
 
     let localEntry = normalizeHistoryEntry({
       dateKey: selectedDate,
@@ -374,12 +515,15 @@ export const useWorkout = () => {
       exercisesSwapped,
       prsBroken,
       overloadStatus,
-      partial: completion.incompleteSets > 0 || completion.skippedExercises > 0,
-      syncStatus: 'pending',
+      partial,
+      earnedXp: xpGained,
+      localRevision: 1,
+      syncStatus: HISTORY_SYNC_STATUS.create,
     });
     const localHistory = sortHistoryNewestFirst([localEntry, ...history]);
 
-    writeStoredJSON(STORAGE_KEYS.history, localHistory);
+    writeUserStoredJSON(userId, STORAGE_KEYS.history, localHistory);
+    historyRef.current = localHistory;
     setHistory(localHistory);
     questEvaluation.commit?.();
     setLastSessionStats({
@@ -387,30 +531,6 @@ export const useWorkout = () => {
       volume: totalVolume,
       xp: xpGained,
     });
-
-    let savedToCloud = false;
-    if (userId && navigator.onLine) {
-      try {
-        setSyncStatus('syncing');
-        const { data, error } = await supabase.from('workout_history')
-          .insert([toSupabaseHistoryRow(localEntry, userId)]).select().single();
-        if (error) throw error;
-        const synced = { ...normalizeHistoryEntry(data), localId: localEntry.localId, partial: localEntry.partial, syncStatus: 'synced' };
-        localEntry = synced;
-        setHistory((current) => current.map((entry) => (entry.localId === synced.localId ? synced : entry)));
-        savedToCloud = true;
-        setSyncStatus('synced');
-      } catch {
-        setSyncStatus('error');
-      }
-    } else {
-      setSyncStatus('offline');
-    }
-
-    const finalHistory = sortHistoryNewestFirst([localEntry, ...history]);
-    const statsAfter = calculateStats(finalHistory);
-    const newBadges = getUnlockedBadges(finalHistory)
-      .filter((badge) => badge.unlocked && !badgesBefore.has(badge.id));
     const currentPrefix = `${selectedDate}-${safeDay}-`;
     setProgress((current) => Object.fromEntries(
       Object.entries(current).filter(([key]) => !key.startsWith(currentPrefix)),
@@ -418,6 +538,68 @@ export const useWorkout = () => {
     setSessionNoteState('');
     setTimerState({ active: false, endTime: null, duration: 90 });
     completeSession();
+
+    let savedToCloud = false;
+    if (userId && navigator.onLine && !syncInFlight.current) {
+      syncInFlight.current = true;
+      const submittedRevision = localEntry.localRevision;
+      try {
+        setSyncStatus('syncing');
+        const { data, error } = await writeHistoryWithSchemaFallback(
+          (row) => supabase.from('workout_history').insert([row]).select().single(),
+          localEntry,
+          userId,
+        );
+        if (error) throw error;
+        const synced = {
+          ...normalizeHistoryEntry(data),
+          localId: localEntry.localId,
+          partial: localEntry.partial,
+          earnedXp: localEntry.earnedXp,
+          localRevision: localEntry.localRevision,
+          syncStatus: HISTORY_SYNC_STATUS.synced,
+        };
+        localEntry = synced;
+        savedToCloud = true;
+        if (activeUserRef.current === userId) {
+          const latestLocalEntry = historyRef.current.find((entry) => entry.localId === synced.localId);
+          if (!latestLocalEntry && synced.id) {
+            const { error: deleteError } = await supabase
+              .from('workout_history')
+              .delete()
+              .eq('id', synced.id)
+              .eq('user_id', userId);
+            if (deleteError) throw deleteError;
+          }
+          setHistory((current) => current.map((entry) => {
+            if (entry.localId !== synced.localId) return entry;
+            if (entry.syncStatus === HISTORY_SYNC_STATUS.delete) {
+              return { ...entry, id: synced.id };
+            }
+            if (entry.localRevision !== submittedRevision) {
+              return entry.id ? entry : {
+                ...entry,
+                id: synced.id,
+                syncStatus: HISTORY_SYNC_STATUS.update,
+              };
+            }
+            return synced;
+          }));
+          setSyncStatus('synced');
+        }
+      } catch {
+        if (activeUserRef.current === userId) setSyncStatus('error');
+      } finally {
+        syncInFlight.current = false;
+      }
+    } else if (!navigator.onLine) {
+      setSyncStatus('offline');
+    }
+
+    const finalHistory = sortHistoryNewestFirst([localEntry, ...visibleHistory]);
+    const statsAfter = calculateStats(finalHistory);
+    const newBadges = getUnlockedBadges(finalHistory)
+      .filter((badge) => badge.unlocked && !badgesBefore.has(badge.id));
 
     return {
       requiresConfirmation: false,
@@ -435,9 +617,9 @@ export const useWorkout = () => {
       newBadges,
       newlyCompletedQuests: questEvaluation.newlyCompleted,
       overloadStatus,
-      partial: completion.incompleteSets > 0 || completion.skippedExercises > 0,
+      partial,
     };
-  }, [activeDay, completeSession, evaluateQuests, history, markFinishing, progress, selectedDate, sessionNote, userId, workoutData, workoutTimer.elapsed]);
+  }, [activeDay, completeSession, evaluateQuests, history, markFinishing, progress, selectedDate, sessionNote, userId, visibleHistory, workoutData, workoutTimer.elapsed]);
 
   const abandonSession = useCallback(() => {
     const workoutName = session.workoutName || activeDay;
@@ -465,7 +647,9 @@ export const useWorkout = () => {
     acknowledgeRecovery,
     restoreAfterFailedFinish,
     finishWorkout,
-    syncPendingSessions,
+    syncPendingSessions: syncPendingChanges,
+    syncPendingChanges,
+    syncPendingWorkoutPlan,
     updateSessionSets: (id, value) => setProgress((current) => ({
       ...current,
       [id]: { ...current[id], actualSets: value },
@@ -503,27 +687,47 @@ export const useWorkout = () => {
     deleteEntry: async (id, type) => {
       if (type === 'body') {
         setBodyHistory((current) => current.filter((entry) => entry.id !== id));
-        if (id) await supabase.from('body_stats').delete().eq('id', id);
+        if (id) await supabase.from('body_stats').delete().eq('id', id).eq('user_id', userId);
         return;
       }
-      setHistory((current) => current.filter((entry) => entry.id !== id && entry.localId !== id));
-      if (id && !String(id).startsWith('local-')) {
-        await supabase.from('workout_history').delete().eq('id', id);
-      }
+      setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+      setHistory((current) => {
+        const target = current.find((entry) => entry.id === id || entry.localId === id);
+        if (!target) return current;
+        const next = current.map((entry) => entry.localId === target.localId ? {
+          ...entry,
+          localRevision: (entry.localRevision || 0) + 1,
+          syncStatus: HISTORY_SYNC_STATUS.delete,
+        } : entry);
+        historyRef.current = next;
+        return next;
+      });
     },
     updateHistoryEntry: async (id, updatedSession) => {
-      const normalized = normalizeHistoryEntry(updatedSession);
-      const totalVolume = normalized.exercises.reduce(
-        (sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0,
-      );
-      const next = { ...normalized, totalVolume, syncStatus: normalized.id ? 'synced' : 'pending' };
-      setHistory((current) => current.map((entry) => (
-        entry.id === id || entry.localId === id ? next : entry
-      )));
-      if (normalized.id) {
-        await supabase.from('workout_history')
-          .update(toSupabaseHistoryRow(next, userId)).eq('id', normalized.id);
-      }
+      setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+      setHistory((current) => {
+        const next = current.map((entry) => {
+          if (entry.id !== id && entry.localId !== id) return entry;
+          const normalized = normalizeHistoryEntry({
+            ...updatedSession,
+            id: entry.id,
+            localId: entry.localId,
+          });
+          const totalVolume = normalized.exercises.reduce(
+            (sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0,
+          );
+          const earnedXp = calculateSessionXp({ ...normalized, totalVolume, earnedXp: undefined });
+          return {
+            ...normalized,
+            totalVolume,
+            earnedXp,
+            localRevision: (entry.localRevision || 0) + 1,
+            syncStatus: entry.id ? HISTORY_SYNC_STATUS.update : HISTORY_SYNC_STATUS.create,
+          };
+        });
+        historyRef.current = next;
+        return next;
+      });
     },
     manageData: {
       add: (day) => setWorkoutData((current) => ({
@@ -573,7 +777,9 @@ export const useWorkout = () => {
     resumeSession,
     setSessionNote,
     startSession,
-    syncPendingSessions,
+    setWorkoutData,
+    syncPendingChanges,
+    syncPendingWorkoutPlan,
     toggleSetComplete,
     toggleWorkoutTimer,
     updateSetData,
@@ -590,13 +796,14 @@ export const useWorkout = () => {
       view,
       workoutData,
       progress,
-      history,
+      history: visibleHistory,
       bodyHistory,
       timerState,
       workoutTimer,
       session,
       syncStatus,
-      hasPendingChanges: history.some((entry) => entry.syncStatus !== 'synced'),
+      hasPendingChanges,
+      isHydrated,
       userId,
     },
     setters: {
