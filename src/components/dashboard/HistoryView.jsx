@@ -1,9 +1,10 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  CalendarDays,
+  CalendarRange,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Clock,
   Cloud,
@@ -17,10 +18,10 @@ import {
   X,
 } from 'lucide-react';
 import { formatLocalDate } from '../../utils/dateUtils';
+import { groupHistoryByDate } from '../../utils/historyGrouping';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
-const SESSIONS_PER_PAGE = 6;
 
 const formatDuration = (seconds) => {
   const safe = Math.max(0, Number(seconds) || 0);
@@ -28,12 +29,6 @@ const formatDuration = (seconds) => {
   const remaining = Math.floor(safe % 60);
   return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
 };
-
-const groupByMonth = (history) => history.reduce((groups, session) => {
-  const title = formatLocalDate(session.dateKey, { month: 'long', year: 'numeric' });
-  const key = title.charAt(0).toUpperCase() + title.slice(1);
-  return { ...groups, [key]: [...(groups[key] || []), session] };
-}, {});
 
 const SetEditor = ({ set, setIndex, onChange }) => (
   <div className="grid grid-cols-[2rem_1fr_1fr] items-center gap-2">
@@ -142,28 +137,138 @@ const SessionCard = ({ session, onDelete, onUpdate, onCardAction }) => {
   );
 };
 
+const sessionCountLabel = (count) => `${count} ${count === 1 ? 'sessão' : 'sessões'}`;
+const formatDayLabel = (dateKey) => {
+  const label = formatLocalDate(dateKey, { weekday: 'long', day: '2-digit', month: 'long', year: undefined });
+  return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : '';
+};
+
+const DayAccordion = ({ day, onDelete, onUpdate, onCardAction }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left">
+        <CalendarDays size={18} className="shrink-0 text-primary" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-black text-main">{formatDayLabel(day.dateKey)}</span>
+          <span className="text-xs font-bold text-muted">{sessionCountLabel(day.sessionCount)}</span>
+        </span>
+        <ChevronRight size={19} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-3 border-t border-border bg-background/35 p-3">
+          {day.sessions.map((session, index) => (
+            <SessionCard
+              key={session.id || session.localId || `${day.dateKey}-${index}`}
+              session={session}
+              onDelete={onDelete}
+              onUpdate={onUpdate}
+              onCardAction={onCardAction}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const WeekAccordion = ({ week, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-input/35">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-black uppercase tracking-wide text-main">{week.label}</span>
+          <span className="text-xs font-bold text-muted">{sessionCountLabel(week.sessionCount)}</span>
+        </span>
+        <ChevronRight size={20} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-2 border-t border-border p-3">
+          {week.days.map((day) => (
+            <DayAccordion key={day.key} day={day} onDelete={onDelete} onUpdate={onUpdate} onCardAction={onCardAction} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const MonthAccordion = ({ month, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card/75">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left">
+        <CalendarRange size={20} className="shrink-0 text-primary" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-black uppercase tracking-wide text-main">{month.label}</span>
+          <span className="text-xs font-bold text-muted">{sessionCountLabel(month.sessionCount)}</span>
+        </span>
+        <ChevronRight size={20} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-3 border-t border-border p-3">
+          {month.weeks.map((week, index) => (
+            <WeekAccordion
+              key={week.key}
+              week={week}
+              defaultOpen={defaultOpen && index === 0}
+              onDelete={onDelete}
+              onUpdate={onUpdate}
+              onCardAction={onCardAction}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-sm">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left">
+        <Database size={21} className="shrink-0 text-primary" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted">Ano</span>
+          <span className="block text-lg font-black text-main">{year.label}</span>
+        </span>
+        <span className="hidden text-xs font-bold text-muted sm:block">{sessionCountLabel(year.sessionCount)}</span>
+        <ChevronDown size={21} className={`shrink-0 text-primary transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-3 border-t border-primary/20 bg-background/20 p-3">
+          {year.months.map((month, index) => (
+            <MonthAccordion
+              key={month.key}
+              month={month}
+              defaultOpen={defaultOpen && index === 0}
+              onDelete={onDelete}
+              onUpdate={onUpdate}
+              onCardAction={onCardAction}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
 const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [cardAction, setCardAction] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const shareCardRef = useRef(null);
-  const historyTopRef = useRef(null);
-  const totalPages = Math.max(1, Math.ceil(history.length / SESSIONS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const firstSessionIndex = (safePage - 1) * SESSIONS_PER_PAGE;
-  const paginatedHistory = history.slice(firstSessionIndex, firstSessionIndex + SESSIONS_PER_PAGE);
-  const groups = groupByMonth(paginatedHistory);
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
-
-  const goToPage = (page) => {
-    const nextPage = Math.min(totalPages, Math.max(1, page));
-    setCurrentPage(nextPage);
-    window.requestAnimationFrame(() => historyTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
+  const groups = useMemo(() => groupHistoryByDate(history), [history]);
 
   useEffect(() => {
     if (!cardAction || !shareCardRef.current) return undefined;
@@ -210,29 +315,23 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
 
   return (
     <>
-      <main ref={historyTopRef} className="scroll-mt-4 space-y-5 pb-24">
+      <main className="space-y-5 pb-24">
         <header className="flex items-center justify-between border-b border-border pb-4">
           <div><h2 className="flex items-center gap-2 text-xl font-black text-main"><Database className="text-primary" /> Histórico</h2><p className="mt-1 text-sm text-muted">{history.length} {history.length === 1 ? 'sessão registrada' : 'sessões registradas'}</p></div>
         </header>
 
         {history.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center"><p className="font-black text-main">Nenhum treino registrado</p><p className="mt-2 text-sm text-muted">Suas sessões concluídas aparecerão aqui.</p></div>
-        ) : Object.entries(groups).map(([month, sessions]) => (
-          <section key={month} className="space-y-3"><h3 className="text-sm font-black capitalize text-muted">{month}</h3>{sessions.map((session) => <SessionCard key={session.id || session.localId} session={session} onDelete={setItemToDelete} onUpdate={updateEntry} onCardAction={(entry, type) => setCardAction({ session: entry, type })} />)}</section>
+        ) : groups.map((year, index) => (
+          <YearAccordion
+            key={year.key}
+            year={year}
+            defaultOpen={index === 0}
+            onDelete={setItemToDelete}
+            onUpdate={updateEntry}
+            onCardAction={(entry, type) => setCardAction({ session: entry, type })}
+          />
         ))}
-
-        {history.length > 0 && (
-          <nav aria-label="Paginação do histórico" className="rounded-2xl border border-border bg-card p-3">
-            <p className="mb-3 text-center text-xs font-bold text-muted">
-              Exibindo {firstSessionIndex + 1}–{Math.min(firstSessionIndex + SESSIONS_PER_PAGE, history.length)} de {history.length}
-            </p>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <button type="button" onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="touch-target inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 text-sm font-bold text-main disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={18} /> Anterior</button>
-              <span className="px-2 text-center text-sm font-black text-primary" aria-live="polite">{safePage}/{totalPages}</span>
-              <button type="button" onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="touch-target inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 text-sm font-bold text-main disabled:cursor-not-allowed disabled:opacity-35">Próxima <ChevronRight size={18} /></button>
-            </div>
-          </nav>
-        )}
 
         <button type="button" onClick={() => setView('workout')} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Voltar ao treino</button>
       </main>
