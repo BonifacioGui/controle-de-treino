@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
 
 /* ================================================
@@ -7,7 +7,7 @@
 
 @theme {
 
-  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-sans:  'Orbitron', sans-serif;
   --font-cyber: 'Orbitron', sans-serif;
   --font-mono:  'Share Tech Mono', monospace;
 
@@ -300,8 +300,8 @@
 
   /* ── BODY (Estilos base + Background) ── */
   body {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 500;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
     overflow-x: hidden;
     color: var(--text-main);
     background-color: var(--bg-page);
