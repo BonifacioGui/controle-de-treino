@@ -27,6 +27,7 @@ const WorkoutView = ({
   workoutData,
   activeWorkout,
   bossEncounter,
+  theme,
   experienceMode,
   selectedDate,
   setSelectedDate,
@@ -113,7 +114,7 @@ const WorkoutView = ({
               <p className="font-black text-primary">Treino em andamento encontrado</p>
               <p className="mt-1 text-sm text-muted">Seu progresso e cronômetro foram recuperados neste dispositivo.</p>
             </div>
-            <button type="button" onClick={actions.acknowledgeRecovery} className="touch-target rounded-xl bg-primary px-4 text-sm font-black text-black">
+            <button type="button" onClick={actions.acknowledgeRecovery} className="touch-target rounded-xl bg-primary px-4 text-sm font-black text-on-primary">
               Continuar treino
             </button>
           </div>
@@ -165,7 +166,7 @@ const WorkoutView = ({
               <p className="font-mono text-xl font-black text-main">{completion.totalSets > 0 ? Math.round((completion.completedSets / completion.totalSets) * 100) : 0}%</p>
             </div>
 
-            <BossSection key={userId} encounter={bossEncounter} experienceMode={experienceMode} userId={userId} />
+            <BossSection key={userId} encounter={bossEncounter} theme={theme} experienceMode={experienceMode} userId={userId} />
 
             <div className="space-y-3">
               {currentWorkout.exercises.map((exercise, index) => {
@@ -207,7 +208,7 @@ const WorkoutView = ({
               </div>
             )}
 
-            <button type="button" onClick={() => handleFinish(false)} disabled={isFinishing} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-base font-black text-black shadow-[0_0_20px_rgba(var(--primary),0.25)] disabled:opacity-50">
+            <button type="button" onClick={() => handleFinish(false)} disabled={isFinishing} className="workout-finish-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-base font-black text-on-primary shadow-[0_0_20px_rgba(var(--primary),0.25)] disabled:opacity-50">
               {isFinishing ? <><Loader2 className="animate-spin" /> Salvando treino...</> : <><CheckCircle2 /> Finalizar treino</>}
             </button>
           </>
@@ -237,7 +238,7 @@ const WorkoutView = ({
                 <p className="mt-1 text-sm text-muted">Você ainda pode iniciar outra sessão se desejar.</p>
               </div>
             ) : null}
-            <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-white">
+            <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
               <Play fill="currentColor" /> Iniciar treino
             </button>
           </section>
@@ -250,8 +251,8 @@ const WorkoutView = ({
         )}
 
         {errorMessage && (
-          <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-sm text-main">
-            <AlertTriangle className="shrink-0 text-red-500" />
+          <div role="alert" className="flex items-start gap-3 rounded-xl border border-danger/50 bg-danger/10 p-4 text-sm text-main">
+            <AlertTriangle className="shrink-0 text-danger" />
             <div><p className="font-bold">Não foi possível concluir.</p><p className="mt-1 text-muted">{errorMessage}</p></div>
           </div>
         )}
@@ -264,7 +265,7 @@ const WorkoutView = ({
             <p className="mt-3 text-sm leading-relaxed text-muted">Você realizou este treino há {pendingDay.days} {pendingDay.days === 1 ? 'dia' : 'dias'}. Deseja abrir o treino novamente?</p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setPendingDay(null)} className="touch-target rounded-xl border border-border font-bold text-main">Voltar</button>
-              <button type="button" onClick={() => { setActiveDay(pendingDay.name); setPendingDay(null); }} className="touch-target rounded-xl bg-warning font-black text-black">Treinar mesmo assim</button>
+              <button type="button" onClick={() => { setActiveDay(pendingDay.name); setPendingDay(null); }} className="touch-target rounded-xl bg-warning font-black text-on-warning">Treinar mesmo assim</button>
             </div>
           </div>
         </div>, document.body,
@@ -278,7 +279,7 @@ const WorkoutView = ({
             <p className="mt-3 text-sm leading-relaxed text-muted">Você pode voltar e completar o treino ou salvar esta sessão como parcial. Somente séries confirmadas contam para volume, XP e recordes.</p>
             <div className="mt-6 space-y-3">
               <button type="button" onClick={() => setFinishConfirmation(null)} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Voltar ao treino</button>
-              <button type="button" onClick={() => handleFinish(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-warning font-black text-black"><RotateCcw size={17} /> Finalizar mesmo assim</button>
+              <button type="button" onClick={() => handleFinish(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-warning font-black text-on-warning"><RotateCcw size={17} /> Finalizar mesmo assim</button>
             </div>
           </div>
         </div>, document.body,

@@ -96,7 +96,7 @@ const SidebarMenu = ({
 
         <div className="mb-7 space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-muted">Aparência</p>
-          <button type="button" onClick={() => setTheme(theme === 'light' ? 'driver' : 'light')} className="touch-target flex w-full items-center justify-between rounded-xl border border-border bg-input px-4 text-sm font-bold text-main">
+          <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="touch-target flex w-full items-center justify-between rounded-xl border border-border bg-input px-4 text-sm font-bold text-main">
             <span>{theme === 'light' ? 'Tema claro' : 'Tema escuro'}</span>
             {theme === 'light' ? <Sun size={19} /> : <Moon size={19} />}
           </button>
@@ -134,14 +134,14 @@ const SidebarMenu = ({
 
         <div className="border-t border-border pt-5">
           {!confirmLogout ? (
-            <button type="button" onClick={() => setConfirmLogout(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/5 font-black text-red-500"><LogOut size={18} /> Sair da conta</button>
+            <button type="button" onClick={() => setConfirmLogout(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-danger/40 bg-danger/5 font-black text-danger"><LogOut size={18} /> Sair da conta</button>
           ) : (
-            <div className="rounded-xl border border-red-500/50 bg-red-500/5 p-4">
-              <p className="flex items-center gap-2 text-sm font-black text-red-500"><ShieldAlert size={18} /> Confirmar saída?</p>
+            <div className="rounded-xl border border-danger/50 bg-danger/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-black text-danger"><ShieldAlert size={18} /> Confirmar saída?</p>
               <p className="mt-2 text-xs leading-relaxed text-muted">{hasPendingChanges ? 'Há alterações ainda não sincronizadas. Elas serão mantidas neste dispositivo e poderão ser enviadas quando você entrar novamente.' : 'Os dados locais do SOLO serão mantidos neste dispositivo.'}</p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setConfirmLogout(false)} className="touch-target rounded-xl border border-border text-sm font-bold text-main">Cancelar</button>
-                <button type="button" onClick={handleLogout} className="touch-target rounded-xl bg-red-600 text-sm font-black text-white">Sair</button>
+                <button type="button" onClick={handleLogout} className="touch-target rounded-xl bg-danger text-sm font-black text-on-danger">Sair</button>
               </div>
             </div>
           )}

@@ -115,7 +115,7 @@ const BodyScanner = ({
         </h3>
         <button 
           onClick={handleToggleForm} 
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary shadow-[0_0_10px_rgba(var(--secondary),0.4)]' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-xs font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-on-secondary border-secondary shadow-sm' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
         >
           {showBioForm ? <X size={12}/> : <Plus size={12}/>} 
           {showBioForm ? 'Cancelar' : 'Escanear'}
@@ -221,7 +221,7 @@ const BodyScanner = ({
           <button 
             onClick={handleSaveBiometrics}
             disabled={isSavingBio || !bioWeight}
-            className="w-full bg-secondary text-black font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 shadow-sm"
+            className="w-full bg-secondary text-on-secondary font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 shadow-sm"
           >
             {isSavingBio ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
             Registrar Status

@@ -27,7 +27,7 @@ const RestTimer = ({ endTime, onAdjust, onSkip, vibrationEnabled = true }) => {
 
   return (
     <aside aria-live="polite" aria-label="Temporizador de descanso" className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[9999] mx-auto max-w-md animate-in slide-in-from-bottom-5">
-      <div className="rounded-2xl border border-secondary/60 bg-card/95 p-3 shadow-[0_0_24px_rgba(var(--secondary),0.2)] backdrop-blur-md">
+      <div className="rest-timer-card rounded-2xl border border-secondary/60 bg-card/95 p-3 backdrop-blur-md">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/10 text-secondary"><Timer size={22} /></span>

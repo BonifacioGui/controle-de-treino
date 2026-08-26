@@ -75,7 +75,7 @@ const ProfileHeader = ({
               <span className="text-[8px] font-mono font-black text-primary uppercase tracking-[0.3em]">ID Confirmada</span>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] truncate leading-none">
+            <h2 className="font-cyber text-2xl sm:text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] truncate leading-none">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
             

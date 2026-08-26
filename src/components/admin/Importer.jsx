@@ -167,13 +167,13 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
           <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
             <input ref={fileInputRef} type="file" accept="application/pdf" className="sr-only" onChange={handleFileChange} />
             {selectedFile ? (
-              <div className="flex items-center gap-3 rounded-xl border border-primary/50 bg-primary/5 p-4"><FileText className="text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-main">{selectedFile.name}</p><p className="mt-1 text-xs text-muted">{(selectedFile.size / 1024).toFixed(0)} KB • PDF</p></div><button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="touch-target rounded-xl px-3 text-sm font-bold text-red-500">Remover</button></div>
+              <div className="flex items-center gap-3 rounded-xl border border-primary/50 bg-primary/5 p-4"><FileText className="text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-main">{selectedFile.name}</p><p className="mt-1 text-xs text-muted">{(selectedFile.size / 1024).toFixed(0)} KB • PDF</p></div><button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="touch-target rounded-xl px-3 text-sm font-bold text-danger">Remover</button></div>
             ) : (
               <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/50 text-primary"><Upload size={25} /><span className="text-sm font-black">Selecionar PDF</span><span className="text-xs font-normal text-muted">Máximo de 2 MB</span></button>
             )}
             <div className="flex items-center gap-3"><span className="h-px flex-1 bg-border" /><span className="text-xs font-bold text-muted">ou cole o texto</span><span className="h-px flex-1 bg-border" /></div>
             <label><span className="mb-2 block text-sm font-bold text-main">Texto da ficha</span><textarea value={rawText} onChange={(event) => { setRawText(event.target.value); if (event.target.value) setSelectedFile(null); setError(''); }} placeholder={'Exemplo:\nTreino A — Peito\nSupino reto — 3x10\nCrucifixo — 3x12'} className="min-h-44 w-full rounded-xl border border-border bg-input p-4 text-base leading-relaxed text-main outline-none focus-visible:ring-2 focus-visible:ring-primary" /><span className="mt-1 block text-right text-xs text-muted">Mínimo de {MIN_TEXT_LENGTH} caracteres</span></label>
-            <button type="button" onClick={handleProcess} disabled={isProcessing || (!rawText.trim() && !selectedFile)} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary text-base font-black text-black disabled:opacity-40">{isProcessing ? <><Loader2 className="animate-spin" /> Organizando sua ficha...</> : <><Pencil size={19} /> Gerar prévia</>}</button>
+            <button type="button" onClick={handleProcess} disabled={isProcessing || (!rawText.trim() && !selectedFile)} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary text-base font-black text-on-primary disabled:opacity-40">{isProcessing ? <><Loader2 className="animate-spin" /> Organizando sua ficha...</> : <><Pencil size={19} /> Gerar prévia</>}</button>
           </section>
         </>
       )}
@@ -198,7 +198,7 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
                       <div className="grid grid-cols-[1fr_5.5rem_2.75rem] gap-2">
                         <input aria-label={`Nome do exercício ${index + 1}`} value={exercise.name || ''} onChange={(event) => updateExercise(day, index, 'name', event.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-input px-3 text-sm font-bold text-main" />
                         <input aria-label={`Séries do exercício ${index + 1}`} value={exercise.sets || ''} onChange={(event) => updateExercise(day, index, 'sets', event.target.value)} className="h-11 rounded-xl border border-border bg-input px-2 text-center text-sm font-black text-main" />
-                        <button type="button" onClick={() => removeExercise(day, index)} aria-label={`Remover ${exercise.name}`} className="touch-target flex items-center justify-center rounded-xl border border-red-500/40 text-red-500"><Trash2 size={17} /></button>
+                        <button type="button" onClick={() => removeExercise(day, index)} aria-label={`Remover ${exercise.name}`} className="touch-target flex items-center justify-center rounded-xl border border-danger/40 text-danger"><Trash2 size={17} /></button>
                       </div>
                       <label className="mt-2 block">
                         <span className="mb-1 block text-xs font-bold text-muted">Como registrar a carga</span>
@@ -226,12 +226,12 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
           <div className="grid gap-3 sm:grid-cols-3">
             <button type="button" onClick={resetAll} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border font-bold text-main"><Trash2 size={17} /> Cancelar</button>
             <button type="button" onClick={() => setParsedPreview(null)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-primary font-bold text-primary"><RefreshCw size={17} /> Reprocessar</button>
-            <button type="button" onClick={confirm} disabled={pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-black text-black disabled:opacity-40"><Check size={19} /> Salvar no plano</button>
+            <button type="button" onClick={confirm} disabled={pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-black text-on-primary disabled:opacity-40"><Check size={19} /> Salvar no plano</button>
           </div>
         </section>
       )}
 
-      {error && <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-500/50 bg-red-500/10 p-4"><AlertTriangle className="shrink-0 text-red-500" /><div><p className="font-black text-main">Não foi possível importar</p><p className="mt-1 text-sm leading-relaxed text-muted">{error}</p></div></div>}
+      {error && <div role="alert" className="flex items-start gap-3 rounded-2xl border border-danger/50 bg-danger/10 p-4"><AlertTriangle className="shrink-0 text-danger" /><div><p className="font-black text-main">Não foi possível importar</p><p className="mt-1 text-sm leading-relaxed text-muted">{error}</p></div></div>}
     </main>
   );
 };

@@ -15,7 +15,7 @@ const BOSS_ASSETS = {
   warden: wardenImg,
 };
 
-const BossSection = ({ encounter, experienceMode = 'balanced', userId }) => {
+const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', userId }) => {
   const previousDamage = useRef(encounter?.damage || 0);
   const previousDefeated = useRef(encounter?.defeated === true);
   const [hit, setHit] = useState(false);
@@ -46,6 +46,7 @@ const BossSection = ({ encounter, experienceMode = 'balanced', userId }) => {
   const image = BOSS_ASSETS[encounter.bossAssetKey] || scavengerImg;
   const discreet = experienceMode === 'discreet';
   const immersive = experienceMode === 'immersive';
+  const tacticalLab = theme === 'light';
   const dismissIntro = () => {
     if (userId) writeUserStoredJSON(userId, STORAGE_KEYS.bossIntroSeen, true);
     setShowIntro(false);
@@ -53,8 +54,8 @@ const BossSection = ({ encounter, experienceMode = 'balanced', userId }) => {
 
   return (
     <section
-      aria-label={discreet ? 'Meta de performance' : `Boss de treino: ${encounter.bossName}`}
-      className={`solo-boss-card relative overflow-hidden rounded-2xl border bg-card ${encounter.defeated ? 'is-defeated border-success/60' : 'border-secondary/40'} ${hit ? 'is-hit' : ''} ${immersive ? 'is-immersive' : ''}`}
+      aria-label={discreet ? 'Meta de performance' : `${tacticalLab ? 'Análise do alvo' : 'Boss de treino'}: ${encounter.bossName}`}
+      className={`solo-boss-card relative overflow-hidden rounded-2xl border bg-card ${tacticalLab ? 'is-light-dossier' : ''} ${encounter.defeated ? 'is-defeated border-success/60' : 'border-secondary/40'} ${hit ? 'is-hit' : ''} ${immersive ? 'is-immersive' : ''}`}
     >
       {showIntro && (
         <div className="relative z-20 flex items-start gap-3 border-b border-primary/30 bg-primary/10 px-3 py-3 text-xs leading-relaxed text-muted sm:px-4">
@@ -65,7 +66,7 @@ const BossSection = ({ encounter, experienceMode = 'balanced', userId }) => {
       )}
       <div className="flex min-h-24 items-stretch">
         {!discreet && (
-          <div className="relative w-24 shrink-0 overflow-hidden border-r border-border bg-black/50 sm:w-32">
+          <div className="boss-portrait relative w-24 shrink-0 overflow-hidden border-r border-border bg-black/50 sm:w-32">
             <img src={image} alt={`Retrato de ${encounter.bossName}`} loading="lazy" className="h-full w-full object-cover opacity-80" />
             <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card" />
           </div>
@@ -75,11 +76,11 @@ const BossSection = ({ encounter, experienceMode = 'balanced', userId }) => {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-secondary">
-                {discreet ? <Crosshair size={14} /> : <Swords size={14} />}
-                {encounter.defeated ? 'Alvo neutralizado' : discreet ? 'Meta de performance' : 'Boss de treino'}
+                {discreet || tacticalLab ? <Crosshair size={14} /> : <Swords size={14} />}
+                {encounter.defeated ? (tacticalLab ? 'TARGET NEUTRALIZED' : 'Alvo neutralizado') : discreet ? 'Meta de performance' : tacticalLab ? 'TARGET ANALYSIS' : 'Boss de treino'}
               </p>
               <h2 className="mt-1 truncate font-cyber text-base font-black uppercase text-main sm:text-lg">
-                {discreet ? 'Superar desempenho recente' : encounter.bossName}
+                {discreet ? 'Superar desempenho recente' : tacticalLab ? <><span className="hidden sm:inline">TARGET // </span>{encounter.bossName}</> : encounter.bossName}
               </h2>
             </div>
             <span className={`shrink-0 rounded-lg border px-2 py-1 text-xs font-black ${encounter.defeated ? 'border-success/40 text-success' : 'border-secondary/30 text-secondary'}`}>

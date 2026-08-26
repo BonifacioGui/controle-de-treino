@@ -44,10 +44,10 @@ const MuscleHeatmap = ({ history }) => {
   // Funções de Estilo Tático
   const getHeatColor = (sets, target = 12) => {
     const percentage = Math.min(100, (sets / target) * 100);
-    if (percentage === 0) return 'rgba(100, 116, 139, 0.2)'; 
-    if (percentage < 50) return 'rgba(var(--primary), 0.4)'; 
-    if (percentage < 100) return 'rgba(var(--primary), 0.8)'; 
-    return 'rgba(239, 68, 68, 0.9)'; 
+    if (percentage === 0) return 'rgba(100, 116, 139, 0.18)';
+    if (percentage < 50) return 'rgba(var(--primary), 0.35)';
+    if (percentage < 100) return 'rgba(var(--primary), 0.72)';
+    return 'rgba(var(--danger), 0.86)';
   };
 
   const getGlowClass = (sets, target = 12) => {
@@ -58,7 +58,7 @@ const MuscleHeatmap = ({ history }) => {
 
   const polyProps = (muscle) => ({
     fill: getHeatColor(heatData[muscle]),
-    stroke: heatData[muscle] >= 12 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(var(--primary), 0.5)',
+    stroke: heatData[muscle] >= 12 ? 'rgba(var(--danger), 0.85)' : 'rgba(var(--primary), 0.55)',
     strokeWidth: "1",
     className: `transition-all duration-500 ${getGlowClass(heatData[muscle])}`
   });
@@ -69,20 +69,24 @@ const MuscleHeatmap = ({ history }) => {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(var(--primary),0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--primary),0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none transition-colors duration-300"></div>
       
       <div className="flex items-center justify-between mb-6 relative z-10">
-        <h3 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(var(--primary),0.5)]">
+        <h3 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-2">
           <Activity size={18} /> Scanner Biométrico (7D)
         </h3>
         
         <div className="flex items-center gap-1 bg-input/80 p-1 rounded-lg border border-border">
           <button 
+            type="button"
+            aria-label="Exibir anatomia masculina"
             onClick={() => setGender('male')}
-            className={`p-1.5 rounded-md transition-all ${gender === 'male' ? 'bg-primary text-black shadow-sm dark:shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'text-muted hover:text-main dark:hover:text-primary'}`}
+            className={`touch-target flex items-center justify-center rounded-md transition-all ${gender === 'male' ? 'bg-primary text-on-primary shadow-sm' : 'text-muted hover:text-main'}`}
           >
             <User size={16} />
           </button>
           <button 
+            type="button"
+            aria-label="Exibir anatomia feminina"
             onClick={() => setGender('female')}
-            className={`p-1.5 rounded-md transition-all ${gender === 'female' ? 'bg-primary text-black shadow-sm dark:shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'text-muted hover:text-main dark:hover:text-primary'}`}
+            className={`touch-target flex items-center justify-center rounded-md transition-all ${gender === 'female' ? 'bg-primary text-on-primary shadow-sm' : 'text-muted hover:text-main'}`}
           >
             <Users size={16} />
           </button>
@@ -152,8 +156,8 @@ const MuscleHeatmap = ({ history }) => {
           <line x1="20" y1="10" x2="180" y2="10" stroke="rgba(var(--primary),0.6)" strokeWidth="2" className="animate-scanline" />
         </svg>
 
-        <div className="absolute right-2 top-16 flex flex-col gap-2 text-[8px] font-mono uppercase tracking-widest text-muted text-right bg-card/80 dark:bg-black/40 p-2 rounded-lg border border-border shadow-sm backdrop-blur-md z-20 transition-colors">
-          <div className="flex items-center gap-1 justify-end text-red-500 font-bold drop-shadow-sm">
+        <div className="absolute right-2 top-16 flex flex-col gap-2 text-[11px] font-mono uppercase tracking-wide text-muted text-right bg-card/90 p-2 rounded-lg border border-border shadow-sm backdrop-blur-md z-20 transition-colors">
+          <div className="flex items-center gap-1 justify-end text-danger font-bold">
             <Activity size={10} /> Sobrecarga (+100%)
           </div>
           <div className="flex items-center gap-1 justify-end text-primary drop-shadow-sm">
@@ -169,9 +173,9 @@ const MuscleHeatmap = ({ history }) => {
         {Object.entries(heatData).map(([muscle, sets]) => {
           const isOverload = sets >= 12;
           return (
-          <div key={muscle} className={`text-center rounded-lg py-1.5 border transition-colors ${isOverload ? 'bg-red-500/10 border-red-500/50 shadow-sm' : 'bg-input/50 dark:bg-input/20 border-border/50'}`}>
-            <p className="text-[7px] font-black text-muted uppercase leading-tight mb-0.5">{muscle}</p>
-            <p className={`text-[11px] font-black leading-none ${isOverload ? 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.3)]' : 'text-primary'}`}>
+          <div key={muscle} className={`text-center rounded-lg px-1 py-2 border transition-colors ${isOverload ? 'bg-danger/10 border-danger/50 shadow-sm' : 'bg-input/50 border-border/50'}`}>
+            <p className="text-[11px] font-black text-muted uppercase leading-tight mb-1 break-words">{muscle}</p>
+            <p className={`text-xs font-black leading-none ${isOverload ? 'text-danger' : 'text-primary'}`}>
               {sets}
             </p>
           </div>
@@ -182,9 +186,9 @@ const MuscleHeatmap = ({ history }) => {
         .neon-pulse-blue { filter: drop-shadow(0 0 6px rgba(var(--primary), 0.6)); }
         .neon-pulse-red { animation: pulse-red 2s infinite; }
         @keyframes pulse-red {
-          0% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); fill: rgba(239, 68, 68, 0.8); }
-          50% { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.9)); fill: rgba(239, 68, 68, 1); }
-          100% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); fill: rgba(239, 68, 68, 0.8); }
+          0% { filter: drop-shadow(0 0 4px rgba(var(--danger), 0.55)); fill: rgba(var(--danger), 0.78); }
+          50% { filter: drop-shadow(0 0 12px rgba(var(--danger), 0.82)); fill: rgba(var(--danger), 0.94); }
+          100% { filter: drop-shadow(0 0 4px rgba(var(--danger), 0.55)); fill: rgba(var(--danger), 0.78); }
         }
         .animate-scanline { animation: scan 3s linear infinite; }
         @keyframes scan {

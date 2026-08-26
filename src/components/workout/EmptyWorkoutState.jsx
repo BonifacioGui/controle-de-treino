@@ -22,7 +22,7 @@ const EmptyWorkoutState = ({ onStartWorkout }) => {
 
       <button
         onClick={onStartWorkout}
-        className="flex items-center gap-2 bg-primary text-black font-black uppercase tracking-widest px-8 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-lg dark:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:scale-105 active:scale-95 relative z-10"
+        className="flex items-center gap-2 bg-primary text-on-primary font-black uppercase tracking-widest px-8 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-lg dark:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:scale-105 active:scale-95 relative z-10"
       >
         <PlusCircle size={22} />
         Iniciar Primeira Missão

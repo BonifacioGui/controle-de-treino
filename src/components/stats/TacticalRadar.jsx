@@ -38,7 +38,7 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             <h3 className="text-sm font-black text-secondary uppercase tracking-widest">
               {attributeLabels[activeAttr]?.full}
             </h3>
-            <p className="text-[8px] font-bold text-muted uppercase tracking-tighter italic">
+            <p className="text-xs font-semibold text-muted">
               {attributeLabels[activeAttr]?.desc}
             </p>
           </div>
@@ -47,7 +47,7 @@ const TacticalRadar = ({ radarData, maxStat }) => {
       
       {/* Aumentamos para h-64 para garantir o espaço do gráfico */}
       <div className="h-64 w-full -ml-2 relative">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 260 }}>
           <RadarChart 
             cx="50%" 
             cy="50%" 
@@ -61,10 +61,10 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             onMouseLeave={() => setActiveAttr(null)}
           >
             {/* Sugando as variáveis nativas do Tailwind/CSS */}
-            <PolarGrid stroke="rgb(var(--primary))" strokeOpacity={0.2} />
+            <PolarGrid stroke="var(--chart-grid)" />
             <PolarAngleAxis 
               dataKey="subject" 
-              tick={{ fill: "var(--text-muted)", fontSize: 10, fontWeight: 900 }} 
+              tick={{ fill: "var(--chart-text)", fontSize: 11, fontWeight: 800 }}
             />
             <PolarRadiusAxis 
               angle={30} 
@@ -75,19 +75,19 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             <Radar 
               name="Nível" 
               dataKey="A" 
-              stroke="rgb(var(--primary))" 
+              stroke="var(--chart-primary)"
               strokeWidth={3} 
-              fill="rgb(var(--primary))" 
+              fill="var(--chart-primary)"
               fillOpacity={0.3} 
-              dot={{ r: 3, fill: "rgb(var(--primary))", fillOpacity: 1 }}
-              activeDot={{ r: 5, stroke: "var(--bg-card)", strokeWidth: 2 }}
+              dot={{ r: 3, fill: "var(--chart-primary)", fillOpacity: 1 }}
+              activeDot={{ r: 5, stroke: "var(--chart-tooltip-bg)", strokeWidth: 2 }}
             />
             <Tooltip content={() => null} />
           </RadarChart>
         </ResponsiveContainer>
 
         <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 opacity-30 pointer-events-none">
-           <span className="text-[6px] font-black text-muted">TAB: INTERAÇÃO PARA DETALHES</span>
+           <span className="text-[11px] font-bold text-muted">TOQUE PARA VER DETALHES</span>
         </div>
       </div>
     </div>

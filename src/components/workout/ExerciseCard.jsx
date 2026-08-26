@@ -53,8 +53,8 @@ const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) =
         placeholder={placeholder}
         value={value || ''}
         onChange={onChange}
-        className={`h-12 w-full rounded-xl border bg-input px-2 text-center text-base font-black text-main outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 ${
-          invalid ? 'border-red-500' : 'border-border focus:border-primary'
+        className={`exercise-input h-12 w-full rounded-xl border bg-input px-2 text-center text-base font-black text-main outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 ${
+          invalid ? 'border-danger' : 'border-border focus:border-primary'
         }`}
       />
     </label>
@@ -164,7 +164,7 @@ const ExerciseCard = ({
   };
 
   return (
-    <article className={`rounded-2xl border bg-card transition ${isDone ? 'border-success/50' : isCurrent ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.12)]' : 'border-border'}`}>
+    <article className={`exercise-card rounded-2xl border bg-card transition ${isDone ? 'exercise-card--complete border-success/50' : isCurrent ? 'exercise-card--current border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.12)]' : 'border-border'}`}>
       <button
         type="button"
         onClick={() => setManualExpanded(!expanded)}
@@ -173,10 +173,11 @@ const ExerciseCard = ({
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            <span className="exercise-index inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-border px-1 text-xs font-black">{String(index + 1).padStart(2, '0')}</span>
             {isDone && <Check size={18} className="shrink-0 text-success" aria-hidden="true" />}
             <h3 className="truncate text-base font-black text-main">{displayName}</h3>
             {currentLoadPr && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-yellow-400/50 bg-yellow-400/10 px-2 py-1 text-[11px] font-black text-yellow-500">
+              <span className="exercise-pr-badge inline-flex items-center gap-1 rounded-md border border-gold/50 bg-gold/10 px-2 py-1 text-xs font-black text-gold">
                 <Trophy size={12} /> PR de carga
               </span>
             )}
@@ -198,7 +199,7 @@ const ExerciseCard = ({
               ) : (
                 <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
               )}
-              {loadPr > 0 && <p className="mt-1 text-xs text-yellow-500">Melhor carga canônica confirmada: {loadPr.toLocaleString('pt-BR')} kg</p>}
+              {loadPr > 0 && <p className="mt-1 text-xs font-semibold text-gold">Melhor carga canônica confirmada: {loadPr.toLocaleString('pt-BR')} kg</p>}
             </div>
             {lastExercise && (
               <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
@@ -239,7 +240,7 @@ const ExerciseCard = ({
               const valid = set.completed || isSetValid(set);
               const rpeLabel = rpe === null ? null : rpe >= 10 ? 'máximo' : rpe >= 9 ? 'muito alto' : rpe >= 8 ? 'alto' : rpe >= 7 ? 'moderado' : 'leve';
               return (
-                <div key={setIndex} className={`rounded-xl border p-2 ${set.completed ? 'border-success/40 bg-success/5' : 'border-border bg-input/30'}`}>
+                <div key={setIndex} className={`exercise-set-row rounded-xl border p-2 ${set.completed ? 'is-complete border-success/40 bg-success/5' : 'border-border bg-input/30'}`}>
                   <div className="flex items-center gap-2">
                     <span className="w-6 shrink-0 text-center text-sm font-black text-muted">{setIndex + 1}</span>
                     <div className="flex min-w-0 flex-1 gap-2">{renderFields(set, setIndex)}</div>
@@ -254,12 +255,12 @@ const ExerciseCard = ({
                         toggleSetComplete(id, setIndex, ex.restSeconds ?? 90);
                       }}
                       aria-label={set.completed ? `Reabrir série ${setIndex + 1}` : `Concluir série ${setIndex + 1}`}
-                      className={`touch-target flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition active:scale-95 ${set.completed ? 'border-success bg-success text-black' : 'border-primary/50 text-primary hover:bg-primary/10'}`}
+                      className={`touch-target flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition active:scale-95 ${set.completed ? 'border-success bg-success text-on-success' : 'border-primary/50 text-primary hover:bg-primary/10'}`}
                     >
                       {set.completed ? <Check size={24} /> : <Circle size={22} />}
                     </button>
                   </div>
-                  {validationSet === setIndex && !valid && <p role="alert" className="mt-2 pl-8 text-xs font-bold text-red-500">Preencha valores válidos antes de concluir a série.</p>}
+                  {validationSet === setIndex && !valid && <p role="alert" className="mt-2 pl-8 text-xs font-bold text-danger">Preencha valores válidos antes de concluir a série.</p>}
                   {showAdvanced && (
                     <div className="mt-2 flex items-center gap-2 pl-8">
                       <Field label={`RPE da série ${setIndex + 1}`} placeholder="RPE" inputMode="decimal" value={set.rpe} onChange={(event) => updateSetData(id, setIndex, 'rpe', event.target.value)} />
@@ -285,7 +286,7 @@ const ExerciseCard = ({
               ) : (
                 <div className="flex flex-1 gap-2">
                   <button type="button" onClick={() => setConfirmSkip(false)} className="touch-target flex-1 rounded-xl border border-border text-xs font-bold">Cancelar</button>
-                  <button type="button" onClick={() => { skipExercise(id, !exerciseProgress.skipped); setConfirmSkip(false); }} className="touch-target flex-1 rounded-xl bg-warning text-xs font-black text-black">Confirmar</button>
+                  <button type="button" onClick={() => { skipExercise(id, !exerciseProgress.skipped); setConfirmSkip(false); }} className="touch-target flex-1 rounded-xl bg-warning text-xs font-black text-on-warning">Confirmar</button>
                 </div>
               )}
             </div>
@@ -321,7 +322,7 @@ const ExerciseCard = ({
             <p className="mt-5 text-sm text-muted">Onde deseja aplicar esta troca?</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <button type="button" onClick={() => { onSwap(id, swapChoice, { scope: 'session', exerciseIndex: index }); setShowSwap(false); }} className="touch-target rounded-xl border border-primary px-3 text-sm font-black text-primary">Somente nesta sessão</button>
-              <button type="button" onClick={() => { onSwap(id, swapChoice, { scope: 'plan', exerciseIndex: index }); setShowSwap(false); }} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-black">Alterar no plano</button>
+              <button type="button" onClick={() => { onSwap(id, swapChoice, { scope: 'plan', exerciseIndex: index }); setShowSwap(false); }} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-on-warning">Alterar no plano</button>
             </div>
           </div>
         </div>,

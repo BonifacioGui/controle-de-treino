@@ -88,7 +88,7 @@ const WorkoutHeader = ({
         {sessionActive && !isTutorialDay && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-input p-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${workoutTimer.isRunning ? 'bg-primary text-black' : 'bg-card text-muted'}`}>
+              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${workoutTimer.isRunning ? 'bg-primary text-on-primary' : 'bg-card text-muted'}`}>
                 <TimerIcon size={20} />
               </span>
               <div>
@@ -109,7 +109,7 @@ const WorkoutHeader = ({
                 type="button"
                 onClick={() => setIsAbandonModalOpen(true)}
                 aria-label="Encerrar e descartar esta sessão"
-                className="touch-target flex h-11 w-11 items-center justify-center rounded-xl border border-red-500/50 bg-red-500/10 text-red-500"
+                className="touch-target flex h-11 w-11 items-center justify-center rounded-xl border border-danger/50 bg-danger/10 text-danger"
               >
                 <Trash2 size={20} />
               </button>
@@ -130,13 +130,13 @@ const WorkoutHeader = ({
 
       {isAbandonModalOpen && typeof document !== 'undefined' && createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="abandon-title" className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="w-full max-w-sm rounded-3xl border border-red-500/60 bg-card p-6 shadow-2xl">
-            <AlertTriangle className="mb-4 text-red-500" size={34} />
+          <div className="w-full max-w-sm rounded-3xl border border-danger/60 bg-card p-6 shadow-2xl">
+            <AlertTriangle className="mb-4 text-danger" size={34} />
             <h2 id="abandon-title" className="text-xl font-black text-main">Encerrar este treino?</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">As séries e o tempo desta sessão serão descartados deste dispositivo. O histórico já salvo não será alterado.</p>
             <div className="mt-6 space-y-3">
               <button type="button" onClick={() => setIsAbandonModalOpen(false)} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Continuar treino</button>
-              <button type="button" onClick={confirmAbandon} className="touch-target w-full rounded-xl bg-red-600 font-black text-white">Encerrar e descartar</button>
+              <button type="button" onClick={confirmAbandon} className="touch-target w-full rounded-xl bg-danger font-black text-on-danger">Encerrar e descartar</button>
             </div>
           </div>
         </div>,

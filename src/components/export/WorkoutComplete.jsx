@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Cloud,
   CloudOff,
+  Crosshair,
   Download,
   Loader2,
   Share2,
@@ -31,6 +32,7 @@ const WorkoutComplete = ({
   streak = 0,
   currentLevel = 1,
   totalXp = 0,
+  theme = 'dark',
 }) => {
   const [showShareTools, setShowShareTools] = useState(false);
   const [selfieUrl, setSelfieUrl] = useState(null);
@@ -127,7 +129,7 @@ const WorkoutComplete = ({
         </div>
       )}
 
-      <div className="max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/40 bg-card shadow-2xl">
+      <div className="workout-complete-panel max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/40 bg-card shadow-2xl">
         <header className="flex items-start justify-between border-b border-border p-5">
           <div><CheckCircle2 className="mb-3 text-success drop-shadow-[0_0_12px_rgba(var(--success),0.45)]" size={42} /><p className="font-cyber text-xs font-black uppercase tracking-[0.2em] text-primary">{workoutTitle}</p><h2 id="workout-summary-title" className="mt-1 text-2xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Treino concluído'}</h2><p className="mt-1 text-sm text-muted">Seu progresso já foi registrado.</p></div>
           <button type="button" onClick={onClose} aria-label="Fechar resumo" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
@@ -142,26 +144,29 @@ const WorkoutComplete = ({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3 text-sm font-bold text-muted">
-            <span className="flex items-center gap-2"><Trophy size={17} className="text-yellow-500" /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
+            <span className="flex items-center gap-2"><Trophy size={17} className="text-gold" /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
             <span className="flex items-center gap-2">🔥 sequência: {streak} {streak === 1 ? 'dia' : 'dias'}</span>
           </div>
 
           {bossEncounter && (
             <div className={`mt-3 rounded-xl border p-4 ${bossEncounter.defeated ? 'border-success/40 bg-success/5' : 'border-secondary/40 bg-secondary/5'}`}>
-              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-secondary"><Swords size={16} /> Relatório de combate</p>
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-secondary">
+                {theme === 'light' ? <Crosshair size={16} /> : <Swords size={16} />}
+                {theme === 'light' ? 'Relatório tático' : 'Relatório de combate'}
+              </p>
               <div className="mt-2 flex items-end justify-between gap-3"><p className="font-cyber text-lg font-black text-main">{bossEncounter.bossName}</p><p className="text-sm font-black text-main">{Math.round(bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(bossEncounter.maxHp).toLocaleString('pt-BR')}</p></div>
               <p className="mt-2 text-sm text-muted">{getBossBattleReport(bossEncounter, sessionPrs)}</p>
             </div>
           )}
 
-          <div className={`mt-3 flex items-start gap-3 rounded-xl border p-3 text-sm ${savedInCloud ? 'border-green-500/40 bg-green-500/5' : 'border-warning/40 bg-warning/10'}`}>
-            {savedInCloud ? <Cloud className="shrink-0 text-green-500" size={19} /> : <CloudOff className="shrink-0 text-warning" size={19} />}
+          <div className={`mt-3 flex items-start gap-3 rounded-xl border p-3 text-sm ${savedInCloud ? 'border-success/40 bg-success/5' : 'border-warning/40 bg-warning/10'}`}>
+            {savedInCloud ? <Cloud className="shrink-0 text-success" size={19} /> : <CloudOff className="shrink-0 text-warning" size={19} />}
             <div><p className="font-black text-main">{savedInCloud ? 'Sincronizado' : 'Salvo neste dispositivo'}</p>{!savedInCloud && <p className="mt-1 text-xs leading-relaxed text-muted">Aguardando sincronização. Você pode fechar esta tela com segurança.</p>}</div>
           </div>
 
           {!showShareTools ? (
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={onClose} className="touch-target rounded-xl bg-primary font-black text-black">Ver no histórico</button>
+              <button type="button" onClick={onClose} className="touch-target rounded-xl bg-primary font-black text-on-primary">Ver no histórico</button>
               <button type="button" onClick={openShareTools} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-primary font-black text-primary"><Share2 size={18} /> Compartilhar</button>
             </div>
           ) : (
@@ -173,7 +178,7 @@ const WorkoutComplete = ({
               </div>
               <div className="grid grid-cols-[2.75rem_1fr_1fr] gap-2">
                 <label aria-label="Adicionar foto" className="touch-target flex cursor-pointer items-center justify-center rounded-xl border border-border text-muted"><Camera size={19} /><input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
-                <button type="button" onClick={handleShare} disabled={isGenerating || !generatedImage} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-black disabled:opacity-40"><Share2 size={17} /> Compartilhar</button>
+                <button type="button" onClick={handleShare} disabled={isGenerating || !generatedImage} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-on-primary disabled:opacity-40"><Share2 size={17} /> Compartilhar</button>
                 <button type="button" onClick={handleDownload} disabled={isGenerating || !generatedImage} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-main disabled:opacity-40"><Download size={17} /> Baixar card</button>
               </div>
               <button type="button" onClick={onClose} className="touch-target w-full rounded-xl text-sm font-bold text-muted">Concluir sem compartilhar</button>

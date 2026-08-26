@@ -1,5 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
+
+/* O tema é uma preferência do SOLO, independente do tema do sistema operacional. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /* ================================================
    THEME TOKENS
@@ -7,7 +10,7 @@
 
 @theme {
 
-  --font-sans:  'Orbitron', sans-serif;
+  --font-sans:  'Inter', system-ui, sans-serif;
   --font-cyber: 'Orbitron', sans-serif;
   --font-mono:  'Share Tech Mono', monospace;
 
@@ -22,6 +25,7 @@
   --color-gold:      rgb(var(--gold));
   --color-success:   rgb(var(--success));
   --color-warning:   rgb(var(--warning));
+  --color-danger:    rgb(var(--danger));
   --color-border:    var(--border-color);
 
   /* ════════════════════════════════
@@ -193,7 +197,7 @@
   /* ── Scrollbar cyberpunk ── */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #00f2ff transparent;
+    scrollbar-color: rgb(var(--primary)) transparent;
     box-sizing: border-box;
   }
 
@@ -250,6 +254,22 @@
     --gold:      var(--solo-gold);
     --success:   var(--solo-success);
     --warning:   var(--solo-warning);
+    --danger:    var(--solo-danger);
+
+    --on-primary: #001014;
+    --on-secondary: #ffffff;
+    --on-success: #00140d;
+    --on-warning: #1b0a00;
+    --on-danger: #ffffff;
+
+    --chart-primary: rgb(var(--primary));
+    --chart-secondary: rgb(var(--secondary));
+    --chart-success: rgb(var(--success));
+    --chart-warning: rgb(var(--warning));
+    --chart-grid: rgba(122, 156, 192, .2);
+    --chart-text: var(--text-muted);
+    --chart-tooltip-bg: #0d1723;
+    --chart-tooltip-border: rgba(0, 224, 255, .35);
 
     --border-color:    var(--solo-border);
     --border-hot:      rgba(0,243,255,.6);
@@ -274,15 +294,45 @@
 
   /* 2. O Titânio: Textos pesados e de alto contraste (A regra de ouro do Light Mode) */
   --text-main:  #020617; /* Slate 950: Preto absoluto, agressivo e de leitura máxima */
-  --text-muted: #64748b; /* Slate 500: Cinza tático/chumbo para dados secundários */
+  --text-muted: #475569; /* Slate 600: dados secundários mantêm AA até sobre superfícies de input */
 
   /* 3. As Lâminas (Acentos): Mais densos para não evaporarem no fundo branco */
-  --primary:   8,145,178;  /* Cyan 600: Ciano profundo, elétrico mas legível */
-  --secondary: 192,38,211; /* Fuchsia 600: Magenta corporativo denso */
+  --solo-bg: #f8fafc;
+  --solo-surface: #ffffff;
+  --solo-surface-raised: #ffffff;
+  --solo-input: #f1f5f9;
+  --solo-border: rgba(51, 65, 85, .18);
+  --solo-cyan: 14, 116, 144;
+  --solo-magenta: 162, 28, 175;
+  --solo-gold: 146, 64, 14;
+  --solo-success: 4, 120, 87;
+  --solo-warning: 194, 65, 12;
+  --solo-danger: 185, 28, 28;
+  --solo-glow-cyan: 0 2px 4px rgba(15, 23, 42, .06);
+  --solo-glow-magenta: 0 2px 4px rgba(15, 23, 42, .05);
+
+  --primary:   var(--solo-cyan);  /* #0e7490 — AA sobre branco */
+  --secondary: var(--solo-magenta); /* #a21caf */
   --accent:    126,34,206; /* Purple 700: Roxo escuro */
-  --gold:      217,119,6;  /* Amber 600 */
-  --success:   5,150,105;  /* Emerald 600 */
-  --warning:   234,88,12;  /* Orange 600 */
+  --gold:      var(--solo-gold);
+  --success:   var(--solo-success);
+  --warning:   var(--solo-warning);
+  --danger:    var(--solo-danger);
+
+  --on-primary: #ffffff;
+  --on-secondary: #ffffff;
+  --on-success: #ffffff;
+  --on-warning: #ffffff;
+  --on-danger: #ffffff;
+
+  --chart-primary: #0e7490;
+  --chart-secondary: #a21caf;
+  --chart-success: #047857;
+  --chart-warning: #c2410c;
+  --chart-grid: rgba(71, 85, 105, .18);
+  --chart-text: #475569;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(51, 65, 85, .2);
 
   /* 4. Estrutura Física: Bordas nítidas como projetos de engenharia (Blueprints) */
   --border-color:  rgba(2,6,23, 0.12); /* Bordas chumbo finas, sem aspecto de "vidro" */
@@ -299,9 +349,15 @@
 }
 
   /* ── BODY (Estilos base + Background) ── */
+  html {
+    min-height: 100%;
+    background-color: var(--bg-page);
+  }
+
   body {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 600;
+    min-height: 100%;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 500;
     overflow-x: hidden;
     color: var(--text-main);
     background-color: var(--bg-page);
@@ -316,9 +372,9 @@
   [data-theme='light'] body {
     background-color: var(--bg-page);
     background-image:
-      radial-gradient(ellipse at 10% 15%, rgba(14,165,233,.14) 0%, transparent 50%),
-      radial-gradient(ellipse at 90% 85%, rgba(168,85,247,.10) 0%, transparent 50%),
-      linear-gradient(180deg, #f0f4ff 0%, #e2e8f0 100%);
+      radial-gradient(ellipse at 8% 8%, rgba(14,116,144,.07) 0%, transparent 42%),
+      radial-gradient(ellipse at 92% 84%, rgba(162,28,175,.045) 0%, transparent 44%),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   }
 
   ::selection {
@@ -512,7 +568,7 @@
     0 0 20px rgba(0,255,255,.3),
     0 10px 30px rgba(0,0,0,.4);
   overflow: hidden;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1128,14 +1184,14 @@
 }
 
 /* Imersiva: reforça profundidade, contraste neon e leitura tática. */
-[data-experience='immersive'] body {
+[data-theme='dark'][data-experience='immersive'] body {
   background-image:
     radial-gradient(ellipse at 8% 3%, rgba(0, 224, 255, .15) 0%, transparent 38%),
     radial-gradient(ellipse at 94% 72%, rgba(255, 42, 145, .13) 0%, transparent 40%),
     linear-gradient(180deg, #02060c 0%, #06101b 52%, #020509 100%);
 }
 
-[data-experience='immersive'] .cyber-grid {
+[data-theme='dark'][data-experience='immersive'] .cyber-grid {
   background-image:
     linear-gradient(rgba(0, 243, 255, .075) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 243, 255, .075) 1px, transparent 1px),
@@ -1144,18 +1200,18 @@
   background-size: 36px 36px, 36px 36px, 108px 108px, 108px 108px;
 }
 
-[data-experience='immersive'] .solo-shell::before {
+[data-theme='dark'][data-experience='immersive'] .solo-shell::before {
   background:
     linear-gradient(115deg, transparent 0 48%, rgba(0, 224, 255, .055) 48% 48.25%, transparent 48.25%),
     radial-gradient(circle at 50% -10%, rgba(0, 224, 255, .15), transparent 42%);
 }
 
-[data-experience='immersive'] .solo-shell > header {
+[data-theme='dark'][data-experience='immersive'] .solo-shell > header {
   border-bottom-color: rgba(0, 224, 255, .38);
   box-shadow: 0 12px 34px rgba(0, 0, 0, .48), 0 0 24px rgba(0, 224, 255, .12);
 }
 
-[data-experience='immersive'] .solo-workout-hero {
+[data-theme='dark'][data-experience='immersive'] .solo-workout-hero {
   background:
     linear-gradient(120deg, rgba(0, 224, 255, .19), transparent 50%),
     linear-gradient(300deg, rgba(255, 42, 145, .18), transparent 48%),
@@ -1167,7 +1223,7 @@
     inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 
-[data-experience='immersive'] .solo-primary-action {
+[data-theme='dark'][data-experience='immersive'] .solo-primary-action {
   filter: saturate(1.2) brightness(1.08);
   box-shadow:
     0 14px 34px rgba(0, 0, 0, .48),
@@ -1175,7 +1231,7 @@
     0 0 34px rgba(255, 42, 145, .24);
 }
 
-[data-experience='immersive'] .solo-shell nav button[aria-current='page'] {
+[data-theme='dark'][data-experience='immersive'] .solo-shell nav button[aria-current='page'] {
   border-color: rgba(0, 224, 255, .62);
   box-shadow: 0 0 26px rgba(0, 224, 255, .22);
 }
@@ -1191,7 +1247,7 @@
   background-image: none !important;
 }
 
-[data-experience='discreet'] body {
+[data-theme='dark'][data-experience='discreet'] body {
   background: #05080d;
 }
 
@@ -1236,9 +1292,388 @@
   animation-iteration-count: 1 !important;
 }
 
+/* ================================================
+   SOLO // TACTICAL LAB — LIGHT MODE
+================================================ */
+
+.text-on-primary { color: var(--on-primary); }
+.text-on-secondary { color: var(--on-secondary); }
+.text-on-success { color: var(--on-success); }
+.text-on-warning { color: var(--on-warning); }
+.text-on-danger { color: var(--on-danger); }
+
+.auth-panel {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .5);
+}
+
+.auth-wordmark {
+  background-image: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--secondary)), rgb(var(--primary)));
+  filter: drop-shadow(0 0 10px rgba(var(--primary), .4));
+}
+
+.auth-logo {
+  filter: drop-shadow(0 0 8px rgba(var(--primary), .7));
+}
+
+.auth-field:focus-within {
+  box-shadow: 0 0 15px rgba(var(--primary), .15);
+}
+
+.auth-primary-action {
+  color: var(--on-primary);
+  background: linear-gradient(100deg, rgb(var(--primary)), #4050ff 56%, rgb(var(--secondary)));
+  background-size: 200% auto;
+  box-shadow: 0 0 20px rgba(var(--primary), .3);
+}
+
+.rest-timer-card {
+  box-shadow: 0 0 24px rgba(var(--secondary), .2);
+}
+
+[data-theme='light'] * {
+  scrollbar-color: rgb(var(--primary)) transparent;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: transparent;
+  border-left-color: rgba(51, 65, 85, .08);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: rgb(var(--primary));
+  box-shadow: none;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--secondary));
+  box-shadow: none;
+}
+
+[data-theme='light'] .cyber-grid {
+  background-image:
+    linear-gradient(to right, rgba(14, 116, 144, .026) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 116, 144, .026) 1px, transparent 1px),
+    linear-gradient(to right, rgba(71, 85, 105, .018) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(71, 85, 105, .018) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
+}
+
+[data-theme='light'] .solo-shell::before {
+  background:
+    linear-gradient(115deg, transparent 0 48%, rgba(14, 116, 144, .022) 48% 48.15%, transparent 48.15%),
+    radial-gradient(circle at 50% -12%, rgba(14, 116, 144, .055), transparent 40%);
+}
+
+[data-theme='light'] .solo-shell > header {
+  border-bottom-color: rgba(51, 65, 85, .16);
+  background: rgba(248, 250, 252, .9);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme='light'] .solo-shell > header img[alt='SOLO'] {
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, .12));
+}
+
+[data-theme='light'] .auth-layout {
+  background-image:
+    linear-gradient(rgba(14, 116, 144, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, .028) 1px, transparent 1px),
+    radial-gradient(circle at 90% 8%, rgba(162, 28, 175, .05), transparent 30%);
+  background-size: 40px 40px, 40px 40px, auto;
+}
+
+[data-theme='light'] .auth-ambient {
+  filter: blur(80px);
+  opacity: .48;
+}
+
+[data-theme='light'] .auth-panel {
+  border-color: rgba(51, 65, 85, .18);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 12px 32px rgba(15, 23, 42, .08);
+}
+
+[data-theme='light'] .auth-wordmark {
+  background-image: linear-gradient(90deg, #0e7490, #a21caf, #0e7490);
+  filter: none;
+}
+
+[data-theme='light'] .auth-logo {
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, .14));
+}
+
+[data-theme='light'] .auth-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, .13);
+}
+
+[data-theme='light'] .auth-primary-action {
+  color: #fff;
+  background: linear-gradient(100deg, #0e7490, #075b73);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .08), 0 8px 20px rgba(14, 116, 144, .14);
+}
+
+[data-theme='light'] .card-hud,
+[data-theme='light'] .exercise-card,
+[data-theme='light'] .solo-workout-hero,
+[data-theme='light'] .solo-boss-card,
+[data-theme='light'] .workout-complete-panel {
+  border-color: rgba(51, 65, 85, .18);
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .045), 0 8px 24px rgba(15, 23, 42, .055);
+  backdrop-filter: none;
+}
+
+[data-theme='light'] .card-hud::before,
+[data-theme='light'] .card-hud::after {
+  animation: none;
+  opacity: 0;
+}
+
+[data-theme='light'] .solo-workout-hero {
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, .07), transparent 38%),
+    linear-gradient(0deg, rgba(241, 245, 249, .72), rgba(255, 255, 255, .92));
+}
+
+[data-theme='light'] .solo-workout-hero::before {
+  border-color: rgb(var(--primary));
+}
+
+[data-theme='light'] .solo-workout-hero::after {
+  border-color: rgb(var(--secondary));
+}
+
+[data-theme='light'] .solo-primary-action {
+  color: var(--on-primary);
+  background: linear-gradient(100deg, #0e7490 0%, #036986 70%, #075b73 100%);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .08), 0 8px 20px rgba(14, 116, 144, .14);
+}
+
+[data-theme='light'] .workout-finish-action {
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .07), 0 8px 18px rgba(14, 116, 144, .12);
+}
+
+[data-theme='light'] .rest-timer-card {
+  border-color: rgba(162, 28, 175, .35);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .06), 0 8px 24px rgba(15, 23, 42, .08);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme='light'] .bg-primary.text-black,
+[data-theme='light'] .bg-success.text-black,
+[data-theme='light'] .bg-warning.text-black {
+  color: #fff;
+}
+
+[data-theme='light'] .exercise-card--current {
+  border-color: rgba(14, 116, 144, .58);
+  box-shadow: inset 3px 0 0 rgb(var(--primary)), 0 2px 4px rgba(15, 23, 42, .05), 0 8px 20px rgba(15, 23, 42, .05);
+}
+
+[data-theme='light'] .exercise-card--complete {
+  border-color: rgba(4, 120, 87, .45);
+  box-shadow: inset 3px 0 0 rgb(var(--success)), 0 2px 4px rgba(15, 23, 42, .045);
+}
+
+[data-theme='light'] .exercise-index {
+  color: rgb(var(--primary));
+  background: rgba(14, 116, 144, .08);
+  border-color: rgba(14, 116, 144, .2);
+}
+
+[data-theme='light'] .exercise-input {
+  border-color: rgba(71, 85, 105, .22);
+  background: #f1f5f9;
+}
+
+[data-theme='light'] .exercise-set-row {
+  border-color: rgba(71, 85, 105, .16);
+  background: rgba(241, 245, 249, .72);
+}
+
+[data-theme='light'] .exercise-set-row.is-complete {
+  border-color: rgba(4, 120, 87, .32);
+  background: rgba(4, 120, 87, .065);
+}
+
+[data-theme='light'] .exercise-pr-badge {
+  border-color: rgba(161, 98, 7, .35);
+  background: rgba(217, 119, 6, .09);
+  color: #92400e;
+}
+
+[data-theme='light'] .solo-boss-card {
+  border-color: rgba(162, 28, 175, .24);
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, .045) 1px, transparent 1px),
+    linear-gradient(rgba(14, 116, 144, .045) 1px, transparent 1px),
+    #fff;
+  background-size: 24px 24px;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+[data-theme='light'] .solo-boss-card .boss-portrait {
+  border-color: rgba(51, 65, 85, .14);
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .solo-boss-card .boss-portrait img {
+  opacity: .76;
+  filter: saturate(.72) contrast(1.04);
+}
+
+[data-theme='light'] .solo-boss-card.is-defeated {
+  border-color: rgba(4, 120, 87, .5);
+  box-shadow: inset 3px 0 0 rgb(var(--success)), 0 8px 24px rgba(15, 23, 42, .055);
+}
+
+[data-theme='light'] .solo-bottom-nav {
+  border-top-color: rgba(51, 65, 85, .17);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, .065);
+  backdrop-filter: blur(14px);
+}
+
+[data-theme='light'] .solo-bottom-nav .nav-item[aria-current='page'] {
+  background: rgba(14, 116, 144, .055);
+  box-shadow: inset 0 0 0 1px rgba(14, 116, 144, .12);
+}
+
+[data-theme='light'] input,
+[data-theme='light'] textarea,
+[data-theme='light'] select {
+  border-color: rgba(71, 85, 105, .24);
+  background-color: #f1f5f9;
+}
+
+[data-theme='light'] input:focus,
+[data-theme='light'] textarea:focus,
+[data-theme='light'] select:focus {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, .13);
+}
+
+[data-theme='light'] [aria-invalid='true'] {
+  border-color: rgb(var(--danger));
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, .1);
+}
+
+[data-theme='light'] :disabled {
+  opacity: .58;
+}
+
+[data-theme='light'] [role='dialog'].fixed.inset-0 {
+  background-color: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(5px);
+}
+
+[data-theme='light'] .workout-complete-panel > header {
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, .07), transparent 48%),
+    #fff;
+}
+
+/* Light e experiência permanecem independentes. */
+[data-theme='light'][data-experience='immersive'] body {
+  background-image:
+    radial-gradient(ellipse at 8% 4%, rgba(14, 116, 144, .1), transparent 40%),
+    radial-gradient(ellipse at 94% 80%, rgba(162, 28, 175, .06), transparent 42%),
+    linear-gradient(180deg, #f8fafc, #eef4f7);
+}
+
+[data-theme='light'][data-experience='immersive'] .cyber-grid {
+  background-image:
+    linear-gradient(rgba(14, 116, 144, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, .045) 1px, transparent 1px),
+    linear-gradient(rgba(162, 28, 175, .018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(162, 28, 175, .018) 1px, transparent 1px);
+}
+
+[data-theme='light'][data-experience='immersive'] .solo-workout-hero {
+  border-color: rgba(14, 116, 144, .42);
+  background:
+    linear-gradient(110deg, rgba(14, 116, 144, .115), transparent 48%),
+    linear-gradient(300deg, rgba(162, 28, 175, .065), transparent 42%),
+    #fff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 10px 28px rgba(14, 116, 144, .09);
+}
+
+[data-theme='light'][data-experience='immersive'] .solo-boss-card {
+  border-color: rgba(162, 28, 175, .38);
+  box-shadow: inset 3px 0 0 rgb(var(--secondary)), 0 10px 28px rgba(15, 23, 42, .08);
+}
+
+[data-theme='light'][data-experience='discreet'] body {
+  background: #f8fafc;
+}
+
+[data-theme='light'][data-experience='discreet'] .solo-workout-hero,
+[data-theme='light'][data-experience='discreet'] .solo-boss-card {
+  background: #fff;
+}
+
+[data-theme='light'][data-experience='discreet'] .solo-shell > header,
+[data-theme='light'][data-experience='discreet'] .solo-bottom-nav {
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+[data-theme='light'][data-experience='discreet'] .solo-primary-action {
+  background: #0e7490;
+  box-shadow: none;
+}
+
+[data-theme='light'] .dark\:text-white,
+[data-theme='light'] .dark\:text-zinc-300,
+[data-theme='light'] .dark\:text-zinc-400 {
+  color: var(--text-main) !important;
+}
+
+[data-theme='light'] .dark\:text-zinc-500 {
+  color: var(--text-muted) !important;
+}
+
+/* Informações operacionais não encolhem para compensar densidade. */
+body .text-\[6px\],
+body .text-\[7px\],
+body .text-\[8px\] {
+  font-size: 11px;
+}
+
+body .text-\[9px\],
+body .text-\[10px\] {
+  font-size: 12px;
+}
+
+[data-theme='light'] .animate-glitch,
+[data-theme='light'] .animate-glow-pulse,
+[data-theme='light'] .animate-neon-border,
+[data-theme='light'] .animate-scanline,
+[data-theme='light'] .animate-breathe-float,
+[data-theme='light'] .animate-glow,
+[data-theme='light'] .animate-holographic,
+[data-theme='light'] .animate-glitch-text,
+[data-theme='light'] .animate-flicker,
+[data-theme='light'] .animate-data-stream,
+[data-theme='light'] .animate-border-flow,
+[data-theme='light'] .neon-pulse-blue,
+[data-theme='light'] .neon-pulse-red {
+  animation: none !important;
+  filter: none !important;
+}
+
+[data-theme='light'] ::selection {
+  background: rgba(14, 116, 144, .2);
+  color: #020617;
+  text-shadow: none;
+}
+
 @media (min-width: 768px) {
   .solo-shell > .relative.z-10.min-h-\[50vh\] {
     margin-inline: auto;
     max-width: 70rem;
   }
+
 }

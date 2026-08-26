@@ -18,7 +18,7 @@ import ExerciseSearchModal from '../workout/ExerciseSearchModal';
 const Section = ({ title, children, h = "h-48" }) => (
   <section className="space-y-2">
     <div className="flex items-center justify-between px-1">
-        <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+        <h3 className="text-xs font-black text-muted uppercase tracking-[0.16em] flex items-center gap-2">
             {title}
         </h3>
     </div>
@@ -31,12 +31,6 @@ const Section = ({ title, children, h = "h-48" }) => (
 const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen }) => {
   const [selectedExercise, setSelectedExercise] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-
-  const theme = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || 'driver' : 'driver';
-  const colors = {
-    driver: { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' }, 
-    light:  { p: '#0284c7', s: '#db2777', t: '#475569', bg: '#ffffff', w: '#000000', g: '#16a34a' }  
-  }[theme] || { p: '#22d3ee', s: '#ec4899', t: '#94a3b8', bg: '#0f172a', w: '#ffffff', g: '#22c55e' };
 
   // Sincroniza o modal com o elemento pai (caso exista)
   useEffect(() => { setIsModalOpen?.(isSelectorOpen); }, [isSelectorOpen, setIsModalOpen]);
@@ -117,36 +111,36 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   const monthlyTarget = 20; 
   const consistencyProgress = Math.min(100, Math.round((recentWorkoutsCount / monthlyTarget) * 100));
   
-  let statusColor = 'text-red-500';
-  let barColor = 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
-  let borderColor = 'border-red-500/50';
+  let statusColor = 'text-danger';
+  let barColor = 'bg-danger';
+  let borderColor = 'border-danger/50';
   let statusText = 'CRÍTICO';
 
   if (consistencyProgress >= 80) {
-    statusColor = 'text-[#00ff88]'; 
-    barColor = 'bg-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.8)]';
-    borderColor = 'border-[#00ff88]/50';
+    statusColor = 'text-success';
+    barColor = 'bg-success';
+    borderColor = 'border-success/50';
     statusText = 'ELITE';
   } else if (consistencyProgress >= 50) {
-    statusColor = 'text-[#00f3ff]'; 
-    barColor = 'bg-[#00f3ff] shadow-[0_0_10px_rgba(0,243,255,0.8)]';
-    borderColor = 'border-[#00f3ff]/50';
+    statusColor = 'text-primary';
+    barColor = 'bg-primary';
+    borderColor = 'border-primary/50';
     statusText = 'ESTÁVEL';
   } else if (consistencyProgress >= 25) {
-    statusColor = 'text-yellow-400';
-    barColor = 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]';
-    borderColor = 'border-yellow-400/50';
+    statusColor = 'text-warning';
+    barColor = 'bg-warning';
+    borderColor = 'border-warning/50';
     statusText = 'BAIXA';
   }
 
 
   return (
-    <main className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative">
+    <main className="space-y-6 animate-in fade-in duration-500 font-sans pb-24 relative">
       <header className="flex items-center gap-3 border-b border-primary/20 pb-3">
         <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95">
           <ChevronLeft size={20}/>
         </button>
-        <h2 className="text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
+        <h2 className="font-cyber text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
       </header>
 
       {/* DASHBOARD DE CONSISTÊNCIA TÁTICO */}
@@ -158,7 +152,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         {/* Header do Card */}
         <div className="flex justify-between items-start mb-4 relative z-10">
           <div>
-            <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-1.5 mb-1">
+            <h3 className="text-xs font-black text-muted uppercase tracking-[0.16em] flex items-center gap-1.5 mb-1">
               <CalendarCheck size={14} className={statusColor} /> 
               Consistência (30D)
             </h3>
@@ -169,7 +163,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
           
           {/* Status Badge */}
           <div className={`px-2 py-0.5 rounded border ${borderColor} ${barColor.split(' ')[0]}/10 flex items-center`}>
-            <span className={`text-[9px] font-black uppercase tracking-widest ${statusColor} drop-shadow-sm`}>
+            <span className={`text-xs font-black uppercase tracking-wide ${statusColor}`}>
               {statusText}
             </span>
           </div>
@@ -205,12 +199,12 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
               <div 
                 key={m.name} 
                 className={`bg-input/30 border p-2 rounded-xl relative overflow-hidden transition-all duration-500 
-                  ${isHot ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-border'}`}
+                  ${isHot ? 'border-danger/50' : 'border-border'}`}
               >
-                <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} style={{ height: `${m.intensity}%` }} />
+                <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-danger opacity-20' : 'bg-primary opacity-15'}`} style={{ height: `${m.intensity}%` }} />
                 <div className="relative z-10">
-                    <span className={`text-[7px] font-black block uppercase ${isHot ? 'text-red-400' : 'text-muted'}`}>{m.name}</span>
-                    <span className={`text-sm font-black  ${isHot ? 'text-white' : 'text-main dark:text-white'}`}>{m.intensity}%</span>
+                    <span className={`text-xs font-black block uppercase ${isHot ? 'text-danger' : 'text-muted'}`}>{m.name}</span>
+                    <span className={`text-sm font-black ${isHot ? 'text-danger' : 'text-main'}`}>{m.intensity}%</span>
                 </div>
               </div>
             );
@@ -230,7 +224,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       <section className="space-y-3">
         <button 
           onClick={() => setIsSelectorOpen(true)} 
-          className="w-full bg-card border border-success/30 text-success text-[10px] font-black p-3 rounded-xl flex justify-between items-center uppercase active:scale-95 shadow-lg transition-all hover:bg-success/5"
+          className="touch-target w-full bg-card border border-success/30 text-success text-xs font-black p-3 rounded-xl flex justify-between items-center uppercase active:scale-95 shadow-sm transition-all hover:bg-success/5"
         >
           {selectedExercise || "SELECIONAR EXERCÍCIO"} <Search size={14} />
         </button>
@@ -238,22 +232,23 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
         <Section title="EVOLUÇÃO DE CARGA" icon={Target}>
           <div className="w-full h-56 mt-4">
             {selectedExercise && loadData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={loadData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="date" stroke={colors.t} fontSize={10} tickLine={false} />
-                  <YAxis stroke={colors.t} fontSize={10} tickLine={false} tickFormatter={(val) => `${val}kg`} width={35} />
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 200 }}>
+                <LineChart data={loadData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" stroke="var(--chart-text)" fontSize={11} tickLine={false} />
+                  <YAxis stroke="var(--chart-text)" fontSize={11} tickLine={false} tickFormatter={(val) => `${val}kg`} width={48} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.s}`, fontSize: '10px', borderRadius: '8px' }}
-                    itemStyle={{ color: colors.s, fontWeight: 'bold' }}
+                    contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-tooltip-border)', color: 'var(--text-main)', fontSize: '12px', borderRadius: '10px' }}
+                    labelStyle={{ color: 'var(--chart-text)' }}
+                    itemStyle={{ color: 'var(--chart-secondary)', fontWeight: 'bold' }}
                     formatter={(value) => [`${value} kg`, 'Carga Máxima']}
                   />
                   {/* Se tiver apenas 1 ponto, a bolinha vai aparecer graças a esse "dot" */}
-                  <Line type="monotone" dataKey="carga" stroke={colors.s} strokeWidth={3} dot={{ fill: colors.s, r: 4 }} activeDot={{ r: 6, stroke: colors.bg, strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="carga" stroke="var(--chart-secondary)" strokeWidth={3} dot={{ fill: 'var(--chart-secondary)', r: 4 }} activeDot={{ r: 6, stroke: 'var(--chart-tooltip-bg)', strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted text-[10px] uppercase opacity-50 border-2 border-dashed border-border rounded-xl">
+              <div className="h-full flex items-center justify-center text-muted text-xs uppercase border-2 border-dashed border-border rounded-xl">
                 {selectedExercise ? "DADOS INSUFICIENTES PARA O GRÁFICO" : "AGUARDANDO SELEÇÃO..."}
               </div>
             )}

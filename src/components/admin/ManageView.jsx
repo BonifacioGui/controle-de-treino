@@ -79,7 +79,7 @@ const ManageView = ({
   };
 
   return (
-    <main className="space-y-6 animate-in slide-in-from-right duration-500 font-cyber pb-24 relative">
+    <main className="space-y-6 animate-in slide-in-from-right duration-500 font-sans pb-24 relative">
       
       {/* SELETOR DE PROTOCOLOS */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
@@ -87,14 +87,14 @@ const ManageView = ({
           <button 
             key={day} 
             onClick={() => setActiveDay(day)}
-            className={`px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 ${activeDay === day ? 'bg-primary border-primary text-black scale-105 shadow-[0_0_15px_rgba(var(--primary),0.3)]' : 'bg-card border-border text-muted hover:border-primary/50 hover:text-main dark:hover:text-white'}`}
+            className={`px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 ${activeDay === day ? 'bg-primary border-primary text-on-primary scale-105 shadow-md' : 'bg-card border-border text-muted hover:border-primary/50 hover:text-main dark:hover:text-white'}`}
           >
             {day}
           </button>
         ))}
         <button 
           onClick={openAddDayModal}
-          className="px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 border-dashed border-success/50 bg-success/10 text-success hover:bg-success hover:text-black flex items-center gap-1 shadow-sm"
+          className="px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 border-dashed border-success/50 bg-success/10 text-success hover:bg-success hover:text-on-success flex items-center gap-1 shadow-sm"
         >
           <Plus size={16} /> NOVO
         </button>
@@ -104,19 +104,19 @@ const ManageView = ({
       <div className="flex justify-between items-center pb-1 px-1">
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-secondary" />
-          <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+          <h2 className="font-cyber text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
             {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
         </div>
         
         <div className="flex gap-2 items-center">
           {workoutData[activeDay] && (
-            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
+            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-on-success transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
               <Plus size={18} strokeWidth={2.5} />
             </button>
           )}
 
-          {workoutData[activeDay] && <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar treino"><Trash2 size={18} strokeWidth={2.5} /></button>}
+          {workoutData[activeDay] && <button onClick={requestDeleteDay} className="bg-danger/10 border border-danger/50 p-2 rounded-lg text-danger hover:bg-danger hover:text-on-danger transition-all shadow-sm active:scale-95 ml-1" title="Apagar treino"><Trash2 size={18} strokeWidth={2.5} /></button>}
         </div>
       </div>
 
@@ -179,7 +179,7 @@ const ManageView = ({
                     onChange={(e) => editExerciseBase(activeDay, i, 'sets', e.target.value)} 
                   />
                 </div>
-                <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-red-500/30 text-red-500 p-2 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
+                <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-danger/30 text-danger p-2 hover:bg-danger hover:text-on-danger rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
                   <Trash2 size={18}/>
                 </button>
               </div>
@@ -253,7 +253,7 @@ const ManageView = ({
             {!searchQuery && (
               <div className="flex overflow-x-auto p-2 gap-2 border-b border-border shrink-0 scrollbar-hide">
                 {Object.keys(EXERCISE_CATALOG).map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${activeTab === tab ? 'bg-primary text-black' : 'bg-input/50 text-muted hover:text-main dark:hover:text-white border border-border hover:bg-input'}`}> {tab} </button>
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${activeTab === tab ? 'bg-primary text-on-primary' : 'bg-input/50 text-muted hover:text-main dark:hover:text-white border border-border hover:bg-input'}`}> {tab} </button>
                 ))}
               </div>
             )}
@@ -274,7 +274,7 @@ const ManageView = ({
             </div>
             
             <div className="p-4 bg-card/90 dark:bg-black/80 border-t border-border shrink-0 backdrop-blur-md">
-              <button onClick={confirmSelection} disabled={selectedExercises.length === 0} className="w-full bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all hover:scale-[1.02] shadow-md dark:shadow-[0_0_20px_rgba(var(--primary),0.3)]">
+              <button onClick={confirmSelection} disabled={selectedExercises.length === 0} className="w-full bg-primary text-on-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all hover:scale-[1.02] shadow-md dark:shadow-[0_0_20px_rgba(var(--primary),0.3)]">
                 {selectedExercises.length > 0 ? `EQUIPAR ${selectedExercises.length} EXERCÍCIO${selectedExercises.length > 1 ? 'S' : ''}` : 'SELECIONE NO ARSENAL'}
               </button>
             </div>
@@ -292,7 +292,7 @@ const ManageView = ({
             <input autoFocus type="text" placeholder="EX: A, B, PUSH..." className="w-full bg-input border-2 border-border p-4 rounded-xl outline-none focus:border-primary text-main dark:text-white font-black uppercase transition-all placeholder-muted/50 mb-6 text-center tracking-widest shadow-inner" value={newDayInput} onChange={(e) => setNewDayInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmAddDay()} />
             <div className="flex gap-3">
               <button onClick={() => setIsAddDayModalOpen(false)} className="flex-1 p-3 rounded-xl border border-border text-muted font-bold uppercase text-xs hover:text-main dark:hover:text-white hover:bg-input transition-all">Cancelar</button>
-              <button onClick={confirmAddDay} className="flex-1 p-3 rounded-xl bg-primary text-black font-black uppercase text-xs hover:scale-105 transition-all shadow-md dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]">Criar</button>
+              <button onClick={confirmAddDay} className="flex-1 p-3 rounded-xl bg-primary text-on-primary font-black uppercase text-xs hover:scale-105 transition-all shadow-md dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]">Criar</button>
             </div>
           </div>
         </div>,
@@ -312,7 +312,7 @@ const ManageView = ({
               Você está prestes a apagar o protocolo <span className="text-main dark:text-white">"{activeDay}"</span> e todos os seus exercícios. Esta ação é irreversível.
             </p>
             <div className="flex flex-col gap-3">
-              <button onClick={confirmDeleteDay} className="w-full p-4 rounded-xl bg-red-500 text-white font-black uppercase text-xs hover:bg-red-600 transition-all shadow-md dark:shadow-[0_0_15px_rgba(239,68,68,0.4)] active:scale-95">
+              <button onClick={confirmDeleteDay} className="w-full p-4 rounded-xl bg-danger text-on-danger font-black uppercase text-xs transition-all shadow-md active:scale-95">
                 DESTRUIR PROTOCOLO
               </button>
               <button onClick={() => setIsDeleteModalOpen(false)} className="w-full p-4 rounded-xl border border-border text-muted font-black uppercase text-xs hover:text-main dark:hover:text-white hover:bg-input transition-all">

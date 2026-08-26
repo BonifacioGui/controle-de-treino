@@ -5,7 +5,7 @@ const TopRecords = ({ records }) => {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+        <h3 className="text-xs font-black text-muted uppercase tracking-[0.16em] flex items-center gap-2">
           <Trophy size={12} className="text-primary" /> TOP RECORDES
         </h3>
       </div>
@@ -22,19 +22,19 @@ const TopRecords = ({ records }) => {
                 <div className="absolute inset-0 bg-gradient-to-tr from-warning/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 
                 <h4 
-                  className="text-[9px] font-bold text-main dark:text-white truncate uppercase relative z-10" 
+                  className="text-xs font-bold text-main truncate uppercase relative z-10"
                   title={name}
                 >
                   {name}
                 </h4>
                 <p className="text-lg font-black text-main dark:text-white relative z-10 mt-0.5">
-                  {weight}<span className="text-[8px] ml-0.5 text-warning font-bold tracking-widest">KG</span>
+                  {weight}<span className="text-[11px] ml-0.5 text-warning font-bold tracking-wide">KG</span>
                 </p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="flex items-center justify-center text-muted text-[10px] uppercase opacity-50 text-center px-4 py-6">
+          <div className="flex items-center justify-center text-muted text-xs uppercase text-center px-4 py-6">
             Aguardando recordes de combate.
           </div>
         )}

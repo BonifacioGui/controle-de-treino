@@ -72,7 +72,7 @@ const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-muted">
             <span>{Math.round(session.totalVolume || 0).toLocaleString('pt-BR')} kg</span>
             <span className="flex items-center gap-1"><Clock size={13} /> {formatDuration(session.duration)}</span>
-            <span className={`flex items-center gap-1 ${synced ? 'text-green-500' : 'text-warning'}`}>{synced ? <Cloud size={13} /> : <CloudOff size={13} />}{synced ? 'Sincronizado' : 'Salvo neste dispositivo'}</span>
+            <span className={`flex items-center gap-1 ${synced ? 'text-success' : 'text-warning'}`}>{synced ? <Cloud size={13} /> : <CloudOff size={13} />}{synced ? 'Sincronizado' : 'Salvo neste dispositivo'}</span>
           </div>
           {session.bossEncounter && (
             <p className={`mt-2 flex items-center gap-1.5 text-xs font-bold ${session.bossEncounter.defeated ? 'text-success' : 'text-secondary'}`}>
@@ -89,7 +89,7 @@ const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
             <button type="button" onClick={() => onCardAction(session, 'download')} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-main"><Download size={16} /> Baixar card</button>
             <button type="button" onClick={() => onCardAction(session, 'share')} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-main"><Share2 size={16} /> Compartilhar</button>
             <button type="button" onClick={() => onReopen(entryId)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-primary/50 px-3 text-xs font-black text-primary"><Pencil size={16} /> Corrigir treino</button>
-            <button type="button" onClick={() => onDelete(entryId)} aria-label="Excluir sessão" className="touch-target flex items-center justify-center rounded-xl border border-red-500/40 px-3 text-red-500"><Trash2 size={17} /></button>
+            <button type="button" onClick={() => onDelete(entryId)} aria-label="Excluir sessão" className="touch-target flex items-center justify-center rounded-xl border border-danger/40 px-3 text-danger"><Trash2 size={17} /></button>
           </div>
           {session.note ? <p className="mx-3 mb-3 rounded-xl bg-warning/5 p-3 text-sm text-muted">{session.note}</p> : null}
           <div className="border-t border-border">
@@ -316,8 +316,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
       {itemToDelete && createPortal(
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-red-500/50 bg-card p-6">
-            <AlertTriangle className="mb-4 text-red-500" size={32} /><h2 className="text-lg font-black text-main">Excluir esta sessão?</h2><p className="mt-2 text-sm text-muted">Esta ação remove o registro local e, quando aplicável, o registro sincronizado.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3"><button type="button" onClick={() => setItemToDelete(null)} className="touch-target rounded-xl border border-border font-bold text-main">Cancelar</button><button type="button" onClick={() => { deleteEntry(itemToDelete, 'workout'); setItemToDelete(null); }} className="touch-target rounded-xl bg-red-600 font-black text-white">Excluir</button></div>
+            <AlertTriangle className="mb-4 text-danger" size={32} /><h2 className="text-lg font-black text-main">Excluir esta sessão?</h2><p className="mt-2 text-sm text-muted">Esta ação remove o registro local e, quando aplicável, o registro sincronizado.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3"><button type="button" onClick={() => setItemToDelete(null)} className="touch-target rounded-xl border border-border font-bold text-main">Cancelar</button><button type="button" onClick={() => { deleteEntry(itemToDelete, 'workout'); setItemToDelete(null); }} className="touch-target rounded-xl bg-danger font-black text-on-danger">Excluir</button></div>
           </div>
         </div>, document.body,
       )}

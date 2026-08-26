@@ -38,7 +38,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
   };
 
   return (
-    <div className="bg-card/95 backdrop-blur-md border-2 border-primary shadow-xl dark:shadow-[0_0_30px_rgba(0,0,0,0.3)] p-4 rounded-2xl font-cyber animate-in zoom-in-95 duration-200 w-72 relative">
+    <div className="bg-card/95 backdrop-blur-md border-2 border-primary shadow-xl dark:shadow-[0_0_30px_rgba(0,0,0,0.3)] p-4 rounded-2xl font-sans animate-in zoom-in-95 duration-200 w-72 relative">
       
       {/* Textura sutil: Visível apenas no Dark Mode para não "sujar" o tema claro */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none hidden dark:block"></div>
@@ -63,7 +63,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
           <select 
             value={viewDate.getMonth()}
             onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
-            className="bg-transparent border-none text-main font-black uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
+            className="bg-transparent border-none text-main font-cyber font-black uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
           >
             {months.map((m, i) => <option key={i} value={i} className="bg-card text-main">{m}</option>)}
           </select>
@@ -105,7 +105,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
               }}
               className={`relative h-8 w-8 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center justify-center
                 ${isSelected 
-                  ? 'bg-primary text-black shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-110 rotate-3 z-10' 
+                  ? 'bg-primary text-on-primary shadow-md scale-110 rotate-3 z-10'
                   : 'text-muted hover:bg-input hover:text-primary hover:border border-primary/30'}`}
             >
               {day}

@@ -49,11 +49,13 @@ const ViewFallback = () => (
 );
 
 const SYNC_COPY = {
-  synced: { label: 'Sincronizado', Icon: Cloud, className: 'text-green-500' },
+  synced: { label: 'Sincronizado', Icon: Cloud, className: 'text-success' },
   syncing: { label: 'Sincronizando...', Icon: RefreshCw, className: 'text-primary' },
   offline: { label: 'Salvo neste dispositivo', Icon: CloudOff, className: 'text-warning' },
   error: { label: 'Sincronização pendente', Icon: CloudOff, className: 'text-warning' },
 };
+
+const normalizeTheme = (value) => value === 'light' ? 'light' : 'dark';
 
 const WorkoutApp = () => {
   const [authSession, setAuthSession] = useState(null);
@@ -62,7 +64,7 @@ const WorkoutApp = () => {
   const { state, setters, actions, stats } = useWorkout(userId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const initialSettings = useMemo(() => readStoredJSON(STORAGE_KEYS.settings, {}), []);
-  const [theme, setTheme] = useState(() => initialSettings.theme || 'driver');
+  const [theme, setTheme] = useState(() => normalizeTheme(initialSettings.theme));
   const [experienceMode, setExperienceMode] = useState(() => initialSettings.experienceMode || 'balanced');
   const [restVibration, setRestVibration] = useState(() => initialSettings.restVibration !== false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -240,6 +242,7 @@ const WorkoutApp = () => {
           {state.view === 'workout' && state.activeWorkout && (
             <WorkoutView
               {...state}
+              theme={theme}
               experienceMode={experienceMode}
               actions={actions}
               setActiveDay={setters.setActiveDay}
@@ -253,7 +256,7 @@ const WorkoutApp = () => {
               <h2 className="text-xl font-black text-main">Nenhum treino cadastrado</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">Importe sua ficha em PDF ou cole o treino em texto. Você poderá revisar tudo antes de salvar.</p>
               <ol className="mx-auto mt-5 max-w-sm space-y-2 text-left text-sm text-muted"><li><span className="font-black text-primary">1.</span> Importe ou crie seu treino.</li><li><span className="font-black text-primary">2.</span> Escolha o protocolo.</li><li><span className="font-black text-primary">3.</span> Inicie e confirme cada série.</li></ol>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setters.setView('importer')} className="touch-target rounded-xl bg-primary font-black text-black">Importar treino</button><button type="button" onClick={() => setters.setView('manage')} className="touch-target rounded-xl border border-primary font-black text-primary">Criar manualmente</button></div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setters.setView('importer')} className="touch-target rounded-xl bg-primary font-black text-on-primary">Importar treino</button><button type="button" onClick={() => setters.setView('manage')} className="touch-target rounded-xl border border-primary font-black text-primary">Criar manualmente</button></div>
             </section>
           )}
           {state.view === 'importer' && (
@@ -278,7 +281,7 @@ const WorkoutApp = () => {
             <p className="mt-3 text-sm leading-relaxed text-muted">Você realizou este treino há {warningModal.days} {warningModal.days === 1 ? 'dia' : 'dias'} ({formatLocalDate(warningModal.dateKey)}). Se estiver recuperado, pode continuar.</p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setWarningModal({ isOpen: false, day: null, days: null, dateKey: null })} className="touch-target rounded-xl border border-border font-bold text-main">Voltar</button>
-              <button type="button" onClick={() => { setters.setActiveDay(warningModal.day); setWarningModal({ isOpen: false, day: null, days: null, dateKey: null }); }} className="touch-target rounded-xl bg-warning font-black text-black">Abrir treino</button>
+              <button type="button" onClick={() => { setters.setActiveDay(warningModal.day); setWarningModal({ isOpen: false, day: null, days: null, dateKey: null }); }} className="touch-target rounded-xl bg-warning font-black text-on-warning">Abrir treino</button>
             </div>
           </div>
         </div>
@@ -289,8 +292,8 @@ const WorkoutApp = () => {
       {showCurrentBadgeAlert && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-3xl border border-yellow-500/50 bg-card p-6 text-center">
-            <Medal size={54} className="mx-auto text-yellow-400" />
-            <h2 className="mt-4 flex items-center justify-center gap-2 text-xl font-black text-yellow-400"><Zap size={20} /> Nova conquista</h2>
+            <Medal size={54} className="mx-auto text-gold" />
+            <h2 className="mt-4 flex items-center justify-center gap-2 font-cyber text-xl font-black text-gold"><Zap size={20} /> Nova conquista</h2>
             <div className="my-6 space-y-3">
               {(currentPendingReport?.newBadges || []).map((badge) => (
                 <div key={badge.id || badge.title} className="rounded-xl border border-yellow-500/30 bg-input p-4">
@@ -299,7 +302,7 @@ const WorkoutApp = () => {
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => { setShowBadgeAlert(false); setShowCelebration(true); }} className="touch-target w-full rounded-xl bg-yellow-400 font-black text-black">Ver resumo</button>
+            <button type="button" onClick={() => { setShowBadgeAlert(false); setShowCelebration(true); }} className="touch-target w-full rounded-xl bg-gold font-black text-white">Ver resumo</button>
           </div>
         </div>
       )}
@@ -323,6 +326,7 @@ const WorkoutApp = () => {
             currentLevel={currentPendingReport.level || stats?.level || 1}
             totalXp={stats?.xp || 0}
             newBadges={currentPendingReport.newBadges || []}
+            theme={theme}
           />
         </Suspense>
       )}

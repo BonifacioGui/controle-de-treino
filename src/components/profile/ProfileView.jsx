@@ -257,7 +257,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
 
   // ================= RENDERIZAÇÃO DO MAESTRO =================
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 font-cyber pb-24 relative px-1">
+    <div className="space-y-6 animate-in fade-in duration-500 font-sans pb-24 relative px-1">
       
       <ProfileHeader 
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
@@ -314,7 +314,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
                 <button onClick={() => setItemToDelete(null)} className="flex-1 py-3 rounded-xl border border-border text-muted font-black uppercase text-xs hover:bg-input hover:text-main dark:hover:text-white transition-all active:scale-95 shadow-sm">
                   Cancelar
                 </button>
-                <button onClick={() => { deleteEntry(itemToDelete.id, itemToDelete.type); setItemToDelete(null); }} className="flex-1 py-3 rounded-xl bg-red-600/20 border border-red-500 text-red-500 font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all shadow-sm dark:shadow-[0_0_15px_rgba(220,38,38,0.2)] active:scale-95">
+                <button onClick={() => { deleteEntry(itemToDelete.id, itemToDelete.type); setItemToDelete(null); }} className="flex-1 py-3 rounded-xl bg-danger/10 border border-danger text-danger font-black uppercase text-xs hover:bg-danger hover:text-on-danger transition-all shadow-sm active:scale-95">
                   Confirmar
                 </button>
               </div>
