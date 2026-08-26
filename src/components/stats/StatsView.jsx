@@ -205,7 +205,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
               <div 
                 key={m.name} 
                 className={`bg-input/30 border p-2 rounded-xl relative overflow-hidden transition-all duration-500 
-                  ${isHot ? 'border-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-border'}`}
+                  ${isHot ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-border'}`}
               >
                 <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-red-600 opacity-40' : 'bg-primary opacity-20'}`} style={{ height: `${m.intensity}%` }} />
                 <div className="relative z-10">

@@ -45,4 +45,32 @@ describe('modelo canônico do histórico', () => {
     expect(isExtendedHistorySchemaError({ code: 'PGRST204', message: "Could not find the 'earned_xp' column" })).toBe(true);
     expect(isExtendedHistorySchemaError({ code: '42501', message: 'RLS violation' })).toBe(false);
   });
+
+  it('preserva a identidade e os snapshots canônicos da sessão', () => {
+    const encounter = { encounterId: 'session-1:boss', bossName: 'NEON REVENANT', damage: 420 };
+    const report = { version: 2, sessionId: 'session-1', volume: 420 };
+    const entry = normalizeHistoryEntry({
+      workout_date: '2026-08-26',
+      workout_name: 'A',
+      session_id: 'session-1',
+      workout_title: 'Peito e tríceps',
+      workout_focus: 'Push',
+      boss_encounter: encounter,
+      report_snapshot: report,
+    });
+
+    expect(entry).toMatchObject({
+      sessionId: 'session-1',
+      workoutTitle: 'Peito e tríceps',
+      workoutFocus: 'Push',
+      bossEncounter: encounter,
+      reportSnapshot: report,
+    });
+    expect(toSupabaseHistoryRow(entry, 'user-1')).toMatchObject({
+      session_id: 'session-1',
+      workout_title: 'Peito e tríceps',
+      boss_encounter: encounter,
+      report_snapshot: report,
+    });
+  });
 });

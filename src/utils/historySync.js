@@ -7,12 +7,14 @@ export const HISTORY_SYNC_STATUS = Object.freeze({
   delete: 'pending-delete',
 });
 
-export const sessionFingerprint = (entry) => [
-  entry.dateKey,
-  entry.workoutName,
-  Math.round(entry.totalVolume || 0),
-  Math.round(entry.duration || 0),
-].join(':');
+export const sessionFingerprint = (entry) => entry.sessionId
+  ? `session:${entry.sessionId}`
+  : [
+      entry.dateKey,
+      entry.workoutName,
+      Math.round(entry.totalVolume || 0),
+      Math.round(entry.duration || 0),
+    ].join(':');
 
 export const isPendingHistoryEntry = (entry) => entry.syncStatus !== HISTORY_SYNC_STATUS.synced;
 export const isVisibleHistoryEntry = (entry) => entry.syncStatus !== HISTORY_SYNC_STATUS.delete;

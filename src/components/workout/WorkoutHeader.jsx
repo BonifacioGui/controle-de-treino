@@ -60,8 +60,9 @@ const WorkoutHeader = ({
         >
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-muted">Data do treino</p>
-            <p className="mt-1 text-lg font-black capitalize text-main">
-              {formatLocalDate(selectedDate, { weekday: 'short', day: '2-digit', month: 'long' })}
+            <p className="mt-1 text-base font-black capitalize text-main sm:text-lg">
+              <span className="sm:hidden">{formatLocalDate(selectedDate, { weekday: 'short', day: '2-digit', month: 'long', year: undefined })}</span>
+              <span className="hidden sm:inline">{formatLocalDate(selectedDate, { weekday: 'short', day: '2-digit', month: 'long' })}</span>
             </p>
           </div>
           <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/40 bg-input text-primary">

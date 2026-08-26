@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800;900&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
 
 /* ================================================
@@ -7,7 +7,7 @@
 
 @theme {
 
-  --font-sans:  'Orbitron', sans-serif;
+  --font-sans:  'Inter', system-ui, sans-serif;
   --font-cyber: 'Orbitron', sans-serif;
   --font-mono:  'Share Tech Mono', monospace;
 
@@ -216,21 +216,42 @@
 
   /* ── Variáveis Dark ── */
   :root {
-    --bg-page:  #020617;
-    --bg-card:  rgba(6,15,38,.8);
-    --bg-input: rgba(2,6,23,.95);
+    --solo-bg: #03070d;
+    --solo-surface: rgba(8, 15, 24, .92);
+    --solo-surface-raised: rgba(13, 23, 35, .96);
+    --solo-input: rgba(3, 9, 16, .94);
+    --solo-border: rgba(119, 177, 207, .18);
+    --solo-cyan: 0, 224, 255;
+    --solo-magenta: 255, 42, 145;
+    --solo-gold: 255, 196, 74;
+    --solo-success: 49, 214, 151;
+    --solo-warning: 255, 171, 64;
+    --solo-danger: 255, 79, 110;
+    --solo-radius-sm: .75rem;
+    --solo-radius-md: 1rem;
+    --solo-radius-lg: 1.25rem;
+    --solo-space: .25rem;
+    --solo-touch: 44px;
+    --solo-motion-fast: 160ms;
+    --solo-motion-base: 260ms;
+    --solo-glow-cyan: 0 0 24px rgba(0, 224, 255, .18);
+    --solo-glow-magenta: 0 0 24px rgba(255, 42, 145, .16);
+
+    --bg-page:  var(--solo-bg);
+    --bg-card:  var(--solo-surface);
+    --bg-input: var(--solo-input);
 
     --text-main:  #e2f4ff;
     --text-muted: #7a9cc0;
 
-    --primary:   0,243,255;
-    --secondary: 255,0,255;
+    --primary:   var(--solo-cyan);
+    --secondary: var(--solo-magenta);
     --accent:    120,0,255;
-    --gold:      255,200,50;
-    --success:   16,185,129;
-    --warning:   245,158,11;
+    --gold:      var(--solo-gold);
+    --success:   var(--solo-success);
+    --warning:   var(--solo-warning);
 
-    --border-color:    rgba(0,243,255,.12);
+    --border-color:    var(--solo-border);
     --border-hot:      rgba(0,243,255,.6);
     --grid-color:      rgba(0,243,255,.04);
     --grid-color-2:    rgba(120,0,255,.03);
@@ -279,17 +300,15 @@
 
   /* ── BODY (Estilos base + Background) ── */
   body {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 500;
     overflow-x: hidden;
     color: var(--text-main);
     background-color: var(--bg-page);
     background-image:
-      radial-gradient(ellipse at 10%  15%, rgba(0,243,255,.08)  0%, transparent 50%),
-      radial-gradient(ellipse at 90%  85%, rgba(120,0,255,.09)  0%, transparent 50%),
-      radial-gradient(ellipse at 50%  50%, rgba(255,0,255,.03)  0%, transparent 60%),
-      radial-gradient(ellipse at 80%  10%, rgba(0,100,255,.05)  0%, transparent 40%),
-      linear-gradient(180deg, #020617 0%, #030a1e 60%, #020617 100%);
+      radial-gradient(ellipse at 10%  5%, rgba(0,224,255,.07) 0%, transparent 42%),
+      radial-gradient(ellipse at 92%  78%, rgba(255,42,145,.055) 0%, transparent 42%),
+      linear-gradient(180deg, #03070d 0%, #050b13 55%, #020509 100%);
     transition: background-color .35s ease, color .35s ease;
   }
 
@@ -1028,5 +1047,118 @@
   [data-theme='light'] .tab-cleared-focus {
     color: #94a3b8;
     opacity: 0.7;
+  }
+}
+
+/* ================================================
+   SOLO UI — IDENTIDADE OPERACIONAL
+================================================ */
+
+.solo-shell {
+  isolation: isolate;
+}
+
+.solo-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 48%, rgba(0, 224, 255, .018) 48% 48.2%, transparent 48.2%),
+    radial-gradient(circle at 50% -10%, rgba(0, 224, 255, .06), transparent 36%);
+}
+
+.solo-workout-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 8.5rem;
+  background:
+    linear-gradient(120deg, rgba(0, 224, 255, .09), transparent 45%),
+    linear-gradient(300deg, rgba(255, 42, 145, .09), transparent 42%),
+    var(--solo-surface-raised);
+  box-shadow: var(--solo-glow-cyan), inset 0 1px 0 rgba(255, 255, 255, .03);
+}
+
+.solo-workout-hero::before,
+.solo-workout-hero::after {
+  content: "";
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  pointer-events: none;
+}
+
+.solo-workout-hero::before {
+  top: .45rem;
+  left: .45rem;
+  border-top: 2px solid rgb(var(--primary));
+  border-left: 2px solid rgb(var(--primary));
+}
+
+.solo-workout-hero::after {
+  right: .45rem;
+  bottom: .45rem;
+  border-right: 2px solid rgb(var(--secondary));
+  border-bottom: 2px solid rgb(var(--secondary));
+}
+
+.solo-primary-action {
+  background: linear-gradient(100deg, #d80a70 0%, #8d2fc9 45%, #00bde7 100%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .4), var(--solo-glow-cyan), var(--solo-glow-magenta);
+  transition: transform var(--solo-motion-fast) ease, filter var(--solo-motion-fast) ease;
+}
+
+.solo-primary-action:active {
+  transform: scale(.98);
+  filter: brightness(.92);
+}
+
+.solo-boss-card {
+  box-shadow: var(--solo-glow-magenta), inset 0 1px 0 rgba(255, 255, 255, .025);
+  transition: border-color var(--solo-motion-base) ease, box-shadow var(--solo-motion-base) ease;
+}
+
+.solo-boss-card.is-hit {
+  animation: solo-hit 260ms ease-out 1;
+}
+
+.solo-boss-card.is-immersive {
+  box-shadow: 0 0 34px rgba(255, 42, 145, .22), 0 20px 50px rgba(0, 0, 0, .42);
+}
+
+@keyframes solo-hit {
+  0% { transform: translateX(0); filter: brightness(1); }
+  35% { transform: translateX(-2px); filter: brightness(1.25); }
+  70% { transform: translateX(2px); }
+  100% { transform: translateX(0); filter: brightness(1); }
+}
+
+[data-experience='discreet'] .cyber-grid {
+  background-image: none;
+}
+
+[data-experience='discreet'] .solo-workout-hero,
+[data-experience='discreet'] .solo-boss-card {
+  box-shadow: none;
+}
+
+[data-experience='discreet'] .solo-primary-action {
+  background: rgb(var(--primary));
+  color: #001014;
+  box-shadow: none;
+}
+
+[data-experience='discreet'] *,
+[data-experience='discreet'] *::before,
+[data-experience='discreet'] *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+@media (min-width: 768px) {
+  .solo-shell > .relative.z-10.min-h-\[50vh\] {
+    margin-inline: auto;
+    max-width: 70rem;
   }
 }

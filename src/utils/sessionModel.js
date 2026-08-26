@@ -1,4 +1,9 @@
-import { parseDecimalInput, parsePositiveInteger } from './numberUtils';
+import { parsePositiveInteger } from './numberUtils';
+import {
+  calculateSetCanonicalVolume,
+  getSetLoadMode,
+  LOAD_MODES,
+} from './loadModel';
 
 export const SESSION_STATUS = Object.freeze({
   idle: 'idle',
@@ -9,12 +14,12 @@ export const SESSION_STATUS = Object.freeze({
 });
 
 export const getExerciseMode = (exercise = {}) => {
-  if (exercise.mode) return exercise.mode;
-  const source = `${exercise.sets || ''} ${exercise.note || ''}`.toLowerCase();
-  if (/\b(km|quil[oô]metro|dist[aâ]ncia|metros?)\b/.test(source)) return 'distance';
-  if (/\b(min|seg|segundo|tempo)\b/.test(source)) return 'duration';
-  if (/peso corporal|sem carga|abdominal|prancha|flex[aã]o/.test(source)) return 'bodyweight';
-  if (!String(exercise.sets || '').includes('x')) return 'reps';
+  const loadMode = getSetLoadMode({}, exercise);
+  if (loadMode === LOAD_MODES.distance) return 'distance';
+  if (loadMode === LOAD_MODES.duration) return 'duration';
+  if (loadMode === LOAD_MODES.bodyweight) return 'bodyweight';
+  if (loadMode === LOAD_MODES.repsOnly) return 'reps';
+  if (loadMode === LOAD_MODES.assisted) return 'assisted';
   return 'strength';
 };
 
@@ -54,9 +59,35 @@ export const getSessionCompletion = (workout, progress, dateKey, workoutName) =>
   }, { totalSets: 0, completedSets: 0, incompleteSets: 0, skippedExercises: 0, completedExercises: 0 });
 };
 
-export const calculateCompletedVolume = (sets = []) => sets.reduce((total, set) => {
+export const calculateCompletedVolume = (sets = [], exercise = {}) => sets.reduce((total, set) => {
   if (!isSetCompleted(set)) return total;
-  const weight = parseDecimalInput(set.weight);
-  const reps = parseDecimalInput(set.reps);
-  return total + (weight !== null && reps !== null ? weight * reps : 0);
+  return total + calculateSetCanonicalVolume(set, exercise);
 }, 0);
+
+export const createSessionId = () => globalThis.crypto?.randomUUID?.()
+  || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+export const getSessionProgress = (progress = {}, dateKey, workoutName) => {
+  const prefix = `${dateKey}-${workoutName}-`;
+  return Object.fromEntries(Object.entries(progress).filter(([key]) => key.startsWith(prefix)));
+};
+
+export const buildSessionExercises = (workout, progress, dateKey, workoutName) => (
+  (workout?.exercises || []).map((exercise, index) => {
+    const id = `${dateKey}-${workoutName}-${index}`;
+    const exerciseProgress = progress?.[id] || {};
+    const loadMode = getSetLoadMode({}, exercise);
+    return {
+      name: exerciseProgress.swappedName || exercise.name,
+      sets: (exerciseProgress.sets || []).map((set) => ({
+        ...set,
+        loadMode: set.loadMode || loadMode,
+        barWeight: set.barWeight ?? exercise.barWeight ?? null,
+      })),
+      skipped: exerciseProgress.skipped === true,
+      actualSets: exerciseProgress.actualSets || exercise.sets,
+      loadMode,
+      barWeight: exercise.barWeight ?? null,
+    };
+  })
+);

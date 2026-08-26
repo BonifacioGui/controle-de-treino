@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import {
   Cloud,
   CloudOff,
+  ClipboardList,
   DownloadCloud,
+  FileUp,
   LogOut,
   Moon,
   RefreshCw,
@@ -20,6 +22,10 @@ const SidebarMenu = ({
   onClose,
   theme,
   setTheme,
+  experienceMode,
+  setExperienceMode,
+  restVibration,
+  setRestVibration,
   setView,
   hasPendingChanges,
   syncStatus,
@@ -43,7 +49,7 @@ const SidebarMenu = ({
     const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `solo-backup-v1-${getLocalDateKey()}.json`;
+    link.download = `solo-backup-v3-${getLocalDateKey()}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -76,10 +82,31 @@ const SidebarMenu = ({
             <span>{theme === 'light' ? 'Tema claro' : 'Tema escuro'}</span>
             {theme === 'light' ? <Sun size={19} /> : <Moon size={19} />}
           </button>
+          <fieldset>
+            <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-muted">Experiência</legend>
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-input p-1">
+              {[
+                ['immersive', 'Imersiva'],
+                ['balanced', 'Equilibrada'],
+                ['discreet', 'Discreta'],
+              ].map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setExperienceMode(value)} aria-pressed={experienceMode === value} className={`min-h-11 rounded-lg px-1 text-[11px] font-black ${experienceMode === value ? 'bg-primary/15 text-primary' : 'text-muted'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <label className="touch-target flex cursor-pointer items-center justify-between rounded-xl border border-border bg-input px-4 text-sm font-bold text-main">
+            <span>Vibrar ao fim do descanso</span>
+            <input type="checkbox" checked={restVibration} onChange={(event) => setRestVibration(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
+          </label>
         </div>
 
         <div className="flex-1 space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted">Conta e dados</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted">Treino</p>
+          <button type="button" onClick={() => navigateTo('manage')} className="touch-target flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-sm font-bold text-main hover:border-primary/50"><ClipboardList size={18} /> Editar plano</button>
+          <button type="button" onClick={() => navigateTo('importer')} className="touch-target flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-sm font-bold text-main hover:border-primary/50"><FileUp size={18} /> Importar ficha</button>
+          <p className="pt-3 text-xs font-bold uppercase tracking-widest text-muted">Conta e dados</p>
           <button type="button" onClick={() => navigateTo('profile')} className="touch-target flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-sm font-bold text-main hover:border-primary/50"><User size={18} /> Perfil e biometria</button>
           <button type="button" onClick={handleBackup} className="touch-target flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-sm font-bold text-main hover:border-primary/50"><DownloadCloud size={18} /> Baixar backup local</button>
           <button type="button" onClick={onSync} disabled={!hasPendingChanges || isSyncing} className="touch-target flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-sm font-bold text-main disabled:opacity-60">

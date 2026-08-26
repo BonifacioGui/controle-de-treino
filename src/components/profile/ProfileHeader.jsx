@@ -93,7 +93,7 @@ const ProfileHeader = ({
           <div className="relative z-10 pt-4 mt-2 border-t border-primary/10">
             <div className="flex justify-between items-end mb-1.5">
               <span className="text-[9px] font-black text-muted uppercase tracking-widest flex items-center gap-1.5">
-                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary animate-pulse"} /> 
+                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary"} />
                 OBJETIVO: {userMetadata.target_weight}KG
               </span>
               <span className={`text-xs font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>

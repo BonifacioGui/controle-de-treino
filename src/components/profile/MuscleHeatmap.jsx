@@ -154,7 +154,7 @@ const MuscleHeatmap = ({ history }) => {
 
         <div className="absolute right-2 top-16 flex flex-col gap-2 text-[8px] font-mono uppercase tracking-widest text-muted text-right bg-card/80 dark:bg-black/40 p-2 rounded-lg border border-border shadow-sm backdrop-blur-md z-20 transition-colors">
           <div className="flex items-center gap-1 justify-end text-red-500 font-bold drop-shadow-sm">
-            <Activity size={10} className="animate-pulse" /> Sobrecarga (+100%)
+            <Activity size={10} /> Sobrecarga (+100%)
           </div>
           <div className="flex items-center gap-1 justify-end text-primary drop-shadow-sm">
             <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_rgba(var(--primary),1)]"></span> Ativado
@@ -171,7 +171,7 @@ const MuscleHeatmap = ({ history }) => {
           return (
           <div key={muscle} className={`text-center rounded-lg py-1.5 border transition-colors ${isOverload ? 'bg-red-500/10 border-red-500/50 shadow-sm' : 'bg-input/50 dark:bg-input/20 border-border/50'}`}>
             <p className="text-[7px] font-black text-muted uppercase leading-tight mb-0.5">{muscle}</p>
-            <p className={`text-[11px] font-black leading-none ${isOverload ? 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.3)] animate-pulse' : 'text-primary'}`}>
+            <p className={`text-[11px] font-black leading-none ${isOverload ? 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.3)]' : 'text-primary'}`}>
               {sets}
             </p>
           </div>

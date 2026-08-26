@@ -15,9 +15,7 @@ import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
 import { daysBetweenLocalDates, formatLocalDate } from '../../utils/dateUtils';
-import { formatTime } from '../../utils/workoutUtils';
 import {
-  calculateCompletedVolume,
   getSessionCompletion,
   isExerciseCompleted,
   SESSION_STATUS,
@@ -27,6 +25,9 @@ const WorkoutView = ({
   activeDay,
   setActiveDay,
   workoutData,
+  activeWorkout,
+  bossEncounter,
+  experienceMode,
   selectedDate,
   setSelectedDate,
   progress,
@@ -44,7 +45,7 @@ const WorkoutView = ({
   const [pendingDay, setPendingDay] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const days = useMemo(() => Object.keys(workoutData || {}), [workoutData]);
-  const currentWorkout = workoutData[activeDay];
+  const currentWorkout = activeWorkout || workoutData[activeDay];
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(workoutTimer.status);
   const isFinishing = workoutTimer.status === SESSION_STATUS.finishing;
@@ -68,14 +69,6 @@ const WorkoutView = ({
     const id = `${selectedDate}-${activeDay}-${index}`;
     return !isExerciseCompleted(exercise, progress[id] || {});
   }) ?? -1;
-  const todayStats = useMemo(() => ({
-    volume: Math.round((currentWorkout?.exercises || []).reduce((sum, _exercise, index) => {
-      const id = `${selectedDate}-${activeDay}-${index}`;
-      return sum + calculateCompletedVolume(progress[id]?.sets || []);
-    }, 0)),
-    duration: formatTime(workoutTimer.elapsed),
-  }), [activeDay, currentWorkout, progress, selectedDate, workoutTimer.elapsed]);
-
   const requestDayChange = (targetDay) => {
     if (sessionActive || targetDay === activeDay) return;
     const latest = history.find((entry) => entry.workoutName === targetDay);
@@ -140,14 +133,14 @@ const WorkoutView = ({
           userId={userId}
         />
 
-        <section className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+        <section className="solo-workout-hero rounded-2xl border border-border bg-card p-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={() => navigateDay(-1)} disabled={sessionActive} aria-label="Treino anterior" className="touch-target flex items-center justify-center rounded-xl text-primary disabled:opacity-30">
               <ChevronLeft size={25} />
             </button>
             <div className="min-w-0 text-center">
               <p className="text-xs font-bold uppercase tracking-widest text-secondary">Treino selecionado</p>
-              <h1 className="truncate text-xl font-black text-main">{currentWorkout.title || `Treino ${activeDay}`}</h1>
+              <h1 className="text-lg font-black leading-tight text-main sm:text-xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
               <p className="mt-1 text-sm text-muted">{currentWorkout.focus || 'Foco geral'} • {currentWorkout.exercises?.length || 0} exercícios</p>
             </div>
             <button type="button" onClick={() => navigateDay(1)} disabled={sessionActive} aria-label="Próximo treino" className="touch-target flex items-center justify-center rounded-xl text-primary disabled:opacity-30">
@@ -169,16 +162,10 @@ const WorkoutView = ({
                 <p className="text-xs font-black uppercase tracking-wider text-primary">Treino em andamento</p>
                 <p className="mt-1 text-sm text-muted">{completion.completedSets}/{completion.totalSets} séries concluídas</p>
               </div>
-              <p className="font-mono text-xl font-black text-main">{formatTime(workoutTimer.elapsed)}</p>
+              <p className="font-mono text-xl font-black text-main">{completion.totalSets > 0 ? Math.round((completion.completedSets / completion.totalSets) * 100) : 0}%</p>
             </div>
 
-            <BossSection
-              currentWorkout={currentWorkout}
-              todayVolume={todayStats.volume}
-              history={history}
-              selectedDate={selectedDate}
-              activeDay={activeDay}
-            />
+            <BossSection key={userId} encounter={bossEncounter} experienceMode={experienceMode} userId={userId} />
 
             <div className="space-y-3">
               {currentWorkout.exercises.map((exercise, index) => {
@@ -213,6 +200,13 @@ const WorkoutView = ({
               />
             </label>
 
+            {completion.incompleteSets === 0 && (
+              <div role="status" className="rounded-2xl border border-success/40 bg-success/10 p-4 text-center">
+                <p className="font-black text-success">Todas as séries foram concluídas</p>
+                <p className="mt-1 text-sm text-muted">Nenhum novo descanso será iniciado. Finalize quando estiver pronto.</p>
+              </div>
+            )}
+
             <button type="button" onClick={() => handleFinish(false)} disabled={isFinishing} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-base font-black text-black shadow-[0_0_20px_rgba(var(--primary),0.25)] disabled:opacity-50">
               {isFinishing ? <><Loader2 className="animate-spin" /> Salvando treino...</> : <><CheckCircle2 /> Finalizar treino</>}
             </button>
@@ -243,7 +237,7 @@ const WorkoutView = ({
                 <p className="mt-1 text-sm text-muted">Você ainda pode iniciar outra sessão se desejar.</p>
               </div>
             ) : null}
-            <button type="button" onClick={actions.startSession} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary text-base font-black text-black shadow-[0_0_20px_rgba(var(--primary),0.3)]">
+            <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-white">
               <Play fill="currentColor" /> Iniciar treino
             </button>
           </section>

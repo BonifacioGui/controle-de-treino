@@ -4,12 +4,11 @@ import {
   ChevronUp, Clock, Activity, Terminal, Dumbbell,
 } from 'lucide-react';
 import {
-  parseNumeric,
   stripUnit,
   calcDensity,
-  getBattleReport,
   levelProgressPercent,
 } from './ShareCardUtils';
+import { getBossBattleReport } from '../../utils/bossModel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -74,7 +73,7 @@ const CardBackground = ({ selfieUrl }) => (
 
 // ─── SelfieVariant ────────────────────────────────────────────────────────────
 
-const SelfieVariant = ({ stats, bossName, streak }) => {
+const SelfieVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak }) => {
   const hasPr = stats.prs > 0;
   // Gera a data no formato DD.MM.YYYY para um visual mais tático/cyberpunk
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
@@ -87,7 +86,7 @@ const SelfieVariant = ({ stats, bossName, streak }) => {
         <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 shadow-xl">
           <Target size={36} className="text-cyan-400" />
           <span style={{ fontSize: '32px' }} className="text-white font-black tracking-widest uppercase drop-shadow-md">
-            ALVO: {bossName}
+            {bossEncounter ? `ALVO: ${bossName}` : `TREINO: ${workoutTitle}`}
           </span>
         </div>
         
@@ -115,11 +114,9 @@ const SelfieVariant = ({ stats, bossName, streak }) => {
 
 // ─── RpgVariant ───────────────────────────────────────────────────────────────
 
-const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp }) => {
-  const volume       = parseNumeric(stats.volume);
-  const hpTarget     = parseNumeric(bossHp) || 1;
-  const bossDefeated = volume >= hpTarget;
-  const battleReport = getBattleReport(stats, bossHp);
+const RpgVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, currentLevel, totalXp }) => {
+  const bossDefeated = bossEncounter?.defeated === true;
+  const battleReport = getBossBattleReport(bossEncounter, stats.prs);
   const progressPct  = levelProgressPercent(totalXp, currentLevel);
   const horaAtual    = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -144,7 +141,7 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
 
       {/* Body */}
       <div className="flex-1 flex flex-col justify-center gap-10">
-        {/* Boss card */}
+        {/* Snapshot canônico do treino e, quando disponível, do Boss */}
         <div className="bg-black/80 p-12 rounded-[40px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-8 mb-10">
             <div className="w-32 h-32 bg-red-900/30 rounded-3xl flex items-center justify-center border border-red-500/40 shrink-0">
@@ -152,14 +149,15 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
             </div>
             <div className="overflow-hidden flex-1">
               <p style={{ fontSize: '28px' }} className="font-bold text-red-500 uppercase tracking-widest mb-2">
-                {bossDefeated ? 'Alvo Neutralizado' : 'Alvo Sobreviveu'}
+                {bossEncounter ? (bossDefeated ? 'Alvo Neutralizado' : 'Sessão Registrada') : 'Relatório de Performance'}
               </p>
               <h2
                 style={{ fontSize: '80px', lineHeight: '1' }}
                 className="font-black text-white uppercase tracking-tighter truncate"
               >
-                {bossName}
+                {bossEncounter ? bossName : workoutTitle}
               </h2>
+              {bossEncounter && <p style={{ fontSize: '28px' }} className="mt-3 font-bold text-white/60">{Math.round(bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(bossEncounter.maxHp).toLocaleString('pt-BR')} dano</p>}
             </div>
           </div>
 
@@ -209,7 +207,7 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
 
 // ─── DataVariant ──────────────────────────────────────────────────────────────
 
-const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
+const DataVariant = ({ stats, workoutTitle, streak, xp, currentLevel }) => {
   const cleanVolume = stripUnit(stats.volume);
   const density     = calcDensity(stats.volume, stats.duration);
 
@@ -221,7 +219,7 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
           <div className="flex items-center gap-4 mb-4">
             <Terminal size={40} className="text-cyan-400" />
             <h2 className="text-3xl font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-              SYS.LOG // {bossName}
+              SYS.LOG // {workoutTitle}
             </h2>
           </div>
           <h1
@@ -333,16 +331,18 @@ const CardFooter = ({ variant }) => (
 const ShareCard = ({
   stats,
   bossName,
+  bossEncounter = null,
+  workoutTitle = 'Treino',
   streak,
   xp,
   cardRef,
   selfieUrl,
   currentLevel = 1,
   totalXp      = 0,
-  bossHp       = 10_000,
   variant      = 'rpg',
 }) => {
   const safeVariant = VARIANTS.includes(variant) ? variant : 'rpg';
+  const resolvedBossName = bossEncounter?.bossName || bossName || '';
 
   return (
     <div className="fixed top-0 left-[-9999px] pointer-events-none">
@@ -359,7 +359,9 @@ const ShareCard = ({
           {selfieUrl ? (
             <SelfieVariant 
               stats={stats} 
-              bossName={bossName} 
+              bossName={resolvedBossName}
+              workoutTitle={workoutTitle}
+              bossEncounter={bossEncounter}
               streak={streak} 
             />
           ) : (
@@ -367,19 +369,20 @@ const ShareCard = ({
               {safeVariant === 'rpg' && (
                 <RpgVariant
                   stats={stats}
-                  bossName={bossName}
+                  bossName={resolvedBossName}
+                  workoutTitle={workoutTitle}
+                  bossEncounter={bossEncounter}
                   streak={streak}
                   xp={xp}
                   currentLevel={currentLevel}
                   totalXp={totalXp}
-                  bossHp={bossHp}
                 />
               )}
 
               {safeVariant === 'data' && (
                 <DataVariant
                   stats={stats}
-                  bossName={bossName}
+                  workoutTitle={workoutTitle}
                   streak={streak}
                   xp={xp}
                   currentLevel={currentLevel}

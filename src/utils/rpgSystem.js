@@ -1,7 +1,7 @@
 import { calculateSessionVolume } from './gameLogic';
 import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
-import { parseDecimalInput } from './numberUtils';
 import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER } from './xpModel';
+import { calculateSetCanonicalVolume } from './loadModel';
 
 // --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
 const STAT_XP_MULTIPLIER = 0.05;
@@ -113,10 +113,7 @@ export const calculateStats = (history) => {
       
       const vol = ex.sets.reduce((acc, s) => {
         if (!s.completed) return acc; 
-        const w = parseDecimalInput(s.weight);
-        const r = parseDecimalInput(s.reps);
-        if (w === null || r === null) return acc;
-        return acc + (w * r);
+        return acc + calculateSetCanonicalVolume(s, ex);
       }, 0);
       
       const normalizedName = ex.name.trim().toLowerCase();
@@ -172,9 +169,9 @@ export const calculateStats = (history) => {
 
 // --- 4. ESTILO DA OFENSIVA ---
 export const getFlameStyle = (streak) => {
-    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
-    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
-    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
+    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500" };
+    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500" };
+    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500" };
     return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
 };
 

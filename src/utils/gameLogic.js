@@ -1,5 +1,5 @@
 import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
-import { parseDecimalInput } from './numberUtils';
+import { calculateSetCanonicalVolume } from './loadModel';
 
 // ============================================================================
 // --- FUNÇÕES DE CÁLCULO E LÓGICA CORE ---
@@ -11,9 +11,7 @@ export const calculateSessionVolume = (session) => {
        if (!ex.sets) return acc;
        return acc + ex.sets.reduce((sAcc, s) => {
          if (!s.completed) return sAcc;
-         const weight = parseDecimalInput(s.weight);
-         const reps = parseDecimalInput(s.reps);
-         return sAcc + (weight !== null && reps !== null ? weight * reps : 0);
+         return sAcc + calculateSetCanonicalVolume(s, ex);
        }, 0);
     }, 0);
 };

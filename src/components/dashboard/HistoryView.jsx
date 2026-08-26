@@ -12,15 +12,15 @@ import {
   Database,
   Download,
   Pencil,
-  Save,
   Share2,
+  Swords,
   Trash2,
-  X,
 } from 'lucide-react';
 import { formatLocalDate } from '../../utils/dateUtils';
 import { groupHistoryByDate } from '../../utils/historyGrouping';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
 import { calculateSessionXp } from '../../utils/xpModel';
+import { formatEnteredLoad } from '../../utils/loadModel';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
 
@@ -31,15 +31,7 @@ const formatDuration = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
 };
 
-const SetEditor = ({ set, setIndex, onChange }) => (
-  <div className="grid grid-cols-[2rem_1fr_1fr] items-center gap-2">
-    <span className="text-center text-xs font-black text-muted">{setIndex + 1}</span>
-    <input type="text" inputMode="decimal" aria-label={`Carga da série ${setIndex + 1}`} value={set.weight || ''} onChange={(event) => onChange(setIndex, 'weight', event.target.value)} placeholder="kg" className="h-11 rounded-xl border border-border bg-input px-2 text-center text-base font-bold text-main" />
-    <input type="text" inputMode="numeric" aria-label={`Repetições da série ${setIndex + 1}`} value={set.reps || ''} onChange={(event) => onChange(setIndex, 'reps', event.target.value)} placeholder="reps" className="h-11 rounded-xl border border-border bg-input px-2 text-center text-base font-bold text-main" />
-  </div>
-);
-
-const ExerciseSummary = ({ exercise, editing, onChangeSet }) => {
+const ExerciseSummary = ({ exercise }) => {
   const completedSets = (exercise.sets || []).filter((set) => set.completed);
   return (
     <div className="border-b border-border p-3 last:border-b-0">
@@ -49,54 +41,31 @@ const ExerciseSummary = ({ exercise, editing, onChangeSet }) => {
           {exercise.skipped ? 'Pulado' : `${completedSets.length} séries`}
         </span>
       </div>
-      {editing ? (
-        <div className="mt-3 space-y-2">
-          {(exercise.sets || []).map((set, setIndex) => <SetEditor key={setIndex} set={set} setIndex={setIndex} onChange={onChangeSet} />)}
+      {completedSets.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {completedSets.map((set, setIndex) => (
+            <span key={setIndex} className="rounded-lg border border-border bg-input px-2 py-1 text-xs font-bold text-main">
+              {set.weight ? formatEnteredLoad(set, exercise) : set.duration ? `${set.duration} s` : set.distance ? `${set.distance} km` : ''}
+              {set.reps ? `${set.weight ? ' × ' : ''}${set.reps} reps` : ''}
+            </span>
+          ))}
         </div>
-      ) : (
-        completedSets.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {completedSets.map((set, setIndex) => (
-              <span key={setIndex} className="rounded-lg border border-border bg-input px-2 py-1 text-xs font-bold text-main">
-                {set.weight ? `${set.weight} kg` : set.duration ? `${set.duration} s` : set.distance ? `${set.distance} km` : ''}
-                {set.reps ? `${set.weight ? ' × ' : ''}${set.reps} reps` : ''}
-              </span>
-            ))}
-          </div>
-        )
       )}
     </div>
   );
 };
 
-const SessionCard = ({ session, onDelete, onUpdate, onCardAction }) => {
+const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
   const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(session);
   const entryId = session.id || session.localId;
   const synced = session.syncStatus === 'synced';
-
-  const updateSet = (exerciseIndex, setIndex, field, value) => {
-    setDraft((current) => ({
-      ...current,
-      exercises: current.exercises.map((exercise, index) => index === exerciseIndex ? {
-        ...exercise,
-        sets: exercise.sets.map((set, currentSetIndex) => currentSetIndex === setIndex ? { ...set, [field]: value } : set),
-      } : exercise),
-    }));
-  };
-
-  const save = async () => {
-    await onUpdate(entryId, draft);
-    setEditing(false);
-  };
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-start gap-3 p-4">
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-black text-main">{session.workoutName}</h3>
+            <h3 className="text-base font-black text-main">{session.workoutTitle || session.workoutName}</h3>
             {session.partial && <span className="rounded-md bg-warning/15 px-2 py-1 text-[11px] font-black text-warning">Parcial</span>}
           </div>
           <p className="mt-1 text-sm text-muted">{formatLocalDate(session.dateKey, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</p>
@@ -105,6 +74,11 @@ const SessionCard = ({ session, onDelete, onUpdate, onCardAction }) => {
             <span className="flex items-center gap-1"><Clock size={13} /> {formatDuration(session.duration)}</span>
             <span className={`flex items-center gap-1 ${synced ? 'text-green-500' : 'text-warning'}`}>{synced ? <Cloud size={13} /> : <CloudOff size={13} />}{synced ? 'Sincronizado' : 'Salvo neste dispositivo'}</span>
           </div>
+          {session.bossEncounter && (
+            <p className={`mt-2 flex items-center gap-1.5 text-xs font-bold ${session.bossEncounter.defeated ? 'text-success' : 'text-secondary'}`}>
+              <Swords size={14} /> {session.bossEncounter.bossName} {session.bossEncounter.defeated ? 'derrotado' : 'enfrentado'} • {Math.round(session.bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(session.bossEncounter.maxHp).toLocaleString('pt-BR')}
+            </p>
+          )}
         </button>
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? 'Recolher sessão' : 'Abrir sessão'} className="touch-target flex items-center justify-center rounded-xl text-muted"><ChevronDown className={expanded ? 'rotate-180' : ''} /></button>
       </div>
@@ -114,22 +88,13 @@ const SessionCard = ({ session, onDelete, onUpdate, onCardAction }) => {
           <div className="flex flex-wrap gap-2 p-3">
             <button type="button" onClick={() => onCardAction(session, 'download')} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-main"><Download size={16} /> Baixar card</button>
             <button type="button" onClick={() => onCardAction(session, 'share')} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-main"><Share2 size={16} /> Compartilhar</button>
-            {!editing ? (
-              <button type="button" onClick={() => setEditing(true)} className="touch-target ml-auto inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-main"><Pencil size={16} /> Editar</button>
-            ) : (
-              <>
-                <button type="button" onClick={() => { setDraft(session); setEditing(false); }} className="touch-target ml-auto flex items-center justify-center rounded-xl border border-border px-3" aria-label="Cancelar edição"><X size={17} /></button>
-                <button type="button" onClick={save} className="touch-target inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-xs font-black text-black"><Save size={16} /> Salvar</button>
-              </>
-            )}
+            <button type="button" onClick={() => onReopen(entryId)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-primary/50 px-3 text-xs font-black text-primary"><Pencil size={16} /> Corrigir treino</button>
             <button type="button" onClick={() => onDelete(entryId)} aria-label="Excluir sessão" className="touch-target flex items-center justify-center rounded-xl border border-red-500/40 px-3 text-red-500"><Trash2 size={17} /></button>
           </div>
-          {editing ? (
-            <label className="block px-3 pb-3"><span className="mb-2 block text-xs font-bold text-muted">Nota da sessão</span><textarea value={draft.note || ''} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="min-h-20 w-full rounded-xl border border-border bg-input p-3 text-sm text-main" /></label>
-          ) : session.note ? <p className="mx-3 mb-3 rounded-xl bg-warning/5 p-3 text-sm text-muted">{session.note}</p> : null}
+          {session.note ? <p className="mx-3 mb-3 rounded-xl bg-warning/5 p-3 text-sm text-muted">{session.note}</p> : null}
           <div className="border-t border-border">
-            {(editing ? draft.exercises : session.exercises).map((exercise, exerciseIndex) => (
-              <ExerciseSummary key={`${exercise.name}-${exerciseIndex}`} exercise={exercise} editing={editing} onChangeSet={(setIndex, field, value) => updateSet(exerciseIndex, setIndex, field, value)} />
+            {session.exercises.map((exercise, exerciseIndex) => (
+              <ExerciseSummary key={`${exercise.name}-${exerciseIndex}`} exercise={exercise} />
             ))}
           </div>
         </div>
@@ -144,7 +109,7 @@ const formatDayLabel = (dateKey) => {
   return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : '';
 };
 
-const DayAccordion = ({ day, onDelete, onUpdate, onCardAction }) => {
+const DayAccordion = ({ day, onDelete, onUpdate, onCardAction, onReopen }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -167,6 +132,7 @@ const DayAccordion = ({ day, onDelete, onUpdate, onCardAction }) => {
               onDelete={onDelete}
               onUpdate={onUpdate}
               onCardAction={onCardAction}
+              onReopen={onReopen}
             />
           ))}
         </div>
@@ -175,7 +141,7 @@ const DayAccordion = ({ day, onDelete, onUpdate, onCardAction }) => {
   );
 };
 
-const WeekAccordion = ({ week, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+const WeekAccordion = ({ week, defaultOpen, onDelete, onUpdate, onCardAction, onReopen }) => {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -191,7 +157,7 @@ const WeekAccordion = ({ week, defaultOpen, onDelete, onUpdate, onCardAction }) 
       {open && (
         <div className="space-y-2 border-t border-border p-3">
           {week.days.map((day) => (
-            <DayAccordion key={day.key} day={day} onDelete={onDelete} onUpdate={onUpdate} onCardAction={onCardAction} />
+            <DayAccordion key={day.key} day={day} onDelete={onDelete} onUpdate={onUpdate} onCardAction={onCardAction} onReopen={onReopen} />
           ))}
         </div>
       )}
@@ -199,7 +165,7 @@ const WeekAccordion = ({ week, defaultOpen, onDelete, onUpdate, onCardAction }) 
   );
 };
 
-const MonthAccordion = ({ month, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+const MonthAccordion = ({ month, defaultOpen, onDelete, onUpdate, onCardAction, onReopen }) => {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -223,6 +189,7 @@ const MonthAccordion = ({ month, defaultOpen, onDelete, onUpdate, onCardAction }
               onDelete={onDelete}
               onUpdate={onUpdate}
               onCardAction={onCardAction}
+              onReopen={onReopen}
             />
           ))}
         </div>
@@ -231,7 +198,7 @@ const MonthAccordion = ({ month, defaultOpen, onDelete, onUpdate, onCardAction }
   );
 };
 
-const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction }) => {
+const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction, onReopen }) => {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -256,6 +223,7 @@ const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction }) 
               onDelete={onDelete}
               onUpdate={onUpdate}
               onCardAction={onCardAction}
+              onReopen={onReopen}
             />
           ))}
         </div>
@@ -264,7 +232,7 @@ const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction }) 
   );
 };
 
-const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
+const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }) => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [cardAction, setCardAction] = useState(null);
@@ -331,6 +299,14 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
             onDelete={setItemToDelete}
             onUpdate={updateEntry}
             onCardAction={(entry, type) => setCardAction({ session: entry, type })}
+            onReopen={(entryId) => {
+              try {
+                reopenEntry(entryId);
+                setView('workout');
+              } catch (error) {
+                setToastMessage(error.message || 'Não foi possível reabrir esta sessão.');
+              }
+            }}
           />
         ))}
 
@@ -348,7 +324,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, setView }) => {
 
       {cardAction && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={shareCardRef} stats={{ duration: formatDuration(cardAction.session.duration), volume: Math.round(cardAction.session.totalVolume || cardAction.session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets), 0)).toString(), prs: cardAction.session.prsBroken || 0 }} bossName={cardAction.session.workoutName} streak={cardAction.session.streak || 1} xp={calculateSessionXp(cardAction.session)} currentLevel={cardAction.session.level || 1} totalXp={0} bossHp={5000} variant="rpg" />
+          <ShareCard cardRef={shareCardRef} stats={{ duration: formatDuration(cardAction.session.duration), volume: Math.round(cardAction.session.totalVolume || cardAction.session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0)).toString(), prs: cardAction.session.prsBroken || 0 }} workoutTitle={cardAction.session.workoutTitle || cardAction.session.workoutName} bossEncounter={cardAction.session.bossEncounter || null} streak={cardAction.session.streak || 1} xp={calculateSessionXp(cardAction.session)} currentLevel={cardAction.session.level || 1} totalXp={0} variant="rpg" />
         </Suspense>
       )}
 

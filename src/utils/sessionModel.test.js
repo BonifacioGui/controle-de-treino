@@ -29,4 +29,10 @@ describe('conclusão de treino', () => {
       { weight: '20', reps: '8', completed: false },
     ])).toBe(125);
   });
+
+  it('usa a interpretação canônica do exercício no volume', () => {
+    expect(calculateCompletedVolume([
+      { weight: '20', reps: '10', completed: true },
+    ], { loadMode: 'per_side', barWeight: 20 })).toBe(600);
+  });
 });

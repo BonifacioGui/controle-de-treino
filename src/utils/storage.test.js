@@ -60,7 +60,7 @@ describe('armazenamento privado por usuário', () => {
     storage.setItem('sb-token', 'segredo');
     const backup = getSoloBackup('user-a', storage, '2026-08-20T12:00:00.000Z');
 
-    expect(backup.version).toBe(2);
+    expect(backup.version).toBe(3);
     expect(backup.data.workoutPlan).toEqual({ A: { exercises: [] } });
     expect(JSON.stringify(backup)).not.toContain('segredo');
     expect(JSON.stringify(backup)).not.toContain('"B"');

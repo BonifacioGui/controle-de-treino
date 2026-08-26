@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
+import { inferLegacyLoadMode, LOAD_MODE_OPTIONS, LOAD_MODES } from '../../utils/loadModel';
 const EXERCISE_CATALOG = {
   Peito: ["Supino Reto (Barra)", "Supino Reto (Halter)", "Supino Inclinado (Barra)", "Supino Inclinado (Halter)", "Crucifixo no Crossover", "Crucifixo (Halter)", "Voador (Peck Deck)", "Flexão de Braço", "Pullover", "Crossover Polia Alta", "Crossover Polia Baixa", "Supino Declinado"],
   Costas: ["Puxada Frontal (Pulley)", "Puxada Triângulo", "Remada Curvada", "Remada Baixa", "Remada Unilateral (Serrote)", "Remada Cavalinho", "Pull-down", "Barra Fixa", "Levantamento Terra"],
@@ -102,7 +103,7 @@ const ManageView = ({
       {/* Header de Configuração */}
       <div className="flex justify-between items-center pb-1 px-1">
         <div className="flex items-center gap-2">
-          <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
+          <Settings size={20} className="text-secondary" />
           <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
             {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
@@ -124,7 +125,7 @@ const ManageView = ({
           onClick={() => setView('importer')}
           className="w-full py-3 px-4 border border-dashed border-primary/50 text-primary bg-primary/10 rounded-xl font-bold uppercase tracking-wider hover:bg-primary/20 transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
         >
-          <Cpu size={18} className="animate-pulse" />
+          <Cpu size={18} />
           <span>Importar treino com IA</span>
         </button>
       </div>
@@ -181,6 +182,31 @@ const ManageView = ({
                 <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-red-500/30 text-red-500 p-2 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
                   <Trash2 size={18}/>
                 </button>
+              </div>
+
+              <div className={`grid gap-3 ${inferLegacyLoadMode(ex) === LOAD_MODES.perSide ? 'sm:grid-cols-2' : ''}`}>
+                <label className="space-y-1">
+                  <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-muted">Como registrar a carga</span>
+                  <select
+                    value={ex.loadMode || inferLegacyLoadMode(ex)}
+                    onChange={(event) => editExerciseBase(activeDay, i, 'loadMode', event.target.value)}
+                    className="h-11 w-full rounded-lg border border-border bg-input px-3 text-sm font-bold text-main outline-none focus:border-primary"
+                  >
+                    {LOAD_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                {(ex.loadMode || inferLegacyLoadMode(ex)) === LOAD_MODES.perSide && (
+                  <label className="space-y-1">
+                    <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-muted">Peso da barra (kg)</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={ex.barWeight ?? '20'}
+                      onChange={(event) => editExerciseBase(activeDay, i, 'barWeight', event.target.value)}
+                      className="h-11 w-full rounded-lg border border-border bg-input px-3 text-sm font-black text-main outline-none focus:border-primary"
+                    />
+                  </label>
+                )}
               </div>
 
             </div>
@@ -278,7 +304,7 @@ const ManageView = ({
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 dark:bg-black/90 backdrop-blur-md" onClick={() => setIsDeleteModalOpen(false)}></div>
           <div className="bg-card border-2 border-red-500 w-full max-w-sm p-8 rounded-3xl shadow-2xl dark:shadow-[0_0_40px_rgba(239,68,68,0.2)] relative z-10 animate-in zoom-in-95 duration-200 text-center">
-            <div className="w-16 h-16 bg-red-500/10 border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <div className="w-16 h-16 bg-red-500/10 border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
             <h3 className="font-black uppercase tracking-widest text-red-500 mb-2 text-xl">Confirmar Exclusão</h3>

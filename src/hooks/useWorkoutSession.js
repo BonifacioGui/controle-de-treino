@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SESSION_STATUS } from '../utils/sessionModel';
+import { createSessionId, SESSION_STATUS } from '../utils/sessionModel';
 import {
   readUserStoredJSON,
   removeUserStoredItem,
@@ -9,12 +9,20 @@ import {
 
 const EMPTY_SESSION = Object.freeze({
   status: SESSION_STATUS.idle,
+  sessionId: null,
   workoutName: null,
+  workoutTitle: '',
+  workoutFocus: '',
+  workoutSnapshot: null,
   dateKey: null,
   startedAt: null,
   elapsedSeconds: 0,
   note: '',
   recovered: false,
+  progress: {},
+  substitutions: {},
+  bossEncounter: null,
+  editTarget: null,
   updatedAt: null,
 });
 
@@ -63,14 +71,60 @@ export const useWorkoutSession = (userId) => {
     return () => window.clearInterval(interval);
   }, [session.status]);
 
-  const startSession = useCallback(({ workoutName, dateKey }) => {
-    setNow(Date.now());
+  const startSession = useCallback(({
+    workoutName,
+    dateKey,
+    workoutSnapshot,
+    progress = {},
+    bossEncounter = null,
+    sessionId = createSessionId(),
+  }) => {
+    const timestamp = Date.now();
+    setNow(timestamp);
     setSession({
       ...EMPTY_SESSION,
       status: SESSION_STATUS.active,
+      sessionId,
       workoutName,
+      workoutTitle: workoutSnapshot?.title || workoutName,
+      workoutFocus: workoutSnapshot?.focus || '',
+      workoutSnapshot: workoutSnapshot ? structuredClone(workoutSnapshot) : null,
       dateKey,
-      startedAt: Date.now(),
+      progress,
+      bossEncounter,
+      startedAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }, []);
+
+  const reopenSession = useCallback(({
+    sessionId,
+    workoutName,
+    workoutTitle,
+    workoutFocus,
+    workoutSnapshot,
+    dateKey,
+    elapsedSeconds,
+    note,
+    progress,
+    bossEncounter,
+    editTarget,
+  }) => {
+    setSession({
+      ...EMPTY_SESSION,
+      status: SESSION_STATUS.paused,
+      sessionId: sessionId || createSessionId(),
+      workoutName,
+      workoutTitle: workoutTitle || workoutSnapshot?.title || workoutName,
+      workoutFocus: workoutFocus || workoutSnapshot?.focus || '',
+      workoutSnapshot: workoutSnapshot ? structuredClone(workoutSnapshot) : null,
+      dateKey,
+      elapsedSeconds: Math.max(0, Number(elapsedSeconds) || 0),
+      note: note || '',
+      progress: progress || {},
+      bossEncounter: bossEncounter || null,
+      editTarget: editTarget || null,
+      recovered: false,
       updatedAt: Date.now(),
     });
   }, []);
@@ -131,6 +185,14 @@ export const useWorkoutSession = (userId) => {
     ));
   }, []);
 
+  const updateSessionSnapshot = useCallback((patch) => {
+    setSession((current) => {
+      if ([SESSION_STATUS.idle, SESSION_STATUS.completed].includes(current.status)) return current;
+      const nextPatch = typeof patch === 'function' ? patch(current) : patch;
+      return { ...current, ...nextPatch, updatedAt: Date.now() };
+    });
+  }, []);
+
   const elapsed = calculateElapsed(session, now);
   const workoutTimer = useMemo(() => ({
     isRunning: session.status === SESSION_STATUS.active,
@@ -140,6 +202,7 @@ export const useWorkoutSession = (userId) => {
     recovered: session.recovered,
     workoutName: session.workoutName,
     dateKey: session.dateKey,
+    sessionId: session.sessionId,
   }), [elapsed, session]);
 
   const toggleWorkoutTimer = useCallback(() => {
@@ -152,6 +215,7 @@ export const useWorkoutSession = (userId) => {
     isHydrated: Boolean(userId && hydratedUserId === userId),
     workoutTimer,
     startSession,
+    reopenSession,
     pauseSession,
     resumeSession,
     toggleWorkoutTimer,
@@ -161,5 +225,6 @@ export const useWorkoutSession = (userId) => {
     resetSession,
     acknowledgeRecovery,
     updateSessionNote,
+    updateSessionSnapshot,
   };
 };

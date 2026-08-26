@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { parseWorkoutWithAI } from '../../services/aiService';
 import { getImportConflicts, mergeImportedWorkoutPlan } from '../../utils/importUtils';
+import { inferLegacyLoadMode, LOAD_MODE_OPTIONS } from '../../utils/loadModel';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const MIN_TEXT_LENGTH = 20;
@@ -31,6 +32,10 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
   const conflicts = useMemo(() => parsedPreview
     ? getImportConflicts(existingWorkoutData, parsedPreview)
     : [], [existingWorkoutData, parsedPreview]);
+  const pendingReviews = useMemo(() => parsedPreview
+    ? Object.values(parsedPreview).flatMap((workout) => workout.exercises || [])
+      .filter((exercise) => exercise.uncertain === true).length
+    : 0, [parsedPreview]);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -83,6 +88,20 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
     }));
   };
 
+  const markExerciseReviewed = (day, index) => {
+    setParsedPreview((current) => ({
+      ...current,
+      [day]: {
+        ...current[day],
+        exercises: current[day].exercises.map((exercise, exerciseIndex) => (
+          exerciseIndex === index
+            ? { ...exercise, uncertain: false, reviewedAt: Date.now() }
+            : exercise
+        )),
+      },
+    }));
+  };
+
   const removeExercise = (day, index) => {
     setParsedPreview((current) => ({
       ...current,
@@ -112,7 +131,7 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
   };
 
   const confirm = () => {
-    if (conflicts.length > 0 && !conflictStrategy) return;
+    if (pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)) return;
     const { plan, firstImportedDay } = mergeImportedWorkoutPlan(
       existingWorkoutData,
       parsedPreview,
@@ -161,7 +180,7 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
 
       {parsedPreview && (
         <section className="space-y-5">
-          <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4"><h3 className="font-black text-main">Revise antes de salvar</h3><p className="mt-1 text-sm leading-relaxed text-muted">A importação pode interpretar nomes ou séries incorretamente. Corrija os campos abaixo; nenhuma mudança foi aplicada ao plano ainda.</p></div>
+          <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4"><h3 className="font-black text-main">Revise antes de salvar</h3><p className="mt-1 text-sm leading-relaxed text-muted">A importação pode interpretar nomes ou séries incorretamente. Corrija os campos abaixo; nenhuma mudança foi aplicada ao plano ainda.</p>{pendingReviews > 0 && <p role="status" className="mt-3 text-sm font-black text-warning">{pendingReviews} {pendingReviews === 1 ? 'item precisa' : 'itens precisam'} de confirmação manual.</p>}</div>
 
           {Object.entries(parsedPreview).map(([day, workout]) => (
             <article key={day} className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -175,12 +194,23 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
                   const requiresReview = exercise.uncertain === true || !exercise.name?.trim() || !String(exercise.sets || '').trim();
                   return (
                     <div key={`${exercise.name}-${index}`} className={`rounded-xl ${requiresReview ? 'border border-warning/60 bg-warning/5 p-2' : ''}`}>
-                      {requiresReview && <p className="mb-2 flex items-center gap-1 text-xs font-black text-warning"><AlertTriangle size={14} /> Revisar este item</p>}
+                      {requiresReview && <div className="mb-2"><p className="flex items-center gap-1 text-xs font-black text-warning"><AlertTriangle size={14} /> Revisar este item</p>{exercise.reviewReason && <p className="mt-1 text-xs leading-relaxed text-muted">{exercise.reviewReason}</p>}</div>}
                       <div className="grid grid-cols-[1fr_5.5rem_2.75rem] gap-2">
                         <input aria-label={`Nome do exercício ${index + 1}`} value={exercise.name || ''} onChange={(event) => updateExercise(day, index, 'name', event.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-input px-3 text-sm font-bold text-main" />
                         <input aria-label={`Séries do exercício ${index + 1}`} value={exercise.sets || ''} onChange={(event) => updateExercise(day, index, 'sets', event.target.value)} className="h-11 rounded-xl border border-border bg-input px-2 text-center text-sm font-black text-main" />
                         <button type="button" onClick={() => removeExercise(day, index)} aria-label={`Remover ${exercise.name}`} className="touch-target flex items-center justify-center rounded-xl border border-red-500/40 text-red-500"><Trash2 size={17} /></button>
                       </div>
+                      <label className="mt-2 block">
+                        <span className="mb-1 block text-xs font-bold text-muted">Como registrar a carga</span>
+                        <select value={exercise.loadMode || inferLegacyLoadMode(exercise)} onChange={(event) => updateExercise(day, index, 'loadMode', event.target.value)} className="h-11 w-full rounded-xl border border-border bg-input px-3 text-sm font-bold text-main">
+                          {LOAD_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </label>
+                      {exercise.uncertain === true && (
+                        <button type="button" onClick={() => markExerciseReviewed(day, index)} disabled={!exercise.name?.trim() || !String(exercise.sets || '').trim()} className="touch-target mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-warning/60 px-3 text-sm font-black text-warning disabled:opacity-40">
+                          <ShieldCheck size={17} /> Confirmar que revisei
+                        </button>
+                      )}
                       <div className="mt-1 flex gap-1"><button type="button" onClick={() => moveExercise(day, index, -1)} aria-label={`Mover ${exercise.name || `exercício ${index + 1}`} para cima`} className="touch-target inline-flex items-center gap-1 rounded-xl px-2 text-xs font-bold text-muted hover:text-primary"><ArrowUp size={15} /> Subir</button><button type="button" onClick={() => moveExercise(day, index, 1)} aria-label={`Mover ${exercise.name || `exercício ${index + 1}`} para baixo`} className="touch-target inline-flex items-center gap-1 rounded-xl px-2 text-xs font-bold text-muted hover:text-primary"><ArrowDown size={15} /> Descer</button></div>
                     </div>
                   );
@@ -196,7 +226,7 @@ const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData =
           <div className="grid gap-3 sm:grid-cols-3">
             <button type="button" onClick={resetAll} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border font-bold text-main"><Trash2 size={17} /> Cancelar</button>
             <button type="button" onClick={() => setParsedPreview(null)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-primary font-bold text-primary"><RefreshCw size={17} /> Reprocessar</button>
-            <button type="button" onClick={confirm} disabled={conflicts.length > 0 && !conflictStrategy} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-black text-black disabled:opacity-40"><Check size={19} /> Salvar no plano</button>
+            <button type="button" onClick={confirm} disabled={pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-black text-black disabled:opacity-40"><Check size={19} /> Salvar no plano</button>
           </div>
         </section>
       )}

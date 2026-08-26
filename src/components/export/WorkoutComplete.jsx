@@ -7,11 +7,13 @@ import {
   Download,
   Loader2,
   Share2,
+  Swords,
   Trophy,
   X,
 } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
+import { getBossBattleReport } from '../../utils/bossModel';
 
 const WorkoutComplete = ({
   onClose,
@@ -22,6 +24,8 @@ const WorkoutComplete = ({
   completedSets = 0,
   partial = false,
   syncStatus = 'synced',
+  workoutTitle = 'Treino',
+  bossEncounter = null,
   bossName = 'Treino concluído',
   bossHp = 10000,
   streak = 0,
@@ -119,13 +123,13 @@ const WorkoutComplete = ({
     <div role="dialog" aria-modal="true" aria-labelledby="workout-summary-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md">
       {showShareTools && (
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1080px', height: '1920px' }}>
-          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs }} bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl} currentLevel={currentLevel} totalXp={totalXp} variant={cardVariant} />
+          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl} currentLevel={currentLevel} totalXp={totalXp} variant={cardVariant} />
         </div>
       )}
 
       <div className="max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/40 bg-card shadow-2xl">
         <header className="flex items-start justify-between border-b border-border p-5">
-          <div><CheckCircle2 className="mb-3 text-success" size={38} /><h2 id="workout-summary-title" className="text-2xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Treino concluído'}</h2><p className="mt-1 text-sm text-muted">Seu progresso já foi registrado.</p></div>
+          <div><CheckCircle2 className="mb-3 text-success drop-shadow-[0_0_12px_rgba(var(--success),0.45)]" size={42} /><p className="font-cyber text-xs font-black uppercase tracking-[0.2em] text-primary">{workoutTitle}</p><h2 id="workout-summary-title" className="mt-1 text-2xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Treino concluído'}</h2><p className="mt-1 text-sm text-muted">Seu progresso já foi registrado.</p></div>
           <button type="button" onClick={onClose} aria-label="Fechar resumo" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
         </header>
 
@@ -141,6 +145,14 @@ const WorkoutComplete = ({
             <span className="flex items-center gap-2"><Trophy size={17} className="text-yellow-500" /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
             <span className="flex items-center gap-2">🔥 sequência: {streak} {streak === 1 ? 'dia' : 'dias'}</span>
           </div>
+
+          {bossEncounter && (
+            <div className={`mt-3 rounded-xl border p-4 ${bossEncounter.defeated ? 'border-success/40 bg-success/5' : 'border-secondary/40 bg-secondary/5'}`}>
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-secondary"><Swords size={16} /> Relatório de combate</p>
+              <div className="mt-2 flex items-end justify-between gap-3"><p className="font-cyber text-lg font-black text-main">{bossEncounter.bossName}</p><p className="text-sm font-black text-main">{Math.round(bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(bossEncounter.maxHp).toLocaleString('pt-BR')}</p></div>
+              <p className="mt-2 text-sm text-muted">{getBossBattleReport(bossEncounter, sessionPrs)}</p>
+            </div>
+          )}
 
           <div className={`mt-3 flex items-start gap-3 rounded-xl border p-3 text-sm ${savedInCloud ? 'border-green-500/40 bg-green-500/5' : 'border-warning/40 bg-warning/10'}`}>
             {savedInCloud ? <Cloud className="shrink-0 text-green-500" size={19} /> : <CloudOff className="shrink-0 text-warning" size={19} />}

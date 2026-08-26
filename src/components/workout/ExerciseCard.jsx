@@ -20,14 +20,23 @@ import {
   getExpectedSetCount,
   isExerciseCompleted,
 } from '../../utils/sessionModel';
+import {
+  formatEnteredLoad,
+  getLoadModeOption,
+  getSetLoadMode,
+  isCanonicalLoadMode,
+  LOAD_MODES,
+} from '../../utils/loadModel';
+import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 
-const formatPreviousSet = (set, mode) => {
+const formatPreviousSet = (set, mode, exercise) => {
   if (!set) return null;
   if (mode === 'duration') return set.duration ? `${set.duration} s` : null;
   if (mode === 'distance') return set.distance ? `${set.distance} km` : null;
   if (mode === 'bodyweight' || mode === 'reps') return set.reps ? `${set.reps} repetições` : null;
   if (!set.weight && !set.reps) return null;
-  return `${set.weight || '—'} kg × ${set.reps || '—'}`;
+  const loadLabel = formatEnteredLoad(set, exercise) || 'carga não informada';
+  return `${loadLabel} × ${set.reps || '—'}`;
 };
 
 const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) => {
@@ -68,6 +77,8 @@ const ExerciseCard = ({
   const exerciseProgress = progress[id] || {};
   const displayName = exerciseProgress.swappedName || ex.name;
   const mode = getExerciseMode(ex);
+  const loadMode = getSetLoadMode({}, ex);
+  const loadModeOption = getLoadModeOption(loadMode);
   const expectedSets = getExpectedSetCount(ex, exerciseProgress.actualSets);
   const completedSets = (exerciseProgress.sets || []).slice(0, expectedSets)
     .filter((set) => set.completed).length;
@@ -89,16 +100,22 @@ const ExerciseCard = ({
     .sort((left, right) => right.dateKey.localeCompare(left.dateKey));
 
   const lastExercise = exerciseHistory.find((exercise) => exercise.sets?.some((set) => set.completed));
-  const previousLabel = formatPreviousSet(lastExercise?.sets?.find((set) => set.completed), mode);
-  const loadPr = mode === 'strength' ? exerciseHistory.reduce((best, exercise) => Math.max(
-    best,
-    ...(exercise.sets || []).filter((set) => set.completed)
-      .map((set) => parseDecimalInput(set.weight) ?? 0),
-  ), 0) : 0;
-  const currentLoadPr = mode === 'strength' && (exerciseProgress.sets || []).some(
-    (set) => set.completed && loadPr > 0 && (parseDecimalInput(set.weight) ?? 0) > loadPr,
+  const previousLabel = formatPreviousSet(
+    lastExercise?.sets?.find((set) => set.completed),
+    mode,
+    { ...ex, loadMode },
   );
-  const volume = calculateCompletedVolume(exerciseProgress.sets || []);
+  const loadPr = isCanonicalLoadMode(loadMode)
+    ? getMaxCompletedLoad(exerciseHistory, displayName, loadMode)
+    : 0;
+  const currentMaxLoad = getMaxCompletedLoad([{
+    ...ex,
+    name: displayName,
+    loadMode,
+    sets: exerciseProgress.sets || [],
+  }], displayName, loadMode);
+  const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
+  const volume = calculateCompletedVolume(exerciseProgress.sets || [], { ...ex, loadMode });
 
   const usePreviousValues = () => {
     if (!lastExercise?.sets) return;
@@ -131,9 +148,16 @@ const ExerciseCard = ({
     if (mode === 'bodyweight' || mode === 'reps') {
       return <Field label={`Repetições da série ${setIndex + 1}`} placeholder="REPS" inputMode="numeric" value={set.reps} onChange={(event) => updateSetData(id, setIndex, 'reps', event.target.value)} />;
     }
+    const loadPlaceholder = loadMode === LOAD_MODES.perSide
+      ? 'LADO'
+      : loadMode === LOAD_MODES.perHand
+        ? 'HALTER'
+        : loadMode === LOAD_MODES.assisted
+          ? 'ASSIST.'
+          : 'KG';
     return (
       <>
-        <Field label={`Carga da série ${setIndex + 1}, em quilos`} placeholder="KG" value={set.weight} onChange={(event) => updateSetData(id, setIndex, 'weight', event.target.value)} />
+        <Field label={`${loadModeOption.label} da série ${setIndex + 1}, em quilos`} placeholder={loadPlaceholder} value={set.weight} onChange={(event) => updateSetData(id, setIndex, 'weight', event.target.value)} />
         <Field label={`Repetições da série ${setIndex + 1}`} placeholder="REPS" inputMode="numeric" value={set.reps} onChange={(event) => updateSetData(id, setIndex, 'reps', event.target.value)} />
       </>
     );
@@ -174,7 +198,7 @@ const ExerciseCard = ({
               ) : (
                 <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
               )}
-              {loadPr > 0 && <p className="mt-1 text-xs text-yellow-500">Melhor carga confirmada: {loadPr} kg</p>}
+              {loadPr > 0 && <p className="mt-1 text-xs text-yellow-500">Melhor carga canônica confirmada: {loadPr.toLocaleString('pt-BR')} kg</p>}
             </div>
             {lastExercise && (
               <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
@@ -184,6 +208,12 @@ const ExerciseCard = ({
           </div>
 
           {ex.note && <p className="rounded-xl bg-input px-3 py-2 text-sm leading-relaxed text-muted">{ex.note}</p>}
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted">
+            <span className="font-black text-primary">Registro de carga:</span> {loadModeOption.label}.
+            {loadMode === LOAD_MODES.perSide && ` Barra configurada: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
+            {loadMode === LOAD_MODES.assisted && ' Esta carga não entra em PR ou dano de Boss.'}
+          </div>
 
           <div className="flex items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-xs font-bold text-muted">

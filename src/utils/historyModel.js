@@ -1,6 +1,7 @@
 import { formatLocalDate, normalizeLocalDateKey } from './dateUtils';
 import { parseDecimalInput } from './numberUtils';
 import { calculateSessionXp } from './xpModel';
+import { inferLegacyLoadMode, normalizeLoadMode } from './loadModel';
 
 const makeLocalId = () => globalThis.crypto?.randomUUID?.()
   || `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -13,18 +14,27 @@ export const normalizeWorkoutSet = (set = {}) => ({
   rpe: set.rpe ?? '',
   completed: set.completed === true || set.done === true || set.checked === true,
   finishedAt: set.finishedAt ?? null,
+  loadMode: set.loadMode ? normalizeLoadMode(set.loadMode) : null,
+  barWeight: set.barWeight ?? null,
 });
 
 export const normalizeHistoryEntry = (entry = {}) => {
   const dateKey = normalizeLocalDateKey(entry.dateKey || entry.workout_date || entry.date);
   const workoutName = String(entry.workoutName || entry.workout_name || entry.dayName || entry.title || 'Treino');
   const exercises = Array.isArray(entry.exercises)
-    ? entry.exercises.map((exercise) => ({
-        ...exercise,
-        name: String(exercise?.name || 'Exercício'),
-        sets: Array.isArray(exercise?.sets) ? exercise.sets.map(normalizeWorkoutSet) : [],
-        skipped: exercise?.skipped === true,
-      }))
+    ? entry.exercises.map((exercise) => {
+        const loadMode = normalizeLoadMode(exercise?.loadMode || inferLegacyLoadMode(exercise));
+        return {
+          ...exercise,
+          name: String(exercise?.name || 'Exercício'),
+          loadMode,
+          barWeight: exercise?.barWeight ?? null,
+          sets: Array.isArray(exercise?.sets)
+            ? exercise.sets.map((set) => ({ ...normalizeWorkoutSet(set), loadMode: set?.loadMode || loadMode }))
+            : [],
+          skipped: exercise?.skipped === true,
+        };
+      })
     : [];
 
   const partial = entry.partial === true || exercises.some((exercise) => {
@@ -55,6 +65,11 @@ export const normalizeHistoryEntry = (entry = {}) => {
     partial,
     localRevision: Number(entry.localRevision) || 0,
     syncStatus,
+    sessionId: entry.sessionId ?? entry.session_id ?? null,
+    workoutTitle: entry.workoutTitle ?? entry.workout_title ?? workoutName,
+    workoutFocus: entry.workoutFocus ?? entry.workout_focus ?? '',
+    bossEncounter: entry.bossEncounter ?? entry.boss_encounter ?? entry.reportSnapshot?.bossEncounter ?? null,
+    reportSnapshot: entry.reportSnapshot ?? entry.report_snapshot ?? null,
   };
   return {
     ...normalized,
@@ -88,6 +103,11 @@ export const toSupabaseHistoryRow = (entry, userId, { includeExtendedFields = tr
     ...row,
     partial: entry.partial === true,
     earned_xp: calculateSessionXp(entry),
+    session_id: entry.sessionId || null,
+    workout_title: entry.workoutTitle || entry.workoutName,
+    workout_focus: entry.workoutFocus || '',
+    boss_encounter: entry.bossEncounter || null,
+    report_snapshot: entry.reportSnapshot || null,
   } : row;
 };
 
@@ -96,7 +116,15 @@ export const getHistoryDisplayDate = (entry) => formatLocalDate(entry?.dateKey);
 export const isExtendedHistorySchemaError = (error) => {
   const message = String(error?.message || '').toLowerCase();
   return error?.code === 'PGRST204'
-    && (message.includes('partial') || message.includes('earned_xp'));
+    && (
+      message.includes('partial')
+      || message.includes('earned_xp')
+      || message.includes('session_id')
+      || message.includes('workout_title')
+      || message.includes('workout_focus')
+      || message.includes('boss_encounter')
+      || message.includes('report_snapshot')
+    );
 };
 
 export const sortHistoryNewestFirst = (history) => [...normalizeHistory(history)]

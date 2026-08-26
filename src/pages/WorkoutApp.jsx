@@ -61,7 +61,10 @@ const WorkoutApp = () => {
   const userId = authSession?.user?.id || null;
   const { state, setters, actions, stats } = useWorkout(userId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(() => readStoredJSON(STORAGE_KEYS.settings, {}).theme || 'driver');
+  const initialSettings = useMemo(() => readStoredJSON(STORAGE_KEYS.settings, {}), []);
+  const [theme, setTheme] = useState(() => initialSettings.theme || 'driver');
+  const [experienceMode, setExperienceMode] = useState(() => initialSettings.experienceMode || 'balanced');
+  const [restVibration, setRestVibration] = useState(() => initialSettings.restVibration !== false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false);
@@ -109,9 +112,10 @@ const WorkoutApp = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-experience', experienceMode);
     const settings = readStoredJSON(STORAGE_KEYS.settings, {});
-    writeStoredJSON(STORAGE_KEYS.settings, { ...settings, theme });
-  }, [theme]);
+    writeStoredJSON(STORAGE_KEYS.settings, { ...settings, theme, experienceMode, restVibration });
+  }, [experienceMode, restVibration, theme]);
 
   const workoutStatuses = useMemo(() => Object.fromEntries(
     Object.keys(state.workoutData || {}).map((day) => {
@@ -130,18 +134,7 @@ const WorkoutApp = () => {
     const result = await actions.finishWorkout(options);
     if (result?.requiresConfirmation) return result;
 
-    const report = {
-      volume: result.sessionVolume,
-      duration: result.sessionDuration,
-      xp: result.sessionXp,
-      level: result.newLevel,
-      streak: result.newStreak,
-      newBadges: result.newBadges,
-      completedSets: result.completedSets,
-      prsBroken: result.prsBroken,
-      partial: result.partial,
-      syncStatus: result.syncStatus,
-    };
+    const report = result.reportSnapshot;
     writeUserStoredJSON(userId, STORAGE_KEYS.pendingShareCard, report);
     setPendingReport(report);
     setReportUserId(userId);
@@ -173,24 +166,21 @@ const WorkoutApp = () => {
   if (!state.isHydrated) return <LoadingScreen logo={logoSolo} />;
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-page pb-8 font-cyber text-main transition-colors duration-500 cyber-grid">
-      <header className="sticky top-0 z-40 mb-5 flex h-20 items-center justify-between border-b border-border bg-page/85 px-4 shadow-lg backdrop-blur-md">
+    <div className="solo-shell relative min-h-screen overflow-x-hidden bg-page pb-28 font-sans text-main transition-colors duration-300 cyber-grid">
+      <header className="sticky top-0 z-40 mb-4 flex h-16 items-center justify-between border-b border-border bg-page/92 px-3 shadow-lg backdrop-blur-md sm:px-4">
         <div className="flex items-center gap-3">
-          <img src={logoSolo} alt="SOLO" className="h-9 w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)]" />
-          <div className="hidden sm:block">
-            <h1 className="text-2xl font-black tracking-[0.18em] text-main">SOLO</h1>
-            <p className="mt-1 text-xs text-muted">Seu treino, seu progresso.</p>
-          </div>
-        </div>
-
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className={`flex h-14 min-w-[82px] flex-col items-center justify-center rounded-2xl border px-4 ${flameStyle.shadow}`}>
-            <Flame size={30} className={flameStyle.iconClass} />
-            <span className={`text-xs font-bold ${flameStyle.color}`}>{stats?.streak || 0} dias</span>
+          <img src={logoSolo} alt="SOLO" className="h-7 w-auto max-w-28 drop-shadow-[0_0_6px_rgba(0,243,255,0.45)] sm:h-8" />
+          <div className="min-w-0">
+            <h1 className="font-cyber text-lg font-black tracking-[0.18em] text-main sm:text-xl">SOLO</h1>
+            <p className="mt-0.5 hidden text-xs text-muted md:block">System for Objective Leveling and Overload</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <div className={`flex h-11 items-center gap-1.5 rounded-xl border px-2.5 ${flameStyle.shadow}`} aria-label={`Sequência de ${stats?.streak || 0} dias`}>
+            <Flame size={18} className={flameStyle.iconClass} />
+            <span className={`whitespace-nowrap text-xs font-black ${flameStyle.color}`}>{stats?.streak || 0} dias</span>
+          </div>
           <button
             type="button"
             onClick={() => state.hasPendingChanges && actions.syncPendingChanges()}
@@ -225,10 +215,10 @@ const WorkoutApp = () => {
                 onClick={selectWorkout}
                 disabled={locked}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative min-h-16 min-w-[156px] shrink-0 rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-40 ${isActive ? 'border-primary bg-primary text-black shadow-[0_0_18px_rgba(var(--primary),0.25)]' : 'border-border bg-card text-main'}`}
+                className={`relative min-h-16 min-w-[156px] shrink-0 rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-40 ${isActive ? 'border-primary bg-primary/10 text-main shadow-[0_0_18px_rgba(var(--primary),0.18)]' : 'border-border bg-card text-main'}`}
               >
                 <span className="block text-base font-black">{workout.title || `Treino ${day}`}</span>
-                <span className={`mt-1 block text-xs ${isActive ? 'text-black/70' : 'text-muted'}`}>{workout.focus || 'Foco geral'}</span>
+                <span className="mt-1 block text-xs text-muted">{workout.focus || 'Foco geral'}</span>
                 {status?.completedOnDate && <span className="absolute right-2 top-2 flex items-center gap-1 text-[11px] font-black"><Check size={13} /> Feito</span>}
               </button>
             );
@@ -236,11 +226,21 @@ const WorkoutApp = () => {
         </nav>
       )}
 
+      {sessionActive && state.view !== 'workout' && (
+        <div className="relative z-10 mx-4 mb-4">
+          <button type="button" onClick={() => setters.setView('workout')} className="flex min-h-14 w-full items-center justify-between rounded-2xl border border-primary/50 bg-card px-4 shadow-lg">
+            <span className="text-left"><span className="block text-xs font-bold uppercase tracking-wider text-primary">Treino em andamento</span><span className="block text-sm font-black text-main">Voltar ao treino</span></span>
+            <span className="font-mono text-lg font-black text-primary">{formatTime(state.workoutTimer.elapsed)}</span>
+          </button>
+        </div>
+      )}
+
       <div className="relative z-10 min-h-[50vh] px-4">
         <Suspense fallback={<ViewFallback />}>
-          {state.view === 'workout' && state.workoutData?.[state.activeDay] && (
+          {state.view === 'workout' && state.activeWorkout && (
             <WorkoutView
               {...state}
+              experienceMode={experienceMode}
               actions={actions}
               setActiveDay={setters.setActiveDay}
               setSelectedDate={actions.handleDateChange}
@@ -248,7 +248,7 @@ const WorkoutApp = () => {
               finishWorkout={handleFinishWorkout}
             />
           )}
-          {state.view === 'workout' && !state.workoutData?.[state.activeDay] && (
+          {state.view === 'workout' && !state.activeWorkout && (
             <section className="rounded-2xl border border-dashed border-primary/40 bg-card/70 p-6 text-center">
               <h2 className="text-xl font-black text-main">Nenhum treino cadastrado</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">Importe sua ficha em PDF ou cole o treino em texto. Você poderá revisar tudo antes de salvar.</p>
@@ -262,18 +262,11 @@ const WorkoutApp = () => {
           {state.view === 'manage' && (
             <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay} addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} />
           )}
-          {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} setView={setters.setView} />}
+          {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} reopenEntry={actions.reopenHistoryEntry} setView={setters.setView} />}
           {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
           {state.view === 'profile' && <ProfileView key={userId} userId={userId} userMetadata={authSession.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={readUserStoredJSON(userId, STORAGE_KEYS.quests, [])} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
         </Suspense>
       </div>
-
-      {sessionActive && state.view !== 'workout' && !state.timerState?.active && (
-        <button type="button" onClick={() => setters.setView('workout')} className="fixed bottom-24 left-1/2 z-40 flex min-h-14 w-[90%] max-w-sm -translate-x-1/2 items-center justify-between rounded-2xl border border-primary/50 bg-card/95 px-5 shadow-xl backdrop-blur-md">
-          <span><span className="block text-xs font-bold text-primary">Treino em andamento</span><span className="block text-sm font-black text-main">Voltar ao treino</span></span>
-          <span className="font-mono font-black text-primary">{formatTime(state.workoutTimer.elapsed)}</span>
-        </button>
-      )}
 
       {!isAnyModalOpen && <CyberNav currentView={state.view} setView={setters.setView} />}
 
@@ -315,15 +308,17 @@ const WorkoutApp = () => {
         <Suspense fallback={<ViewFallback />}>
           <WorkoutComplete
             onClose={closeReport}
-            sessionDuration={`${currentPendingReport.duration || stats.lastSessionStats?.duration || 0} min`}
-            sessionVolume={`${currentPendingReport.volume || stats.lastSessionStats?.volume || 0} kg`}
-            sessionPoints={`+${currentPendingReport.xp || stats.lastSessionStats?.xp || 0} XP`}
+            sessionDuration={`${currentPendingReport.version === 2 ? Math.max(1, Math.floor((currentPendingReport.duration || 0) / 60)) : (currentPendingReport.duration || 0)} min`}
+            sessionVolume={`${Math.round(currentPendingReport.volume || 0).toLocaleString('pt-BR')} kg`}
+            sessionPoints={`+${currentPendingReport.earnedXp ?? currentPendingReport.xp ?? 0} XP`}
             sessionPrs={currentPendingReport.prsBroken || 0}
             completedSets={currentPendingReport.completedSets || 0}
             partial={currentPendingReport.partial === true}
             syncStatus={currentPendingReport.syncStatus}
-            bossName={state.workoutData?.[state.activeDay]?.title || 'Treino concluído'}
-            bossHp={state.workoutData?.[state.activeDay]?.bossHp || 10000}
+            workoutTitle={currentPendingReport.workoutTitle || currentPendingReport.workoutName}
+            bossEncounter={currentPendingReport.bossEncounter || null}
+            bossName={currentPendingReport.bossEncounter?.bossName || ''}
+            bossHp={currentPendingReport.bossEncounter?.maxHp || 0}
             streak={currentPendingReport.streak || stats?.streak || 0}
             currentLevel={currentPendingReport.level || stats?.level || 1}
             totalXp={stats?.xp || 0}
@@ -332,10 +327,10 @@ const WorkoutApp = () => {
         </Suspense>
       )}
 
-      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
+      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} restVibration={restVibration} setRestVibration={setRestVibration} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
 
       {state.timerState?.active && state.timerState.endTime && (
-        <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />
+        <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} vibrationEnabled={restVibration} />
       )}
 
       {successToast && createPortal(

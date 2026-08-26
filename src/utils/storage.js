@@ -12,13 +12,14 @@ export const STORAGE_KEYS = Object.freeze({
   quests: 'solo:quests',
   questData: 'solo:quest-data',
   settings: 'solo:settings',
+  bossIntroSeen: 'solo:boss-intro-seen',
   pendingShareCard: 'solo:pending-share-card',
   avatar: 'solo:avatar',
   migrationVersion: 'solo:migration-version',
 });
 
 const USER_STORAGE_PREFIX = 'solo:user';
-const USER_MIGRATION_VERSION = '2';
+const USER_MIGRATION_VERSION = '3';
 
 const LEGACY_SOURCES = Object.freeze({
   workoutPlan: [STORAGE_KEYS.workoutPlan, 'workout_plan'],
@@ -44,6 +45,7 @@ const JSON_STORAGE_NAMES = new Set([
   'quests',
   'questData',
   'pendingShareCard',
+  'bossIntroSeen',
 ]);
 
 export const getUserStorageKey = (userId, key) => {
@@ -212,7 +214,7 @@ export const migrateLegacyStorage = (userId, storage = localStorage) => {
 };
 
 export const getSoloBackup = (userId, storage = localStorage, exportedAt = new Date().toISOString()) => ({
-  version: 2,
+  version: 3,
   exportedAt,
   data: {
     workoutPlan: readUserStoredJSON(userId, STORAGE_KEYS.workoutPlan, {}, storage),
@@ -221,6 +223,7 @@ export const getSoloBackup = (userId, storage = localStorage, exportedAt = new D
     progress: readUserStoredJSON(userId, STORAGE_KEYS.progress, {}, storage),
     activeDay: readUserStoredText(userId, STORAGE_KEYS.activeDay, '', storage),
     activeSession: readUserStoredJSON(userId, STORAGE_KEYS.activeSession, null, storage),
+    restTimer: readUserStoredJSON(userId, STORAGE_KEYS.restTimer, null, storage),
     quests: readUserStoredJSON(userId, STORAGE_KEYS.quests, [], storage),
     questData: readUserStoredJSON(userId, STORAGE_KEYS.questData, {}, storage),
     settings: readStoredJSON(STORAGE_KEYS.settings, {}, storage),

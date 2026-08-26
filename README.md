@@ -6,6 +6,7 @@ Aplicativo de treino com acompanhamento de séries, cargas, descanso, histórico
 
 - criação e importação de rotinas;
 - registro de séries, repetições, carga e tempo de treino;
+- modos explícitos de carga (total, por lado, por halter, máquina, peso corporal, assistido, duração e distância);
 - temporizador de descanso com alerta e vibração;
 - histórico, recordes pessoais e gráficos de evolução;
 - perfil biométrico e metas corporais;
@@ -41,7 +42,12 @@ O build de produção é gerado em `dist/`.
 
 ## Migrações do Supabase
 
-Antes de publicar uma versão que altere o modelo de dados, execute no SQL Editor do projeto Supabase os arquivos de `supabase/migrations`, em ordem. A migração `202608220001_history_integrity.sql` adiciona e preenche o estado de treino parcial e o XP oficial de cada sessão.
+Antes de publicar uma versão que altere o modelo de dados, execute no SQL Editor do projeto Supabase os arquivos de `supabase/migrations`, em ordem.
+
+- `202608220001_history_integrity.sql`: adiciona e preenche o estado de treino parcial e o XP oficial de cada sessão.
+- `202608260001_session_integrity.sql`: adiciona identidade única da sessão, título/foco imutáveis, encontro de Boss e snapshot do relatório; também cria a proteção contra sessões duplicadas.
+
+O cliente mantém fallback para o esquema anterior, mas os novos snapshots e a deduplicação no banco só ficam completos após a segunda migração.
 
 ## Tecnologias
 
