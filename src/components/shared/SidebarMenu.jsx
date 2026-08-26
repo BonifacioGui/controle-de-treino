@@ -17,6 +17,24 @@ import { supabase } from '../../services/supabaseClient';
 import { getLocalDateKey } from '../../utils/dateUtils';
 import { getSoloBackup } from '../../utils/storage';
 
+const EXPERIENCE_OPTIONS = [
+  {
+    value: 'immersive',
+    label: 'Imersiva',
+    description: 'Neon intenso, grade tática e profundidade máxima.',
+  },
+  {
+    value: 'balanced',
+    label: 'Equilibrada',
+    description: 'Identidade SOLO com efeitos moderados para o dia a dia.',
+  },
+  {
+    value: 'discreet',
+    label: 'Discreta',
+    description: 'Visual limpo, sem grade, brilhos ou animações decorativas.',
+  },
+];
+
 const SidebarMenu = ({
   isOpen,
   onClose,
@@ -85,16 +103,15 @@ const SidebarMenu = ({
           <fieldset>
             <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-muted">Experiência</legend>
             <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-input p-1">
-              {[
-                ['immersive', 'Imersiva'],
-                ['balanced', 'Equilibrada'],
-                ['discreet', 'Discreta'],
-              ].map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setExperienceMode(value)} aria-pressed={experienceMode === value} className={`min-h-11 rounded-lg px-1 text-[11px] font-black ${experienceMode === value ? 'bg-primary/15 text-primary' : 'text-muted'}`}>
+              {EXPERIENCE_OPTIONS.map(({ value, label }) => (
+                <button key={value} type="button" onClick={() => setExperienceMode(value)} aria-pressed={experienceMode === value} className={`min-h-11 rounded-lg px-1 text-[11px] font-black transition-colors ${experienceMode === value ? 'bg-primary/15 text-primary ring-1 ring-primary/30' : 'text-muted'}`}>
                   {label}
                 </button>
               ))}
             </div>
+            <p role="status" className="mt-2 min-h-8 px-1 text-xs leading-relaxed text-muted">
+              {EXPERIENCE_OPTIONS.find(({ value }) => value === experienceMode)?.description}
+            </p>
           </fieldset>
           <label className="touch-target flex cursor-pointer items-center justify-between rounded-xl border border-border bg-input px-4 text-sm font-bold text-main">
             <span>Vibrar ao fim do descanso</span>

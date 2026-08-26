@@ -1127,6 +1127,59 @@
   box-shadow: 0 0 34px rgba(255, 42, 145, .22), 0 20px 50px rgba(0, 0, 0, .42);
 }
 
+/* Imersiva: reforça profundidade, contraste neon e leitura tática. */
+[data-experience='immersive'] body {
+  background-image:
+    radial-gradient(ellipse at 8% 3%, rgba(0, 224, 255, .15) 0%, transparent 38%),
+    radial-gradient(ellipse at 94% 72%, rgba(255, 42, 145, .13) 0%, transparent 40%),
+    linear-gradient(180deg, #02060c 0%, #06101b 52%, #020509 100%);
+}
+
+[data-experience='immersive'] .cyber-grid {
+  background-image:
+    linear-gradient(rgba(0, 243, 255, .075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, .075) 1px, transparent 1px),
+    linear-gradient(rgba(255, 42, 145, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 42, 145, .035) 1px, transparent 1px);
+  background-size: 36px 36px, 36px 36px, 108px 108px, 108px 108px;
+}
+
+[data-experience='immersive'] .solo-shell::before {
+  background:
+    linear-gradient(115deg, transparent 0 48%, rgba(0, 224, 255, .055) 48% 48.25%, transparent 48.25%),
+    radial-gradient(circle at 50% -10%, rgba(0, 224, 255, .15), transparent 42%);
+}
+
+[data-experience='immersive'] .solo-shell > header {
+  border-bottom-color: rgba(0, 224, 255, .38);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .48), 0 0 24px rgba(0, 224, 255, .12);
+}
+
+[data-experience='immersive'] .solo-workout-hero {
+  background:
+    linear-gradient(120deg, rgba(0, 224, 255, .19), transparent 50%),
+    linear-gradient(300deg, rgba(255, 42, 145, .18), transparent 48%),
+    var(--solo-surface-raised);
+  border-color: rgba(0, 224, 255, .42);
+  box-shadow:
+    0 0 38px rgba(0, 224, 255, .23),
+    0 22px 46px rgba(0, 0, 0, .36),
+    inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+[data-experience='immersive'] .solo-primary-action {
+  filter: saturate(1.2) brightness(1.08);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, .48),
+    0 0 34px rgba(0, 224, 255, .28),
+    0 0 34px rgba(255, 42, 145, .24);
+}
+
+[data-experience='immersive'] .solo-shell nav button[aria-current='page'] {
+  border-color: rgba(0, 224, 255, .62);
+  box-shadow: 0 0 26px rgba(0, 224, 255, .22);
+}
+
 @keyframes solo-hit {
   0% { transform: translateX(0); filter: brightness(1); }
   35% { transform: translateX(-2px); filter: brightness(1.25); }
@@ -1135,11 +1188,29 @@
 }
 
 [data-experience='discreet'] .cyber-grid {
-  background-image: none;
+  background-image: none !important;
+}
+
+[data-experience='discreet'] body {
+  background: #05080d;
+}
+
+[data-experience='discreet'] .solo-shell::before,
+[data-experience='discreet'] .solo-workout-hero::before,
+[data-experience='discreet'] .solo-workout-hero::after {
+  display: none;
+}
+
+[data-experience='discreet'] .solo-shell > header {
+  border-bottom-color: var(--border-color);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 [data-experience='discreet'] .solo-workout-hero,
 [data-experience='discreet'] .solo-boss-card {
+  background: var(--solo-surface-raised);
+  border-color: var(--border-color);
   box-shadow: none;
 }
 
@@ -1147,6 +1218,15 @@
   background: rgb(var(--primary));
   color: #001014;
   box-shadow: none;
+}
+
+[data-experience='discreet'] .solo-shell nav button[aria-current='page'] {
+  border-color: rgba(0, 224, 255, .35);
+  box-shadow: none;
+}
+
+[data-experience='discreet'] .solo-shell img[alt='SOLO'] {
+  filter: none;
 }
 
 [data-experience='discreet'] *,
