@@ -77,8 +77,11 @@ export const buildSessionExercises = (workout, progress, dateKey, workoutName) =
     const id = `${dateKey}-${workoutName}-${index}`;
     const exerciseProgress = progress?.[id] || {};
     const loadMode = getSetLoadMode({}, exercise);
+    const performedName = exerciseProgress.swappedName || exercise.name;
     return {
-      name: exerciseProgress.swappedName || exercise.name,
+      name: performedName,
+      plannedName: exercise.name,
+      performedName,
       sets: (exerciseProgress.sets || []).map((set) => ({
         ...set,
         loadMode: set.loadMode || loadMode,

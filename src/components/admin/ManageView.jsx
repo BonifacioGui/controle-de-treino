@@ -2,15 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
 import { inferLegacyLoadMode, LOAD_MODE_OPTIONS, LOAD_MODES } from '../../utils/loadModel';
-const EXERCISE_CATALOG = {
-  Peito: ["Supino Reto (Barra)", "Supino Reto (Halter)", "Supino Inclinado (Barra)", "Supino Inclinado (Halter)", "Crucifixo no Crossover", "Crucifixo (Halter)", "Voador (Peck Deck)", "Flexão de Braço", "Pullover", "Crossover Polia Alta", "Crossover Polia Baixa", "Supino Declinado"],
-  Costas: ["Puxada Frontal (Pulley)", "Puxada Triângulo", "Remada Curvada", "Remada Baixa", "Remada Unilateral (Serrote)", "Remada Cavalinho", "Pull-down", "Barra Fixa", "Levantamento Terra"],
-  Pernas: ["Agachamento Livre", "Agachamento Hack", "Agachamento Búlgaro", "Leg Press 45º", "Leg Press Horizontal", "Cadeira Extensora", "Mesa Flexora", "Cadeira Flexora", "Stiff", "Levantamento Terra Romeno (RDL)", "Elevação Pélvica", "Cadeira Abdutora", "Cadeira Adutora", "Panturrilha em Pé", "Panturrilha Sentado"],
-  Ombros: ["Desenvolvimento (Barra)", "Desenvolvimento (Halter)", "Desenvolvimento Máquina", "Elevação Lateral (Halter)", "Elevação Lateral (Polia)", "Elevação Frontal", "Encolhimento", "Crucifixo Invertido", "Face Pull"],
-  Braços: ["Rosca Direta (Barra)", "Rosca Alternada (Halter)", "Rosca Martelo", "Rosca Scott", "Rosca na Polia", "Tríceps Pulley (Barra)", "Tríceps Pulley (Corda)", "Tríceps Testa", "Tríceps Francês", "Tríceps Coice", "Mergulho (Paralelas)"],
-  Core: ["Prancha Isométrica", "Abdominal Supra", "Abdominal Infra", "Abdominal Infra na Barra", "Giro Russo (Russian Twist)", "Abdominal Máquina", "Roda Abdominal"],
-  Cardio: ["Esteira", "Bicicleta Ergométrica", "Bicicleta Spinning", "Elíptico", "Escada", "Pular Corda", "Remo Seco", "Corrida Livre"]
-};
+import { ALL_EXERCISES, EXERCISE_CATALOG } from '../../data/exerciseCatalog';
 
 const ManageView = ({ 
   activeDay, setActiveDay, addDay, removeDay, workoutData, addExercise, 
@@ -46,8 +38,7 @@ const ManageView = ({
 
   const getFilteredExercises = () => {
     if (!searchQuery) return EXERCISE_CATALOG[activeTab];
-    const allEx = Object.values(EXERCISE_CATALOG).flat();
-    return allEx.filter(ex => ex.toLowerCase().includes(searchQuery.toLowerCase()));
+    return ALL_EXERCISES.filter(ex => ex.toLowerCase().includes(searchQuery.toLowerCase()));
   };
 
   const openAddDayModal = () => {
@@ -154,19 +145,40 @@ const ManageView = ({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-yellow-500/70 uppercase tracking-[0.1em] ml-1 flex items-center gap-1">
-                  Exercício secundário (Swap)
-                </label>
-                <input 
-                  className="bg-input border border-yellow-500/30 focus:border-yellow-500 text-yellow-500/90 text-xs font-bold w-full outline-none p-2 rounded transition-all placeholder-muted/30 uppercase" 
-                  value={ex.alternatives && ex.alternatives.length > 0 ? ex.alternatives[0] : ''} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    editExerciseBase(activeDay, i, 'alternatives', val ? [val] : []);
-                  }}
-                  placeholder="Opcional: Ex: Supino Reto (Halter)"
-                />
+              <div className="space-y-2">
+                <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-warning">Alternativas de substituição</span>
+                {(ex.alternatives || []).map((alternative, alternativeIndex) => (
+                  <div key={`${i}-${alternativeIndex}`} className="flex gap-2">
+                    <input
+                      list={`exercise-options-${i}`}
+                      aria-label={`Alternativa ${alternativeIndex + 1} de ${ex.name}`}
+                      className="min-w-0 flex-1 rounded-lg border border-warning/30 bg-input p-2 text-xs font-bold text-main outline-none focus:border-warning"
+                      value={alternative}
+                      onChange={(event) => {
+                        const alternatives = [...(ex.alternatives || [])];
+                        alternatives[alternativeIndex] = event.target.value;
+                        editExerciseBase(activeDay, i, 'alternatives', alternatives);
+                      }}
+                      placeholder="Ex.: Remada Baixa"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remover alternativa ${alternativeIndex + 1}`}
+                      onClick={() => editExerciseBase(activeDay, i, 'alternatives', (ex.alternatives || []).filter((_, index) => index !== alternativeIndex))}
+                      className="touch-target flex w-11 shrink-0 items-center justify-center rounded-lg border border-danger/30 text-danger"
+                    >
+                      <X size={17} />
+                    </button>
+                  </div>
+                ))}
+                <datalist id={`exercise-options-${i}`}>{ALL_EXERCISES.map((exercise) => <option key={exercise} value={exercise} />)}</datalist>
+                <button
+                  type="button"
+                  onClick={() => editExerciseBase(activeDay, i, 'alternatives', [...(ex.alternatives || []), ''])}
+                  className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-warning/40 text-xs font-bold text-warning"
+                >
+                  <Plus size={15} /> Adicionar alternativa
+                </button>
               </div>
 
               {/* 3. META E LIXEIRA */}

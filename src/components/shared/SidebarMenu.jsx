@@ -11,11 +11,13 @@ import {
   ShieldAlert,
   Sun,
   User,
+  Vibrate,
   X,
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { getLocalDateKey } from '../../utils/dateUtils';
 import { getSoloBackup } from '../../utils/storage';
+import { HAPTIC_TYPES, triggerHaptic } from '../../utils/haptics';
 
 const EXPERIENCE_OPTIONS = [
   {
@@ -42,8 +44,8 @@ const SidebarMenu = ({
   setTheme,
   experienceMode,
   setExperienceMode,
-  restVibration,
-  setRestVibration,
+  hapticFeedback,
+  setHapticFeedback,
   setView,
   hasPendingChanges,
   syncStatus,
@@ -51,6 +53,7 @@ const SidebarMenu = ({
   userId,
 }) => {
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [hapticStatus, setHapticStatus] = useState('');
 
   const handleClose = () => {
     setConfirmLogout(false);
@@ -78,6 +81,13 @@ const SidebarMenu = ({
   const navigateTo = (route) => {
     setView(route);
     handleClose();
+  };
+
+  const testHaptic = () => {
+    const result = triggerHaptic(HAPTIC_TYPES.setComplete);
+    setHapticStatus(!result.supported
+      ? 'Vibração não disponível neste navegador ou dispositivo.'
+      : result.triggered ? 'Pulso de teste enviado.' : 'O dispositivo não executou a vibração.');
   };
 
   if (!isOpen) return null;
@@ -113,10 +123,15 @@ const SidebarMenu = ({
               {EXPERIENCE_OPTIONS.find(({ value }) => value === experienceMode)?.description}
             </p>
           </fieldset>
-          <label className="touch-target flex cursor-pointer items-center justify-between rounded-xl border border-border bg-input px-4 text-sm font-bold text-main">
-            <span>Vibrar ao fim do descanso</span>
-            <input type="checkbox" checked={restVibration} onChange={(event) => setRestVibration(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
-          </label>
+          <div className="rounded-xl border border-border bg-input p-3">
+            <label className="touch-target flex cursor-pointer items-center justify-between text-sm font-bold text-main">
+              <span className="flex items-center gap-2"><Vibrate size={18} className="text-primary" /> Feedback háptico</span>
+              <input type="checkbox" checked={hapticFeedback} onChange={(event) => setHapticFeedback(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Pulso curto ao concluir série e alerta distinto no fim do descanso.</p>
+            <button type="button" onClick={testHaptic} className="mt-3 min-h-10 w-full rounded-lg border border-primary/40 text-xs font-black text-primary">Testar vibração</button>
+            {hapticStatus && <p role="status" className="mt-2 text-xs text-muted">{hapticStatus}</p>}
+          </div>
         </div>
 
         <div className="flex-1 space-y-3">

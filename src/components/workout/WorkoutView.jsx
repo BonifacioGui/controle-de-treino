@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   CloudOff,
   Dumbbell,
   Loader2,
@@ -14,7 +12,9 @@ import {
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
+import WorkoutQuestSummary from './WorkoutQuestSummary';
 import { daysBetweenLocalDates, formatLocalDate } from '../../utils/dateUtils';
+import { getExercisePerformance } from '../../utils/performanceModel';
 import {
   getSessionCompletion,
   isExerciseCompleted,
@@ -23,7 +23,6 @@ import {
 
 const WorkoutView = ({
   activeDay,
-  setActiveDay,
   workoutData,
   activeWorkout,
   bossEncounter,
@@ -40,12 +39,11 @@ const WorkoutView = ({
   syncStatus,
   actions,
   userId,
+  previewQuests,
 }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [finishConfirmation, setFinishConfirmation] = useState(null);
-  const [pendingDay, setPendingDay] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const days = useMemo(() => Object.keys(workoutData || {}), [workoutData]);
   const currentWorkout = activeWorkout || workoutData[activeDay];
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(workoutTimer.status);
@@ -70,23 +68,6 @@ const WorkoutView = ({
     const id = `${selectedDate}-${activeDay}-${index}`;
     return !isExerciseCompleted(exercise, progress[id] || {});
   }) ?? -1;
-  const requestDayChange = (targetDay) => {
-    if (sessionActive || targetDay === activeDay) return;
-    const latest = history.find((entry) => entry.workoutName === targetDay);
-    const diff = latest ? daysBetweenLocalDates(latest.dateKey, selectedDate) : null;
-    if (diff !== null && diff > 0 && diff < 3) {
-      setPendingDay({ name: targetDay, days: diff });
-      return;
-    }
-    setActiveDay(targetDay);
-  };
-
-  const navigateDay = (direction) => {
-    const index = days.indexOf(activeDay);
-    if (index < 0 || days.length === 0) return;
-    requestDayChange(days[(index + direction + days.length) % days.length]);
-  };
-
   const handleFinish = async (allowPartial = false) => {
     if (isFinishing) return;
     setErrorMessage('');
@@ -126,35 +107,42 @@ const WorkoutView = ({
           isCalendarOpen={isCalendarOpen}
           setIsCalendarOpen={setIsCalendarOpen}
           workoutTimer={workoutTimer}
-          onStart={actions.startSession}
           onPauseResume={actions.toggleWorkoutTimer}
           onAbandon={actions.resetWorkoutTimer}
           isTutorialDay={isTutorialDay}
           sessionActive={sessionActive}
-          userId={userId}
         />
 
-        <section className="solo-workout-hero rounded-2xl border border-border bg-card p-3 shadow-sm">
-          <div className="flex items-center justify-between gap-2">
-            <button type="button" onClick={() => navigateDay(-1)} disabled={sessionActive} aria-label="Treino anterior" className="touch-target flex items-center justify-center rounded-xl text-primary disabled:opacity-30">
-              <ChevronLeft size={25} />
-            </button>
-            <div className="min-w-0 text-center">
-              <p className="text-xs font-bold uppercase tracking-widest text-secondary">Treino selecionado</p>
-              <h1 className="text-lg font-black leading-tight text-main sm:text-xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
+        <section className="solo-workout-hero rounded-2xl border border-primary/35 bg-card p-4 shadow-sm">
+          <div className="flex flex-col items-start justify-between gap-2 min-[360px]:flex-row min-[360px]:gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Treino selecionado</p>
+              <h1 className="mt-1 text-lg font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
               <p className="mt-1 text-sm text-muted">{currentWorkout.focus || 'Foco geral'} • {currentWorkout.exercises?.length || 0} exercícios</p>
             </div>
-            <button type="button" onClick={() => navigateDay(1)} disabled={sessionActive} aria-label="Próximo treino" className="touch-target flex items-center justify-center rounded-xl text-primary disabled:opacity-30">
-              <ChevronRight size={25} />
-            </button>
+            <span className="shrink-0 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">Treino {activeDay}</span>
           </div>
           {lastSession && !sessionActive && (
-            <p className="mt-3 text-center text-sm text-muted">
+            <p className="mt-3 text-sm text-muted">
               Última sessão: {formatLocalDate(lastSession.dateKey)}
               {daysSinceLast === 1 ? ' • há 1 dia' : daysSinceLast > 1 ? ` • há ${daysSinceLast} dias` : ''}
             </p>
           )}
+          {!sessionActive && !isTutorialDay && (
+            <>
+              {completedToday && (
+                <p className="mt-3 rounded-lg border border-success/35 bg-success/10 px-3 py-2 text-xs font-bold text-success">Já registrado nesta data. Você ainda pode iniciar outra sessão.</p>
+              )}
+              <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
+                <Play fill="currentColor" /> Iniciar treino
+              </button>
+            </>
+          )}
         </section>
+
+        {!sessionActive && !isTutorialDay && (
+          <WorkoutQuestSummary userId={userId} questsOverride={previewQuests} />
+        )}
 
         {sessionActive && (
           <>
@@ -221,23 +209,30 @@ const WorkoutView = ({
               <p className="mt-1 text-sm text-muted">Confira sua ficha antes de iniciar. Nada será registrado até você confirmar cada série.</p>
             </div>
             <ol className="space-y-2">
-              {currentWorkout.exercises.map((exercise, index) => (
-                <li key={`${exercise.name}-${index}`} className="rounded-xl border border-border bg-input/40 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-main">{index + 1}. {exercise.name}</span>
-                    <span className="shrink-0 text-sm font-black text-primary">{exercise.sets}</span>
-                  </div>
-                  {exercise.note && <p className="mt-2 text-sm text-muted">{exercise.note}</p>}
-                  {exercise.alternatives?.length > 0 && <p className="mt-2 text-xs text-muted">Alternativas: {exercise.alternatives.join(', ')}</p>}
-                </li>
-              ))}
+              {currentWorkout.exercises.map((exercise, index) => {
+                const performance = getExercisePerformance(history, exercise.name, exercise);
+                return (
+                  <li key={`${exercise.name}-${index}`} className="rounded-xl border border-border bg-input/40 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-main">{index + 1}. {exercise.name}</p>
+                        {performance.lastSummary ? (
+                          <p className="mt-1 truncate text-xs text-muted" title={performance.lastSummary}>Última: {performance.lastSummary}</p>
+                        ) : (
+                          <p className="mt-1 text-xs text-muted">Sem sessão anterior registrada</p>
+                        )}
+                        {performance.pr && (
+                          <p className="mt-0.5 text-xs font-bold text-secondary">PR: {performance.pr.primary}{performance.pr.secondary ? ` • ${performance.pr.secondary}` : ''}</p>
+                        )}
+                      </div>
+                      <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-1 text-xs font-black text-primary">{exercise.sets}</span>
+                    </div>
+                    {exercise.note && <p className="mt-2 text-xs text-muted">{exercise.note}</p>}
+                    {exercise.alternatives?.length > 0 && <p className="mt-2 text-xs text-muted">Alternativas: {exercise.alternatives.join(', ')}</p>}
+                  </li>
+                );
+              })}
             </ol>
-            {completedToday ? (
-              <div className="rounded-xl border border-success/40 bg-success/10 p-4 text-center">
-                <p className="font-black text-success">Treino já registrado nesta data</p>
-                <p className="mt-1 text-sm text-muted">Você ainda pode iniciar outra sessão se desejar.</p>
-              </div>
-            ) : null}
             <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
               <Play fill="currentColor" /> Iniciar treino
             </button>
@@ -257,19 +252,6 @@ const WorkoutView = ({
           </div>
         )}
       </main>
-
-      {pendingDay && createPortal(
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-warning/50 bg-card p-6">
-            <h2 className="text-lg font-black text-main">Treinar novamente?</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">Você realizou este treino há {pendingDay.days} {pendingDay.days === 1 ? 'dia' : 'dias'}. Deseja abrir o treino novamente?</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setPendingDay(null)} className="touch-target rounded-xl border border-border font-bold text-main">Voltar</button>
-              <button type="button" onClick={() => { setActiveDay(pendingDay.name); setPendingDay(null); }} className="touch-target rounded-xl bg-warning font-black text-on-warning">Treinar mesmo assim</button>
-            </div>
-          </div>
-        </div>, document.body,
-      )}
 
       {finishConfirmation && createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="finish-partial-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4">

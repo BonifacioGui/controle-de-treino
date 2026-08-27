@@ -2,12 +2,17 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
 import { readUserStoredJSON, STORAGE_KEYS } from '../../utils/storage';
 
-const QuestBoard = ({ userId }) => {
-  const [quests, setQuests] = useState([]);
+const QuestBoard = ({ userId, questsOverride }) => {
+  const [storedQuests, setStoredQuests] = useState(() => (
+    userId ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []) : []
+  ));
+  const quests = Array.isArray(questsOverride) ? questsOverride : storedQuests;
 
   const loadQuests = useCallback(() => {
-    setQuests(userId ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []) : []);
-  }, [userId]);
+    if (!Array.isArray(questsOverride)) {
+      setStoredQuests(userId ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []) : []);
+    }
+  }, [questsOverride, userId]);
 
   useEffect(() => {
     window.addEventListener('quest_update', loadQuests);

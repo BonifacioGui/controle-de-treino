@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   daysBetweenLocalDates,
+  formatDayCount,
   formatLocalDate,
   getLocalDateKey,
   isSameLocalDay,
@@ -33,5 +34,11 @@ describe('datas locais', () => {
     expect(date.getDate()).toBe(20);
     expect(formatLocalDate('2026-08-20')).toBe('20/08/2026');
     expect(isSameLocalDay('20/08/2026', '2026-08-20')).toBe(true);
+  });
+
+  it('pluraliza sequência em português', () => {
+    expect(formatDayCount(0)).toBe('0 dias');
+    expect(formatDayCount(1)).toBe('1 dia');
+    expect(formatDayCount(2)).toBe('2 dias');
   });
 });

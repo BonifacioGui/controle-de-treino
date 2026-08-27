@@ -2,28 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Timer } from 'lucide-react';
 import { getRestSecondsRemaining } from '../../utils/restTimerModel';
 
-const notifyFinished = (vibrationEnabled) => {
-  if (vibrationEnabled && navigator.vibrate) navigator.vibrate([180, 80, 180]);
-};
-
-const RestTimer = ({ endTime, onAdjust, onSkip, vibrationEnabled = true }) => {
+const RestTimer = ({ endTime, onAdjust, onSkip }) => {
   const [timeLeft, setTimeLeft] = useState(() => getRestSecondsRemaining(endTime));
 
   useEffect(() => {
-    let notified = false;
     const update = () => {
       const next = getRestSecondsRemaining(endTime);
       setTimeLeft(next);
-      if (next === 0 && !notified) {
-        notified = true;
-        notifyFinished(vibrationEnabled);
-        onSkip();
-      }
     };
     update();
     const interval = window.setInterval(update, 500);
     return () => window.clearInterval(interval);
-  }, [endTime, onSkip, vibrationEnabled]);
+  }, [endTime]);
 
   return (
     <aside aria-live="polite" aria-label="Temporizador de descanso" className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[9999] mx-auto max-w-md animate-in slide-in-from-bottom-5">

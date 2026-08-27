@@ -1,27 +1,32 @@
 import { getCanonicalLoad, getSetLoadMode, isCanonicalLoadMode } from './loadModel';
+import { isSameExercise } from './workoutUtils';
 
-const normalizeName = (value) => String(value || '').trim().toLocaleLowerCase('pt-BR');
 const getExerciseLoadMode = (exercise = {}) => getSetLoadMode(
   (exercise.sets || []).find((set) => set?.loadMode || set?.weight !== undefined) || {},
   exercise,
 );
 
-export const getMaxCompletedLoad = (exercises = [], exerciseName, requiredMode = null) => exercises.reduce((best, exercise) => {
-  if (normalizeName(exercise.name) !== normalizeName(exerciseName)) return best;
+export const getMaxCompletedLoadRecord = (exercises = [], exerciseName, requiredMode = null) => exercises.reduce((best, exercise) => {
+  if (!isSameExercise(exerciseName, exercise.name)) return best;
   const mode = getExerciseLoadMode(exercise);
   if (!isCanonicalLoadMode(mode) || (requiredMode && mode !== requiredMode)) return best;
-  const loads = (exercise.sets || [])
-    .filter((set) => set.completed)
-    .map((set) => getCanonicalLoad(set, exercise) ?? 0);
-  return Math.max(best, ...loads, 0);
-}, 0);
+  return (exercise.sets || []).reduce((currentBest, set) => {
+    if (set.completed !== true) return currentBest;
+    const canonicalLoad = getCanonicalLoad(set, exercise);
+    if (canonicalLoad === null || canonicalLoad <= (currentBest?.canonicalLoad || 0)) return currentBest;
+    return { canonicalLoad, exercise, mode, set };
+  }, best);
+}, null);
 
-export const countLoadPrs = (currentExercises = [], history = [], workoutName) => (
+export const getMaxCompletedLoad = (exercises = [], exerciseName, requiredMode = null) => (
+  getMaxCompletedLoadRecord(exercises, exerciseName, requiredMode)?.canonicalLoad || 0
+);
+
+export const countLoadPrs = (currentExercises = [], history = []) => (
   currentExercises.reduce((count, exercise) => {
     const mode = getExerciseLoadMode(exercise);
     if (!isCanonicalLoadMode(mode)) return count;
     const previousMax = history
-      .filter((session) => !workoutName || session.workoutName === workoutName)
       .reduce((best, session) => Math.max(
         best,
         getMaxCompletedLoad(session.exercises || [], exercise.name, mode),

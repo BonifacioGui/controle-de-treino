@@ -3,9 +3,14 @@ import { ChevronLeft, CalendarCheck, Shield, Target, Search } from 'lucide-react
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 🛠️ Importando as lógicas pesadas
-import { getCanonicalName, getMuscleGroup } from '../../utils/exerciseParser';
+import { getMuscleGroup } from '../../utils/exerciseParser';
 import { daysBetweenLocalDates, formatLocalDate, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
+import {
+  getSemanticHallOfFame,
+  getSemanticLoadSeries,
+  getTrackableExerciseNames,
+} from '../../utils/statsPerformanceModel';
 
 // 🧩 Importando os Módulos (Nossos novos soldados)
 import MuscleHeatmap from '../profile/MuscleHeatmap';
@@ -65,7 +70,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     const volume = h.map(s => {
       const isRecent = daysBetweenLocalDates(s.dateKey, getLocalDateKey()) <= 30;
       const vol = Number(s.totalVolume) || s.exercises.reduce(
-        (sum, exercise) => sum + calculateCompletedVolume(exercise.sets || []),
+        (sum, exercise) => sum + calculateCompletedVolume(exercise.sets || [], exercise),
         0,
       );
       
@@ -80,32 +85,25 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       return { date: formatLocalDate(s.dateKey, { day: '2-digit', month: '2-digit' }), volume: Math.round(vol), full: s.dateKey };
     }).filter(v => v.volume > 0).reverse();
 
-    // 3. Recordes (Hall of Fame)
-    const prs = {};
-    h.forEach(s => s.exercises.forEach(ex => {
-      const n = getCanonicalName(ex.name), max = Math.max(...((ex.sets || []).filter((set) => set.completed).map(st => parseFloat(st.weight) || 0) || [0]), 0);
-      if (max > (prs[n] || 0)) prs[n] = max;
-    }));
-
     return {
       biometry, volume, recentWorkoutsCount: recentCount,
       heatmap: Object.entries(muscleCounts).map(([name, sets]) => ({ name, sets, intensity: Math.min(Math.round((sets / 25) * 100), 100) })),
-      hallOfFame: Object.entries(prs).sort((a, b) => b[1] - a[1]).slice(0, 6),
-      exercises: Array.from(new Set([...h.flatMap(s => s.exercises.map(e => getCanonicalName(e.name))), ...Object.values(workoutData || {}).flatMap(d => d.exercises?.map(e => getCanonicalName(e.name)) || [])])).sort()
+      hallOfFame: getSemanticHallOfFame(h, workoutData),
+      exercises: getTrackableExerciseNames(h, workoutData),
     };
   }, [history, bodyHistory, workoutData]);
 
   // Filtro de Carga Baseado no Exercício Selecionado
   const loadData = useMemo(() => {
     if (!selectedExercise) return [];
-    return history.filter(s => s.exercises.some(ex => getCanonicalName(ex.name) === selectedExercise))
-      .map(s => ({ 
-        date: formatLocalDate(s.dateKey, { day: '2-digit', month: '2-digit' }),
-        carga: Math.max(...s.exercises.find(e => getCanonicalName(e.name) === selectedExercise).sets.filter((set) => set.completed).map(st => parseFloat(st.weight) || 0), 0),
-        full: s.dateKey,
+    return getSemanticLoadSeries(history, selectedExercise, workoutData)
+      .map((entry) => ({
+        date: formatLocalDate(entry.dateKey, { day: '2-digit', month: '2-digit' }),
+        carga: entry.canonicalLoad,
+        full: entry.dateKey,
       }))
       .sort((a, b) => a.full.localeCompare(b.full));
-  }, [history, selectedExercise]);
+  }, [history, selectedExercise, workoutData]);
 
 
   const monthlyTarget = 20; 
@@ -241,7 +239,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
                     contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-tooltip-border)', color: 'var(--text-main)', fontSize: '12px', borderRadius: '10px' }}
                     labelStyle={{ color: 'var(--chart-text)' }}
                     itemStyle={{ color: 'var(--chart-secondary)', fontWeight: 'bold' }}
-                    formatter={(value) => [`${value} kg`, 'Carga Máxima']}
+                    formatter={(value) => [`${value} kg`, 'Carga canônica máxima']}
                   />
                   {/* Se tiver apenas 1 ponto, a bolinha vai aparecer graças a esse "dot" */}
                   <Line type="monotone" dataKey="carga" stroke="var(--chart-secondary)" strokeWidth={3} dot={{ fill: 'var(--chart-secondary)', r: 4 }} activeDot={{ r: 6, stroke: 'var(--chart-tooltip-bg)', strokeWidth: 2 }} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateCompletedVolume, getSessionCompletion, isExerciseCompleted } from './sessionModel';
+import { buildSessionExercises, calculateCompletedVolume, getSessionCompletion, isExerciseCompleted } from './sessionModel';
 
 describe('conclusão de treino', () => {
   const workout = { exercises: [{ name: 'Supino', sets: '3x10' }, { name: 'Prancha', sets: '60 seg' }] };
@@ -34,5 +34,16 @@ describe('conclusão de treino', () => {
     expect(calculateCompletedVolume([
       { weight: '20', reps: '10', completed: true },
     ], { loadMode: 'per_side', barWeight: 20 })).toBe(600);
+  });
+
+  it('registra exercício planejado e realmente executado após swap de sessão', () => {
+    const sessionWorkout = { exercises: [{ name: 'Remada Máquina', sets: '3x10', loadMode: 'machine' }] };
+    const progress = { '2026-08-20-A-0': { swappedName: 'Remada Baixa', sets: [{ weight: 60, reps: 10, completed: true }] } };
+    expect(buildSessionExercises(sessionWorkout, progress, '2026-08-20', 'A')[0]).toMatchObject({
+      name: 'Remada Baixa',
+      plannedName: 'Remada Máquina',
+      performedName: 'Remada Baixa',
+    });
+    expect(sessionWorkout.exercises[0].name).toBe('Remada Máquina');
   });
 });

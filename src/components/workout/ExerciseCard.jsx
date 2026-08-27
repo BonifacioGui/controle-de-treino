@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Check,
+  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Circle,
@@ -12,7 +13,6 @@ import {
   Trophy,
   X,
 } from 'lucide-react';
-import { isSameExercise } from '../../utils/workoutUtils';
 import { parseDecimalInput, parsePositiveInteger } from '../../utils/numberUtils';
 import {
   calculateCompletedVolume,
@@ -21,23 +21,15 @@ import {
   isExerciseCompleted,
 } from '../../utils/sessionModel';
 import {
-  formatEnteredLoad,
   getLoadModeOption,
   getSetLoadMode,
   isCanonicalLoadMode,
   LOAD_MODES,
 } from '../../utils/loadModel';
 import { getMaxCompletedLoad } from '../../utils/progressionUtils';
-
-const formatPreviousSet = (set, mode, exercise) => {
-  if (!set) return null;
-  if (mode === 'duration') return set.duration ? `${set.duration} s` : null;
-  if (mode === 'distance') return set.distance ? `${set.distance} km` : null;
-  if (mode === 'bodyweight' || mode === 'reps') return set.reps ? `${set.reps} repetições` : null;
-  if (!set.weight && !set.reps) return null;
-  const loadLabel = formatEnteredLoad(set, exercise) || 'carga não informada';
-  return `${loadLabel} × ${set.reps || '—'}`;
-};
+import { getExercisePerformance } from '../../utils/performanceModel';
+import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
+import ExerciseSearchModal from './ExerciseSearchModal';
 
 const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) => {
   const parsed = parseDecimalInput(value);
@@ -86,28 +78,16 @@ const ExerciseCard = ({
   const [manualExpanded, setManualExpanded] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
+  const [showSwapSearch, setShowSwapSearch] = useState(false);
   const [swapChoice, setSwapChoice] = useState(displayName);
+  const [swapWarning, setSwapWarning] = useState('');
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [validationSet, setValidationSet] = useState(null);
   const expanded = manualExpanded ?? (isCurrent && !isDone);
 
-  const exerciseHistory = history
-    .flatMap((session) => session.exercises.map((exercise) => ({
-      ...exercise,
-      dateKey: session.dateKey,
-    })))
-    .filter((exercise) => isSameExercise(displayName, exercise.name))
-    .sort((left, right) => right.dateKey.localeCompare(left.dateKey));
-
-  const lastExercise = exerciseHistory.find((exercise) => exercise.sets?.some((set) => set.completed));
-  const previousLabel = formatPreviousSet(
-    lastExercise?.sets?.find((set) => set.completed),
-    mode,
-    { ...ex, loadMode },
-  );
-  const loadPr = isCanonicalLoadMode(loadMode)
-    ? getMaxCompletedLoad(exerciseHistory, displayName, loadMode)
-    : 0;
+  const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
+  const { lastExercise, lastSummary, pr, prRecord } = performance;
+  const loadPr = prRecord?.canonicalLoad || 0;
   const currentMaxLoad = getMaxCompletedLoad([{
     ...ex,
     name: displayName,
@@ -116,11 +96,13 @@ const ExerciseCard = ({
   }], displayName, loadMode);
   const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
   const volume = calculateCompletedVolume(exerciseProgress.sets || [], { ...ex, loadMode });
+  const hasCompletedSets = hasCompletedExerciseSets(exerciseProgress);
 
   const usePreviousValues = () => {
-    if (!lastExercise?.sets) return;
+    const previousSets = (lastExercise?.sets || []).filter((set) => set.completed === true);
+    if (previousSets.length === 0) return;
     Array.from({ length: expectedSets }).forEach((_, setIndex) => {
-      const previous = lastExercise.sets[setIndex] || lastExercise.sets[lastExercise.sets.length - 1];
+      const previous = previousSets[setIndex] || previousSets[previousSets.length - 1];
       if (!previous) return;
       ['weight', 'reps', 'duration', 'distance', 'rpe'].forEach((field) => {
         if (previous[field] !== undefined && previous[field] !== '') {
@@ -128,6 +110,20 @@ const ExerciseCard = ({
         }
       });
     });
+  };
+
+  const applySwap = (scope) => {
+    if (!swapChoice || swapChoice === displayName) {
+      setShowSwap(false);
+      return;
+    }
+    if (hasCompletedSets) {
+      setSwapWarning('Conclua este exercício com o nome atual. A troca é bloqueada após a primeira série para não misturar históricos diferentes.');
+      return;
+    }
+    onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    setSwapWarning('');
+    setShowSwap(false);
   };
 
   const isSetValid = (set) => {
@@ -194,12 +190,12 @@ const ExerciseCard = ({
         <div className="space-y-4 border-t border-border px-3 pb-4 pt-3 sm:px-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              {previousLabel ? (
-                <p className="text-xs text-muted"><span className="font-bold text-main">Anterior:</span> {previousLabel}</p>
+              {lastSummary ? (
+                <p className="text-xs leading-relaxed text-muted"><span className="font-bold text-main">Última sessão:</span> {lastSummary}</p>
               ) : (
                 <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
               )}
-              {loadPr > 0 && <p className="mt-1 text-xs font-semibold text-gold">Melhor carga canônica confirmada: {loadPr.toLocaleString('pt-BR')} kg</p>}
+              {pr && <p className="mt-1 text-xs font-semibold text-gold"><span aria-hidden="true">🏆</span> PR: {pr.primary}{pr.secondary ? <span className="ml-1 font-normal text-muted">• {pr.secondary}</span> : null}</p>}
             </div>
             {lastExercise && (
               <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
@@ -209,12 +205,6 @@ const ExerciseCard = ({
           </div>
 
           {ex.note && <p className="rounded-xl bg-input px-3 py-2 text-sm leading-relaxed text-muted">{ex.note}</p>}
-
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted">
-            <span className="font-black text-primary">Registro de carga:</span> {loadModeOption.label}.
-            {loadMode === LOAD_MODES.perSide && ` Barra configurada: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
-            {loadMode === LOAD_MODES.assisted && ' Esta carga não entra em PR ou dano de Boss.'}
-          </div>
 
           <div className="flex items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-xs font-bold text-muted">
@@ -273,22 +263,27 @@ const ExerciseCard = ({
           </div>
 
           {showAdvanced && (
-            <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row">
-              {ex.alternatives?.length > 0 && (
-                <button type="button" onClick={() => { setSwapChoice(displayName); setShowSwap(true); }} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-warning/50 px-3 text-xs font-bold text-warning hover:bg-warning/10">
+            <div className="space-y-3 border-t border-border pt-3">
+              <p className="rounded-xl bg-input px-3 py-2 text-xs text-muted">
+                <span className="font-bold text-main">Carga:</span> {loadModeOption.label}.
+                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
+                {loadMode === LOAD_MODES.assisted && ' Não entra em PR ou dano de Boss.'}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={() => { setSwapChoice(displayName); setSwapWarning(''); setShowSwap(true); }} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-warning/50 px-3 text-xs font-bold text-warning hover:bg-warning/10">
                   <RefreshCcw size={16} /> Substituir exercício
                 </button>
-              )}
-              {!confirmSkip ? (
-                <button type="button" onClick={() => setConfirmSkip(true)} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-main">
-                  <SkipForward size={16} /> {exerciseProgress.skipped ? 'Retomar exercício' : 'Pular exercício'}
-                </button>
-              ) : (
-                <div className="flex flex-1 gap-2">
-                  <button type="button" onClick={() => setConfirmSkip(false)} className="touch-target flex-1 rounded-xl border border-border text-xs font-bold">Cancelar</button>
-                  <button type="button" onClick={() => { skipExercise(id, !exerciseProgress.skipped); setConfirmSkip(false); }} className="touch-target flex-1 rounded-xl bg-warning text-xs font-black text-on-warning">Confirmar</button>
-                </div>
-              )}
+                {!confirmSkip ? (
+                  <button type="button" onClick={() => setConfirmSkip(true)} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-main">
+                    <SkipForward size={16} /> {exerciseProgress.skipped ? 'Retomar exercício' : 'Pular exercício'}
+                  </button>
+                ) : (
+                  <div className="flex flex-1 gap-2">
+                    <button type="button" onClick={() => setConfirmSkip(false)} className="touch-target flex-1 rounded-xl border border-border text-xs font-bold">Cancelar</button>
+                    <button type="button" onClick={() => { skipExercise(id, !exerciseProgress.skipped); setConfirmSkip(false); }} className="touch-target flex-1 rounded-xl bg-warning text-xs font-black text-on-warning">Confirmar</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -302,7 +297,7 @@ const ExerciseCard = ({
               <button type="button" onClick={() => setShowSwap(false)} aria-label="Fechar seletor" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
             </div>
             <div className="space-y-2">
-              {[ex.name, ...(ex.alternatives || [])].map((option) => {
+              {[...new Set([ex.name, ...(ex.alternatives || []).filter(Boolean)])].map((option) => {
                 const selected = swapChoice === option;
                 return (
                   <button
@@ -318,14 +313,25 @@ const ExerciseCard = ({
                   </button>
                 );
               })}
+              {(ex.alternatives || []).filter(Boolean).length === 0 && <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">Nenhuma alternativa foi definida para este exercício.</p>}
+              <button type="button" onClick={() => setShowSwapSearch(true)} className="touch-target w-full rounded-xl border border-primary/50 bg-primary/5 px-3 text-sm font-black text-primary">Buscar outro exercício</button>
             </div>
+            {swapWarning && <p role="alert" className="mt-4 flex gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm text-main"><AlertTriangle className="shrink-0 text-warning" size={18} /> {swapWarning}</p>}
             <p className="mt-5 text-sm text-muted">Onde deseja aplicar esta troca?</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={() => { onSwap(id, swapChoice, { scope: 'session', exerciseIndex: index }); setShowSwap(false); }} className="touch-target rounded-xl border border-primary px-3 text-sm font-black text-primary">Somente nesta sessão</button>
-              <button type="button" onClick={() => { onSwap(id, swapChoice, { scope: 'plan', exerciseIndex: index }); setShowSwap(false); }} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-on-warning">Alterar no plano</button>
+              <button type="button" onClick={() => applySwap('session')} className="touch-target rounded-xl border border-primary px-3 text-sm font-black text-primary">Somente nesta sessão</button>
+              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-on-warning">Adicionar como alternativa</button>
             </div>
           </div>
         </div>,
+        document.body,
+      )}
+
+      {showSwapSearch && createPortal(
+        <ExerciseSearchModal
+          onSelect={(exercise) => setSwapChoice(exercise)}
+          onClose={() => setShowSwapSearch(false)}
+        />,
         document.body,
       )}
     </article>

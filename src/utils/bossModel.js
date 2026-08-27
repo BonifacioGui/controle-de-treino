@@ -1,4 +1,5 @@
 import { calculateSetCanonicalVolume, getCanonicalLoad, getSetLoadMode, isCanonicalLoadMode } from './loadModel';
+import { getMaxCompletedLoad } from './progressionUtils';
 
 export const BOSS_CATALOG = Object.freeze([
   { id: 'scavenger-unit', name: 'SCAVENGER UNIT', tier: 1, rarity: 'common', assetKey: 'scavenger', aura: '#8b9bb4' },
@@ -7,8 +8,6 @@ export const BOSS_CATALOG = Object.freeze([
   { id: 'iron-titan', name: 'IRON TITAN', tier: 4, rarity: 'epic', assetKey: 'iron-titan', aura: '#d946ef' },
   { id: 'redline-warden', name: 'REDLINE WARDEN', tier: 5, rarity: 'legendary', assetKey: 'warden', aura: '#ff3d81' },
 ]);
-
-const normalizedName = (value) => String(value || '').trim().toLocaleLowerCase('pt-BR');
 
 const hashSeed = (value) => {
   let hash = 2166136261;
@@ -67,14 +66,10 @@ export const createBossEncounter = ({ sessionId, dateKey, workoutName, workout, 
 
 const getHistoricalBestLoad = (history, workoutName, exercise) => {
   const currentMode = getSetLoadMode({}, exercise);
-  return history
+  const historicalExercises = history
     .filter((entry) => entry.workoutName === workoutName)
-    .flatMap((entry) => entry.exercises || [])
-    .filter((historicExercise) => normalizedName(historicExercise.name) === normalizedName(exercise.name))
-    .filter((historicExercise) => getSetLoadMode({}, historicExercise) === currentMode)
-    .flatMap((historicExercise) => historicExercise.sets || [])
-    .filter((set) => set.completed)
-    .reduce((best, set) => Math.max(best, getCanonicalLoad(set, exercise) ?? 0), 0);
+    .flatMap((entry) => entry.exercises || []);
+  return getMaxCompletedLoad(historicalExercises, exercise.name, currentMode);
 };
 
 export const calculateWorkoutBossDamage = (exercises = [], history = [], workoutName) => {

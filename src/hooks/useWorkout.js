@@ -33,6 +33,9 @@ import { createBossEncounter, updateBossEncounter } from '../utils/bossModel';
 import {
   adjustRestTimerEndTime,
   createRestTimerState,
+  finishRestTimerState,
+  getIdleRestTimerState,
+  restoreRestTimerState,
   shouldStartRestTimer,
 } from '../utils/restTimerModel';
 import { QUEST_RULES } from '../utils/questRules';
@@ -46,6 +49,9 @@ import {
   writeUserStoredText,
 } from '../utils/storage';
 import { calculateSessionXp } from '../utils/xpModel';
+import { addExerciseAlternative, hasCompletedExerciseSets } from '../utils/substitutionModel';
+import { HAPTIC_TYPES, triggerHaptic } from '../utils/haptics';
+import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
 import { useWorkoutSession } from './useWorkoutSession';
 
 const getInitialWorkout = (data) => Object.keys(data || {})[0] || 'A';
@@ -66,7 +72,7 @@ const writeHistoryWithSchemaFallback = async (operation, entry, userId) => {
   return result;
 };
 
-export const useWorkout = (userId) => {
+export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   const {
     session,
     isHydrated: isSessionHydrated,
@@ -103,7 +109,8 @@ export const useWorkout = (userId) => {
   const [progress, setProgress] = useState({});
   const [history, setHistory] = useState([]);
   const [bodyHistory, setBodyHistory] = useState([]);
-  const [timerState, setTimerState] = useState({ active: false, endTime: null, duration: 90 });
+  const [timerState, setTimerState] = useState(getIdleRestTimerState);
+  const handledRestTimersRef = useRef(new Set());
   const historyRef = useRef(history);
   historyRef.current = history;
   const progressRef = useRef(progress);
@@ -165,7 +172,8 @@ export const useWorkout = (userId) => {
       setProgress({});
       setHistory([]);
       setBodyHistory([]);
-      setTimerState({ active: false, endTime: null, duration: 90 });
+      setTimerState(getIdleRestTimerState());
+      handledRestTimersRef.current.clear();
       setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
       setView('workout');
       setIsCloudSyncReady(false);
@@ -188,9 +196,8 @@ export const useWorkout = (userId) => {
     progressRef.current = savedProgress;
     setHistory(normalizeHistory(readUserStoredJSON(userId, STORAGE_KEYS.history, [])));
     setBodyHistory(normalizeBodyHistory(readUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, [])));
-    setTimerState(savedTimer?.endTime > Date.now()
-      ? savedTimer
-      : { active: false, endTime: null, duration: 90 });
+    setTimerState(restoreRestTimerState(savedTimer));
+    handledRestTimersRef.current.clear();
     setSelectedDate(getLocalDateKey());
     setSessionNoteState('');
     setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
@@ -278,20 +285,17 @@ export const useWorkout = (userId) => {
           ? JSON.parse(planRow.plan_data)
           : planRow.plan_data);
         setWorkoutDataState(parsedPlan);
-        const planKeys = Object.keys(parsedPlan);
         const latestSession = cloudHistory[0];
 
-        if (session.status !== SESSION_STATUS.idle && session.workoutName) {
-          setActiveDay(session.workoutName);
-          if (session.dateKey) setSelectedDate(session.dateKey);
-        } else if (latestSession && planKeys.includes(latestSession.workoutName)) {
-          const latestIndex = planKeys.indexOf(latestSession.workoutName);
-          setActiveDay(isSameLocalDay(latestSession.dateKey, getLocalDateKey())
-            ? latestSession.workoutName
-            : planKeys[(latestIndex + 1) % planKeys.length]);
-        } else {
-          setActiveDay((current) => (parsedPlan[current] ? current : (planKeys[0] || 'A')));
-        }
+        setActiveDay((current) => resolveSelectedWorkoutDay({
+          plan: parsedPlan,
+          currentDay: current,
+          sessionStatus: session.status,
+          sessionWorkoutName: session.workoutName,
+          latestSession,
+          today: getLocalDateKey(),
+        }));
+        if (session.status !== SESSION_STATUS.idle && session.dateKey) setSelectedDate(session.dateKey);
       } else if (!planRow?.plan_data && Object.keys(workoutData).length > 0 && !planSync.dirty) {
         setPlanSync(markPlanDirty);
       }
@@ -322,6 +326,32 @@ export const useWorkout = (userId) => {
     if (timerState.active) writeUserStoredJSON(userId, STORAGE_KEYS.restTimer, timerState);
     else removeUserStoredItem(userId, STORAGE_KEYS.restTimer);
   }, [isHydrated, timerState, userId]);
+
+  useEffect(() => {
+    if (!timerState.active || !timerState.endTime || !timerState.timerId) return undefined;
+    const timerId = timerState.timerId;
+    const finishIfExpired = () => {
+      if (handledRestTimersRef.current.has(timerId)) return;
+      setTimerState((current) => {
+        if (current.timerId !== timerId) return current;
+        const transition = finishRestTimerState(current);
+        if (!transition.didFinish) return current;
+        handledRestTimersRef.current.add(timerId);
+        queueMicrotask(() => triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: hapticFeedback }));
+        return transition.state;
+      });
+    };
+    const delay = Math.max(0, Number(timerState.endTime) - Date.now());
+    const timeout = window.setTimeout(finishIfExpired, delay);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') finishIfExpired();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [hapticFeedback, timerState.active, timerState.endTime, timerState.timerId]);
 
   const syncPendingWorkoutPlan = useCallback(async () => {
     if (!planSync.dirty) return;
@@ -538,9 +568,10 @@ export const useWorkout = (userId) => {
       const workout = session.workoutSnapshot || workoutData[workoutName];
       const completion = getSessionCompletion(workout, nextProgress, dateKey, workoutName);
       if (shouldStartRestTimer({ setCompleted: true, completion })) startRestTimer(restSeconds);
-      else setTimerState({ active: false, endTime: null, duration: 90 });
+      else setTimerState(getIdleRestTimerState());
+      triggerHaptic(HAPTIC_TYPES.setComplete, { enabled: hapticFeedback });
     }
-  }, [activeDay, selectedDate, session.dateKey, session.workoutName, session.workoutSnapshot, startRestTimer, workoutData]);
+  }, [activeDay, hapticFeedback, selectedDate, session.dateKey, session.workoutName, session.workoutSnapshot, startRestTimer, workoutData]);
 
   const beginSession = useCallback(() => {
     const workout = workoutData[activeDay];
@@ -621,7 +652,7 @@ export const useWorkout = (userId) => {
     const previousVolume = previousSessions[0]?.totalVolume || 0;
     const overloadStatus = previousVolume > 0 && totalVolume > previousVolume ? 'OVERLOAD' : 'MANUTENÇÃO';
 
-    const prsBroken = countLoadPrs(exercises, historyForMetrics, safeDay);
+    const prsBroken = countLoadPrs(exercises, historyForMetrics);
     const exercisesSwapped = exercises
       .filter((exercise, index) => exercise.name !== workout.exercises[index].name).length;
     const existingEntry = editTarget
@@ -714,7 +745,7 @@ export const useWorkout = (userId) => {
       Object.entries(progressRef.current).filter(([key]) => !key.startsWith(currentPrefix)),
     );
     setSessionNoteState('');
-    setTimerState({ active: false, endTime: null, duration: 90 });
+    setTimerState(getIdleRestTimerState());
     completeSession();
 
     let savedToCloud = false;
@@ -831,7 +862,7 @@ export const useWorkout = (userId) => {
     progressRef.current = nextProgress;
     setProgress(nextProgress);
     setSessionNoteState('');
-    setTimerState({ active: false, endTime: null, duration: 90 });
+    setTimerState(getIdleRestTimerState());
     resetSession();
   }, [activeDay, resetSession, selectedDate, session.dateKey, session.workoutName]);
 
@@ -871,7 +902,7 @@ export const useWorkout = (userId) => {
     setActiveDay(entry.workoutName);
     setSelectedDate(entry.dateKey);
     setSessionNoteState(entry.note || '');
-    setTimerState({ active: false, endTime: null, duration: 90 });
+    setTimerState(getIdleRestTimerState());
     reopenSession({
       sessionId: entry.sessionId,
       workoutName: entry.workoutName,
@@ -914,18 +945,21 @@ export const useWorkout = (userId) => {
       return next;
     }),
     onSwap: (id, newName, options = {}) => {
+      if (hasCompletedExerciseSets(progressRef.current[id])) return false;
       setProgress((current) => {
         const next = { ...current, [id]: { ...current[id], swappedName: newName } };
         progressRef.current = next;
         return next;
       });
-      if (options.scope === 'plan' && Number.isInteger(options.exerciseIndex)) {
+      if (options.scope === 'alternative' && Number.isInteger(options.exerciseIndex)) {
         setWorkoutData((currentPlan) => {
-          const exercises = [...(currentPlan[activeDay]?.exercises || [])];
-          exercises[options.exerciseIndex] = { ...exercises[options.exerciseIndex], name: newName };
-          return { ...currentPlan, [activeDay]: { ...currentPlan[activeDay], exercises } };
+          const workoutName = session.workoutName || activeDay;
+          const exercises = [...(currentPlan[workoutName]?.exercises || [])];
+          exercises[options.exerciseIndex] = addExerciseAlternative(exercises[options.exerciseIndex], newName);
+          return { ...currentPlan, [workoutName]: { ...currentPlan[workoutName], exercises } };
         });
       }
+      return true;
     },
     setWeight: setWeightInput,
     setWaist: setWaistInput,
@@ -936,10 +970,11 @@ export const useWorkout = (userId) => {
       setWeightInput(entry?.weight || '');
       setWaistInput(entry?.waist || '');
     },
-    closeTimer: () => setTimerState((current) => ({ ...current, active: false, endTime: null })),
+    closeTimer: () => setTimerState(getIdleRestTimerState()),
     adjustRestTimer: (seconds) => setTimerState((current) => ({
       ...current,
       active: true,
+      status: 'active',
       endTime: adjustRestTimerEndTime(current.endTime, seconds),
     })),
     fetchCloudData,
@@ -1043,6 +1078,7 @@ export const useWorkout = (userId) => {
     toggleWorkoutTimer,
     updateSetData,
     userId,
+    session.workoutName,
   ]);
 
   return {

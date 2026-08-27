@@ -1,7 +1,6 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Check,
   Cloud,
   CloudOff,
   Flame,
@@ -20,10 +19,11 @@ import LoadingScreen from '../components/shared/LoadingScreen';
 import AuthLayout from '../components/auth/AuthLayout';
 import WorkoutView from '../components/workout/WorkoutView';
 import RestTimer from '../components/workout/RestTimer';
+import WorkoutSelector from '../components/workout/WorkoutSelector';
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import { getFlameStyle } from '../utils/rpgSystem';
 import { generateDailyQuests } from '../utils/questSystem';
-import { daysBetweenLocalDates, formatLocalDate } from '../utils/dateUtils';
+import { daysBetweenLocalDates, formatDayCount, formatLocalDate } from '../utils/dateUtils';
 import { formatTime } from '../utils/workoutUtils';
 import {
   readStoredJSON,
@@ -61,12 +61,14 @@ const WorkoutApp = () => {
   const [authSession, setAuthSession] = useState(null);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const userId = authSession?.user?.id || null;
-  const { state, setters, actions, stats } = useWorkout(userId);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const initialSettings = useMemo(() => readStoredJSON(STORAGE_KEYS.settings, {}), []);
   const [theme, setTheme] = useState(() => normalizeTheme(initialSettings.theme));
   const [experienceMode, setExperienceMode] = useState(() => initialSettings.experienceMode || 'balanced');
-  const [restVibration, setRestVibration] = useState(() => initialSettings.restVibration !== false);
+  const [hapticFeedback, setHapticFeedback] = useState(() => (
+    initialSettings.hapticFeedback ?? initialSettings.restVibration ?? true
+  ));
+  const { state, setters, actions, stats } = useWorkout(userId, { hapticFeedback });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false);
@@ -116,8 +118,14 @@ const WorkoutApp = () => {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-experience', experienceMode);
     const settings = readStoredJSON(STORAGE_KEYS.settings, {});
-    writeStoredJSON(STORAGE_KEYS.settings, { ...settings, theme, experienceMode, restVibration });
-  }, [experienceMode, restVibration, theme]);
+    writeStoredJSON(STORAGE_KEYS.settings, {
+      ...settings,
+      theme,
+      experienceMode,
+      hapticFeedback,
+      restVibration: hapticFeedback,
+    });
+  }, [experienceMode, hapticFeedback, theme]);
 
   const workoutStatuses = useMemo(() => Object.fromEntries(
     Object.keys(state.workoutData || {}).map((day) => {
@@ -179,9 +187,9 @@ const WorkoutApp = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className={`flex h-11 items-center gap-1.5 rounded-xl border px-2.5 ${flameStyle.shadow}`} aria-label={`Sequência de ${stats?.streak || 0} dias`}>
+          <div className={`flex h-11 items-center gap-1.5 rounded-xl border px-2.5 ${flameStyle.shadow}`} aria-label={`Sequência de ${formatDayCount(stats?.streak || 0)}`}>
             <Flame size={18} className={flameStyle.iconClass} />
-            <span className={`whitespace-nowrap text-xs font-black ${flameStyle.color}`}>{stats?.streak || 0} dias</span>
+            <span className={`whitespace-nowrap text-xs font-black ${flameStyle.color}`}>{formatDayCount(stats?.streak || 0)}</span>
           </div>
           <button
             type="button"
@@ -199,33 +207,16 @@ const WorkoutApp = () => {
       </header>
 
       {state.view === 'workout' && state.workoutData && (
-        <nav aria-label="Treinos do plano" className="mb-4 flex gap-3 overflow-x-auto px-4 pb-3 scrollbar-hide">
-          {Object.entries(state.workoutData).map(([day, workout]) => {
-            const isActive = state.activeDay === day;
-            const locked = sessionActive && !isActive;
-            const status = workoutStatuses[day];
-            const selectWorkout = () => {
-              if (locked || isActive) return;
-              if (status?.recent) {
-                setWarningModal({ isOpen: true, day, days: status.days, dateKey: status.dateKey, userId });
-              } else setters.setActiveDay(day);
-            };
-            return (
-              <button
-                type="button"
-                key={day}
-                onClick={selectWorkout}
-                disabled={locked}
-                aria-current={isActive ? 'page' : undefined}
-                className={`relative min-h-16 min-w-[156px] shrink-0 rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-40 ${isActive ? 'border-primary bg-primary/10 text-main shadow-[0_0_18px_rgba(var(--primary),0.18)]' : 'border-border bg-card text-main'}`}
-              >
-                <span className="block text-base font-black">{workout.title || `Treino ${day}`}</span>
-                <span className="mt-1 block text-xs text-muted">{workout.focus || 'Foco geral'}</span>
-                {status?.completedOnDate && <span className="absolute right-2 top-2 flex items-center gap-1 text-[11px] font-black"><Check size={13} /> Feito</span>}
-              </button>
-            );
-          })}
-        </nav>
+        <WorkoutSelector
+          workoutData={state.workoutData}
+          activeDay={state.activeDay}
+          sessionActive={sessionActive}
+          workoutStatuses={workoutStatuses}
+          onSelect={(day, status) => {
+            if (status?.recent) setWarningModal({ isOpen: true, day, days: status.days, dateKey: status.dateKey, userId });
+            else setters.setActiveDay(day);
+          }}
+        />
       )}
 
       {sessionActive && state.view !== 'workout' && (
@@ -245,7 +236,6 @@ const WorkoutApp = () => {
               theme={theme}
               experienceMode={experienceMode}
               actions={actions}
-              setActiveDay={setters.setActiveDay}
               setSelectedDate={actions.handleDateChange}
               setSessionNote={setters.setSessionNote}
               finishWorkout={handleFinishWorkout}
@@ -331,10 +321,10 @@ const WorkoutApp = () => {
         </Suspense>
       )}
 
-      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} restVibration={restVibration} setRestVibration={setRestVibration} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
+      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} hapticFeedback={hapticFeedback} setHapticFeedback={setHapticFeedback} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
 
       {state.timerState?.active && state.timerState.endTime && (
-        <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} vibrationEnabled={restVibration} />
+        <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />
       )}
 
       {successToast && createPortal(

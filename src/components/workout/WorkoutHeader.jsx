@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Calendar,
-  ChevronDown,
-  ChevronUp,
-  Crosshair,
   Pause,
   Play,
   Timer as TimerIcon,
@@ -13,10 +10,18 @@ import {
   X,
 } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar';
-import QuestBoard from '../rpg/QuestBoard';
 import { formatLocalDate } from '../../utils/dateUtils';
 import { formatTime } from '../../utils/workoutUtils';
-import { readUserStoredJSON, STORAGE_KEYS } from '../../utils/storage';
+
+const formatWorkoutDate = (dateKey) => {
+  const label = formatLocalDate(dateKey, {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'long',
+    year: undefined,
+  });
+  return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : '';
+};
 
 const WorkoutHeader = ({
   selectedDate,
@@ -28,20 +33,8 @@ const WorkoutHeader = ({
   onAbandon,
   isTutorialDay,
   sessionActive,
-  userId,
 }) => {
   const [isAbandonModalOpen, setIsAbandonModalOpen] = useState(false);
-  const [showQuests, setShowQuests] = useState(false);
-  const [hasQuests, setHasQuests] = useState(false);
-
-  useEffect(() => {
-    const checkQuests = () => setHasQuests(userId
-      ? readUserStoredJSON(userId, STORAGE_KEYS.quests, []).length > 0
-      : false);
-    checkQuests();
-    window.addEventListener('quest_update', checkQuests);
-    return () => window.removeEventListener('quest_update', checkQuests);
-  }, [userId]);
 
   const confirmAbandon = () => {
     onAbandon();
@@ -49,41 +42,25 @@ const WorkoutHeader = ({
   };
 
   return (
-    <section className="relative z-10 overflow-hidden rounded-2xl border border-primary/30 bg-card p-4 shadow-sm">
-      <div className="relative z-10 space-y-3">
+    <section className="relative z-10 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-sm">
+      <div className="relative z-10 space-y-2">
         <button
           type="button"
           onClick={() => setIsCalendarOpen(true)}
           disabled={sessionActive}
           aria-label={`Selecionar data. Data atual: ${formatLocalDate(selectedDate)}`}
-          className="touch-target flex w-full items-center justify-between rounded-xl p-2 text-left transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+          className="touch-target flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-2 text-left transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted">Data do treino</p>
-            <p className="mt-1 text-base font-black capitalize text-main sm:text-lg">
-              <span className="sm:hidden">{formatLocalDate(selectedDate, { weekday: 'short', day: '2-digit', month: 'long', year: undefined })}</span>
-              <span className="hidden sm:inline">{formatLocalDate(selectedDate, { weekday: 'short', day: '2-digit', month: 'long' })}</span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Data do treino</p>
+            <p className="truncate text-sm font-black text-main sm:text-base">
+              {formatWorkoutDate(selectedDate)}
             </p>
           </div>
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/40 bg-input text-primary">
-            <Calendar size={20} />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/40 bg-input text-primary">
+            <Calendar size={18} />
           </span>
         </button>
-
-        {!isTutorialDay && hasQuests && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowQuests((current) => !current)}
-              aria-expanded={showQuests}
-              className="touch-target flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-3 text-sm font-bold text-primary"
-            >
-              <span className="flex items-center gap-2"><Crosshair size={16} /> Missões diárias</span>
-              {showQuests ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </button>
-            {showQuests && <div className="mt-2"><QuestBoard userId={userId} /></div>}
-          </div>
-        )}
 
         {sessionActive && !isTutorialDay && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-input p-3">

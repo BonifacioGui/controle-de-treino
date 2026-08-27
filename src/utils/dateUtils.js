@@ -90,3 +90,8 @@ export const isSameLocalDay = (left, right) => {
   const rightKey = right instanceof Date ? getLocalDateKey(right) : normalizeLocalDateKey(right);
   return Boolean(leftKey && rightKey && leftKey === rightKey);
 };
+
+export const formatDayCount = (value) => {
+  const count = Math.max(0, Number(value) || 0);
+  return `${count} ${count === 1 ? 'dia' : 'dias'}`;
+};

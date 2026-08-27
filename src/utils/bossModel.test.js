@@ -36,6 +36,23 @@ describe('BossEncounter canônico', () => {
     expect(result).toEqual({ baseDamage: 1250, criticalBonus: 130, criticalHits: 1, damage: 1380 });
   });
 
+  it('reconhece aliases canônicos no recorde usado pelo Boss', () => {
+    const result = calculateWorkoutBossDamage([{
+      name: 'Tríceps Pulley (Corda)',
+      loadMode: 'machine',
+      sets: [{ weight: 42, reps: 10, completed: true }],
+    }], [{
+      workoutName: 'A',
+      exercises: [{
+        name: 'triceps corda',
+        loadMode: 'machine',
+        sets: [{ weight: 40, reps: 10, completed: true }],
+      }],
+    }], 'A');
+
+    expect(result).toMatchObject({ criticalHits: 1, baseDamage: 420, criticalBonus: 84 });
+  });
+
   it('recalcula dano, derrota e overkill sem acumular eventos duplicados', () => {
     const encounter = { ...createBossEncounter({ sessionId: 's1', dateKey: '2026-08-26', workoutName: 'A', workout, history: [] }), maxHp: 500 };
     const exercises = [{ name: 'Supino', loadMode: 'total', sets: [{ weight: 60, reps: 10, completed: true }] }];
@@ -45,4 +62,3 @@ describe('BossEncounter canônico', () => {
     expect(second).toMatchObject({ damage: 500, defeated: true, remainingHp: 0, overkill: 0 });
   });
 });
-

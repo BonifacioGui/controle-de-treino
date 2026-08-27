@@ -1,7 +1,7 @@
 import { formatLocalDate, normalizeLocalDateKey } from './dateUtils';
-import { parseDecimalInput } from './numberUtils';
+import { parseDecimalInput, parsePositiveInteger } from './numberUtils';
 import { calculateSessionXp } from './xpModel';
-import { inferLegacyLoadMode, normalizeLoadMode } from './loadModel';
+import { getSetLoadMode, inferLegacyLoadMode, LOAD_MODES, normalizeLoadMode } from './loadModel';
 
 const makeLocalId = () => globalThis.crypto?.randomUUID?.()
   || `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -18,19 +18,50 @@ export const normalizeWorkoutSet = (set = {}) => ({
   barWeight: set.barWeight ?? null,
 });
 
+const hasCompletionFlag = (set) => ['completed', 'done', 'checked'].some(
+  (key) => Object.prototype.hasOwnProperty.call(set || {}, key),
+);
+
+export const isValidLegacyHistorySet = (set = {}, exercise = {}) => {
+  if (hasCompletionFlag(set)) return set.completed === true || set.done === true || set.checked === true;
+  const mode = getSetLoadMode(set, exercise);
+  if (mode === LOAD_MODES.duration) return (parseDecimalInput(set.duration) ?? 0) > 0;
+  if (mode === LOAD_MODES.distance) return (parseDecimalInput(set.distance) ?? 0) > 0;
+  if ([LOAD_MODES.bodyweight, LOAD_MODES.repsOnly].includes(mode)) return parsePositiveInteger(set.reps) !== null;
+  return parseDecimalInput(set.weight) !== null && parsePositiveInteger(set.reps) !== null;
+};
+
+export const normalizeHistoricalWorkoutSet = (set = {}, exercise = {}) => ({
+  ...normalizeWorkoutSet(set),
+  completed: isValidLegacyHistorySet(set, exercise),
+});
+
+const inferHistoricalExerciseLoadMode = (exercise = {}) => {
+  if (exercise.loadMode || exercise.mode) return normalizeLoadMode(exercise.loadMode || exercise.mode);
+  const representativeSet = (exercise.sets || []).find((set) => (
+    set?.loadMode || (set?.weight !== undefined && set?.weight !== null && set?.weight !== '')
+  ));
+  return representativeSet
+    ? getSetLoadMode(representativeSet, { ...exercise, loadMode: undefined, mode: undefined })
+    : inferLegacyLoadMode(exercise);
+};
+
 export const normalizeHistoryEntry = (entry = {}) => {
   const dateKey = normalizeLocalDateKey(entry.dateKey || entry.workout_date || entry.date);
   const workoutName = String(entry.workoutName || entry.workout_name || entry.dayName || entry.title || 'Treino');
   const exercises = Array.isArray(entry.exercises)
     ? entry.exercises.map((exercise) => {
-        const loadMode = normalizeLoadMode(exercise?.loadMode || inferLegacyLoadMode(exercise));
+        const loadMode = inferHistoricalExerciseLoadMode(exercise);
         return {
           ...exercise,
           name: String(exercise?.name || 'Exercício'),
           loadMode,
           barWeight: exercise?.barWeight ?? null,
           sets: Array.isArray(exercise?.sets)
-            ? exercise.sets.map((set) => ({ ...normalizeWorkoutSet(set), loadMode: set?.loadMode || loadMode }))
+            ? exercise.sets.map((set) => ({
+                ...normalizeHistoricalWorkoutSet(set, { ...exercise, loadMode }),
+                loadMode: set?.loadMode || loadMode,
+              }))
             : [],
           skipped: exercise?.skipped === true,
         };

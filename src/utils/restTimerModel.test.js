@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   adjustRestTimerEndTime,
+  createRestTimerState,
+  finishRestTimerState,
   getRestSecondsRemaining,
+  restoreRestTimerState,
   shouldStartRestTimer,
 } from './restTimerModel';
 
@@ -19,5 +22,18 @@ describe('temporizador de descanso', () => {
     expect(shouldStartRestTimer({ setCompleted: true, completion: { incompleteSets: 2 } })).toBe(true);
     expect(shouldStartRestTimer({ setCompleted: false, completion: { incompleteSets: 2 } })).toBe(false);
   });
-});
 
+  it('produz a transição REST_FINISHED uma única vez', () => {
+    const active = createRestTimerState(30, 1_000);
+    expect(finishRestTimerState(active, 30_999).didFinish).toBe(false);
+    const finished = finishRestTimerState(active, 31_000);
+    expect(finished).toMatchObject({ didFinish: true, state: { active: false, status: 'finished', finishedAt: 31_000 } });
+    expect(finishRestTimerState(finished.state, 32_000).didFinish).toBe(false);
+  });
+
+  it('não reabre nem refaz o alerta de um timer expirado após reload', () => {
+    const active = createRestTimerState(30, 1_000);
+    expect(restoreRestTimerState(active, 31_000)).toMatchObject({ active: false, status: 'idle' });
+    expect(restoreRestTimerState(active, 30_000)).toMatchObject({ active: true, status: 'active', timerId: active.timerId });
+  });
+});
