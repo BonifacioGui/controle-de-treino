@@ -35,10 +35,13 @@ VITE_SUPABASE_ANON_KEY=sua-chave-publica
 ```bash
 npm run lint
 npm test
+npm run test:theme-parity
 npm run build
 ```
 
 O build de produção é gerado em `dist/`.
+
+Mudanças visuais só são concluídas após validação em DARK e LIGHT. A matriz de componentes, fixtures e critérios está em [`docs/THEME_PARITY.md`](docs/THEME_PARITY.md).
 
 ## Migrações do Supabase
 

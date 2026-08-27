@@ -12,6 +12,7 @@ import ManageView from '../components/admin/ManageView';
 import Importer from '../components/admin/Importer';
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import { SESSION_STATUS } from '../utils/sessionModel';
+import { UI_PREVIEW_SCREENS } from './themeParityMatrix';
 
 const dateKey = '2026-08-26';
 const workout = {
@@ -101,7 +102,8 @@ const actions = {
 const UiPreviewApp = () => {
   const [restEndTime] = useState(() => Date.now() + 72000);
   const params = new URLSearchParams(window.location.search);
-  const screen = params.get('ui-preview') || 'pre';
+  const requestedScreen = params.get('ui-preview') || 'pre';
+  const screen = UI_PREVIEW_SCREENS.includes(requestedScreen) ? requestedScreen : 'pre';
   const theme = params.get('theme') === 'light' ? 'light' : 'dark';
   const experienceMode = ['immersive', 'discreet'].includes(params.get('experience')) ? params.get('experience') : 'balanced';
   const active = screen === 'active' || screen === 'rest';
