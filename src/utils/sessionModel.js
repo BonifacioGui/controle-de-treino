@@ -5,6 +5,18 @@ import {
   LOAD_MODES,
 } from './loadModel';
 
+export const MAX_SETS_PER_EXERCISE = 30;
+
+const clampSetCount = (value) => Math.min(value, MAX_SETS_PER_EXERCISE);
+
+export const normalizeSessionSetCountInput = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  const parsed = Number(digits);
+  if (!Number.isSafeInteger(parsed)) return String(MAX_SETS_PER_EXERCISE);
+  return String(clampSetCount(Math.max(1, parsed)));
+};
+
 export const SESSION_STATUS = Object.freeze({
   idle: 'idle',
   active: 'active',
@@ -25,19 +37,28 @@ export const getExerciseMode = (exercise = {}) => {
 
 export const getExpectedSetCount = (exercise = {}, actualSets) => {
   const override = parsePositiveInteger(actualSets);
-  if (override) return override;
+  if (override) return clampSetCount(override);
   const prescription = String(exercise.sets || '').trim();
   const match = prescription.match(/^(\d+)\s*[xX×]/);
-  if (match) return Number(match[1]);
+  if (match) {
+    const prescribed = Number(match[1]);
+    if (Number.isFinite(prescribed) && prescribed > 0) return clampSetCount(prescribed);
+  }
   return 1;
 };
 
 export const isSetCompleted = (set) => set?.completed === true;
 
+export const getActiveSessionSets = (exercise = {}, exerciseProgress = {}) => {
+  const expected = getExpectedSetCount(exercise, exerciseProgress.actualSets);
+  const sets = Array.isArray(exerciseProgress.sets) ? exerciseProgress.sets : [];
+  return sets.slice(0, expected);
+};
+
 export const isExerciseCompleted = (exercise, exerciseProgress = {}) => {
   if (exerciseProgress.skipped === true) return true;
   const expected = getExpectedSetCount(exercise, exerciseProgress.actualSets);
-  const completed = (exerciseProgress.sets || []).slice(0, expected).filter(isSetCompleted).length;
+  const completed = getActiveSessionSets(exercise, exerciseProgress).filter(isSetCompleted).length;
   return expected > 0 && completed === expected;
 };
 
@@ -47,7 +68,7 @@ export const getSessionCompletion = (workout, progress, dateKey, workoutName) =>
     const id = `${dateKey}-${workoutName}-${index}`;
     const exerciseProgress = progress?.[id] || {};
     const expected = getExpectedSetCount(exercise, exerciseProgress.actualSets);
-    const completed = (exerciseProgress.sets || []).slice(0, expected).filter(isSetCompleted).length;
+    const completed = getActiveSessionSets(exercise, exerciseProgress).filter(isSetCompleted).length;
     const skipped = exerciseProgress.skipped === true;
     return {
       totalSets: summary.totalSets + expected,
@@ -78,17 +99,18 @@ export const buildSessionExercises = (workout, progress, dateKey, workoutName) =
     const exerciseProgress = progress?.[id] || {};
     const loadMode = getSetLoadMode({}, exercise);
     const performedName = exerciseProgress.swappedName || exercise.name;
+    const expectedSets = getExpectedSetCount(exercise, exerciseProgress.actualSets);
     return {
       name: performedName,
       plannedName: exercise.name,
       performedName,
-      sets: (exerciseProgress.sets || []).map((set) => ({
+      sets: getActiveSessionSets(exercise, exerciseProgress).map((set) => ({
         ...set,
         loadMode: set.loadMode || loadMode,
         barWeight: set.barWeight ?? exercise.barWeight ?? null,
       })),
       skipped: exerciseProgress.skipped === true,
-      actualSets: exerciseProgress.actualSets || exercise.sets,
+      actualSets: expectedSets,
       loadMode,
       barWeight: exercise.barWeight ?? null,
     };

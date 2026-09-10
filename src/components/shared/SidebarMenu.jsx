@@ -17,7 +17,7 @@ import {
 import { supabase } from '../../services/supabaseClient';
 import { getLocalDateKey } from '../../utils/dateUtils';
 import { getSoloBackup } from '../../utils/storage';
-import { HAPTIC_TYPES, triggerHaptic } from '../../utils/haptics';
+import { getHapticTestMessage, HAPTIC_TYPES, triggerHaptic } from '../../utils/haptics';
 
 const EXPERIENCE_OPTIONS = [
   {
@@ -85,9 +85,7 @@ const SidebarMenu = ({
 
   const testHaptic = () => {
     const result = triggerHaptic(HAPTIC_TYPES.setComplete);
-    setHapticStatus(!result.supported
-      ? 'Vibração não disponível neste navegador ou dispositivo.'
-      : result.triggered ? 'Pulso de teste enviado.' : 'O dispositivo não executou a vibração.');
+    setHapticStatus(getHapticTestMessage(result));
   };
 
   if (!isOpen) return null;
@@ -128,7 +126,7 @@ const SidebarMenu = ({
               <span className="flex items-center gap-2"><Vibrate size={18} className="text-primary" /> Feedback háptico</span>
               <input type="checkbox" checked={hapticFeedback} onChange={(event) => setHapticFeedback(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
             </label>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Pulso curto ao concluir série e alerta distinto no fim do descanso.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Pulso curto ao concluir série e alerta distinto no fim do descanso. O alerta requer o app aberto e visível e depende do navegador e do hardware do celular.</p>
             <button type="button" onClick={testHaptic} className="mt-3 min-h-10 w-full rounded-lg border border-primary/40 text-xs font-black text-primary">Testar vibração</button>
             {hapticStatus && <p role="status" className="mt-2 text-xs text-muted">{hapticStatus}</p>}
           </div>

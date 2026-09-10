@@ -16,9 +16,12 @@ import {
 import { parseDecimalInput, parsePositiveInteger } from '../../utils/numberUtils';
 import {
   calculateCompletedVolume,
+  getActiveSessionSets,
   getExerciseMode,
   getExpectedSetCount,
   isExerciseCompleted,
+  MAX_SETS_PER_EXERCISE,
+  normalizeSessionSetCountInput,
 } from '../../utils/sessionModel';
 import {
   getLoadModeOption,
@@ -72,8 +75,8 @@ const ExerciseCard = ({
   const loadMode = getSetLoadMode({}, ex);
   const loadModeOption = getLoadModeOption(loadMode);
   const expectedSets = getExpectedSetCount(ex, exerciseProgress.actualSets);
-  const completedSets = (exerciseProgress.sets || []).slice(0, expectedSets)
-    .filter((set) => set.completed).length;
+  const activeSets = getActiveSessionSets(ex, exerciseProgress);
+  const completedSets = activeSets.filter((set) => set.completed).length;
   const isDone = isExerciseCompleted(ex, exerciseProgress);
   const [manualExpanded, setManualExpanded] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -92,10 +95,10 @@ const ExerciseCard = ({
     ...ex,
     name: displayName,
     loadMode,
-    sets: exerciseProgress.sets || [],
+    sets: activeSets,
   }], displayName, loadMode);
   const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
-  const volume = calculateCompletedVolume(exerciseProgress.sets || [], { ...ex, loadMode });
+  const volume = calculateCompletedVolume(activeSets, { ...ex, loadMode });
   const hasCompletedSets = hasCompletedExerciseSets(exerciseProgress);
 
   const usePreviousValues = () => {
@@ -212,10 +215,18 @@ const ExerciseCard = ({
               <input
                 type="text"
                 inputMode="numeric"
-                aria-label="Quantidade de séries"
+                pattern="[0-9]*"
+                maxLength={2}
+                aria-label={`Quantidade de séries, de 1 a ${MAX_SETS_PER_EXERCISE}`}
+                title={`Entre 1 e ${MAX_SETS_PER_EXERCISE} séries`}
                 className="h-11 w-14 rounded-xl border border-border bg-input text-center text-base font-black text-main focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                value={exerciseProgress.actualSets || expectedSets}
-                onChange={(event) => updateSessionSets(id, event.target.value)}
+                value={exerciseProgress.actualSets ?? expectedSets}
+                onChange={(event) => updateSessionSets(id, normalizeSessionSetCountInput(event.target.value))}
+                onBlur={(event) => {
+                  if (normalizeSessionSetCountInput(event.target.value) === '') {
+                    updateSessionSets(id, String(expectedSets));
+                  }
+                }}
               />
             </label>
             <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-primary">

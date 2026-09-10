@@ -35,6 +35,7 @@ import {
   createRestTimerState,
   finishRestTimerState,
   getIdleRestTimerState,
+  REST_TIMER_STATUS,
   restoreRestTimerState,
   shouldStartRestTimer,
 } from '../utils/restTimerModel';
@@ -51,7 +52,13 @@ import {
 import { calculateSessionXp } from '../utils/xpModel';
 import { classifyVolumeProgress, findPreviousComparableVolume } from '../utils/overloadModel';
 import { addExerciseAlternative, hasCompletedExerciseSets } from '../utils/substitutionModel';
-import { HAPTIC_TYPES, triggerHaptic } from '../utils/haptics';
+import {
+  claimHapticAttempt,
+  getHapticDelivery,
+  HAPTIC_DELIVERY,
+  HAPTIC_TYPES,
+  triggerHaptic,
+} from '../utils/haptics';
 import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
 import { useWorkoutSession } from './useWorkoutSession';
 
@@ -112,6 +119,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   const [bodyHistory, setBodyHistory] = useState([]);
   const [timerState, setTimerState] = useState(getIdleRestTimerState);
   const handledRestTimersRef = useRef(new Set());
+  const pendingRestHapticRef = useRef(null);
+  const attemptedRestHapticsRef = useRef(new Set());
+  const hapticFeedbackRef = useRef(hapticFeedback);
+  hapticFeedbackRef.current = hapticFeedback;
   const historyRef = useRef(history);
   historyRef.current = history;
   const progressRef = useRef(progress);
@@ -175,6 +186,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       setBodyHistory([]);
       setTimerState(getIdleRestTimerState());
       handledRestTimersRef.current.clear();
+      pendingRestHapticRef.current = null;
+      attemptedRestHapticsRef.current.clear();
       setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
       setView('workout');
       setIsCloudSyncReady(false);
@@ -199,6 +212,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     setBodyHistory(normalizeBodyHistory(readUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, [])));
     setTimerState(restoreRestTimerState(savedTimer));
     handledRestTimersRef.current.clear();
+    pendingRestHapticRef.current = null;
+    attemptedRestHapticsRef.current.clear();
     setSelectedDate(getLocalDateKey());
     setSessionNoteState('');
     setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
@@ -329,6 +344,44 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, [isHydrated, timerState, userId]);
 
   useEffect(() => {
+    const deliverPendingRestHaptic = () => {
+      if (document.visibilityState !== 'visible') return;
+      const timerId = pendingRestHapticRef.current;
+      if (!timerId) return;
+
+      pendingRestHapticRef.current = null;
+      if (!claimHapticAttempt(attemptedRestHapticsRef.current, timerId)) return;
+      triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: hapticFeedbackRef.current });
+    };
+
+    document.addEventListener('visibilitychange', deliverPendingRestHaptic);
+    return () => document.removeEventListener('visibilitychange', deliverPendingRestHaptic);
+  }, []);
+
+  useEffect(() => {
+    const timerId = timerState.timerId;
+    if (!isHydrated
+      || timerState.status !== REST_TIMER_STATUS.finished
+      || !timerId
+      || attemptedRestHapticsRef.current.has(timerId)) return;
+
+    const delivery = getHapticDelivery({
+      enabled: hapticFeedbackRef.current,
+      visibilityState: document.visibilityState,
+    });
+    if (delivery === HAPTIC_DELIVERY.whenVisible) {
+      pendingRestHapticRef.current = timerId;
+      return;
+    }
+
+    pendingRestHapticRef.current = null;
+    if (!claimHapticAttempt(attemptedRestHapticsRef.current, timerId)) return;
+    if (delivery === HAPTIC_DELIVERY.now) {
+      triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: true });
+    }
+  }, [isHydrated, timerState.status, timerState.timerId]);
+
+  useEffect(() => {
     if (!timerState.active || !timerState.endTime || !timerState.timerId) return undefined;
     const timerId = timerState.timerId;
     const finishIfExpired = () => {
@@ -338,7 +391,6 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
         const transition = finishRestTimerState(current);
         if (!transition.didFinish) return current;
         handledRestTimersRef.current.add(timerId);
-        queueMicrotask(() => triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: hapticFeedback }));
         return transition.state;
       });
     };
@@ -352,7 +404,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [hapticFeedback, timerState.active, timerState.endTime, timerState.timerId]);
+  }, [timerState.active, timerState.endTime, timerState.timerId]);
 
   const syncPendingWorkoutPlan = useCallback(async () => {
     if (!planSync.dirty) return;

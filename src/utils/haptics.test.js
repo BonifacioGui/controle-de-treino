@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HAPTIC_TYPES, triggerHaptic } from './haptics';
+import {
+  claimHapticAttempt,
+  getHapticDelivery,
+  getHapticTestMessage,
+  HAPTIC_DELIVERY,
+  HAPTIC_TYPES,
+  triggerHaptic,
+} from './haptics';
 
 describe('feedback háptico centralizado', () => {
   it('diferencia confirmação de série e fim de descanso', () => {
@@ -21,5 +28,25 @@ describe('feedback háptico centralizado', () => {
     expect(() => triggerHaptic(HAPTIC_TYPES.setComplete, {
       navigatorObject: { vibrate: () => { throw new Error('indisponível'); } },
     })).not.toThrow();
+  });
+
+  it('não confunde comando aceito com confirmação física da vibração', () => {
+    expect(getHapticTestMessage({ supported: false, triggered: false })).toContain('não disponível');
+    expect(getHapticTestMessage({ supported: true, triggered: false })).toContain('recusou');
+    expect(getHapticTestMessage({ supported: true, triggered: true })).toContain('Se não sentiu');
+  });
+
+  it('adia o alerta enquanto a página está oculta e ignora quando a preferência está desligada', () => {
+    expect(getHapticDelivery({ enabled: true, visibilityState: 'hidden' })).toBe(HAPTIC_DELIVERY.whenVisible);
+    expect(getHapticDelivery({ enabled: true, visibilityState: 'visible' })).toBe(HAPTIC_DELIVERY.now);
+    expect(getHapticDelivery({ enabled: false, visibilityState: 'visible' })).toBe(HAPTIC_DELIVERY.skip);
+    expect(getHapticDelivery({ enabled: false, visibilityState: 'hidden' })).toBe(HAPTIC_DELIVERY.skip);
+  });
+
+  it('permite apenas uma tentativa por término de descanso', () => {
+    const attemptedIds = new Set();
+    expect(claimHapticAttempt(attemptedIds, 'rest-1')).toBe(true);
+    expect(claimHapticAttempt(attemptedIds, 'rest-1')).toBe(false);
+    expect(claimHapticAttempt(attemptedIds, 'rest-2')).toBe(true);
   });
 });
