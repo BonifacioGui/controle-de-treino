@@ -5,6 +5,11 @@ import { supabase } from '../../services/supabaseClient';
 import { calculateStats } from '../../utils/rpgSystem';
 import { daysBetweenLocalDates, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
 import { parseDecimalInput } from '../../utils/numberUtils';
+import {
+  calculateBmi,
+  calculateWaistHipRatio,
+  formatBiometricValue,
+} from '../../utils/biometricsModel';
 import { readUserStoredText, STORAGE_KEYS, writeUserStoredText } from '../../utils/storage';
 
 // Importando o exército de componentes que criamos:
@@ -45,28 +50,9 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
   const latestBio = sortedBody[0] || null;
 
   // ================= LÓGICA E CÁLCULOS =================
-  const getBfColorClass = (bfString, isFemale = false) => {
-    if (!bfString || bfString === '--') return 'text-warning';
-    const bf = parseFloat(bfString);
-    if (isNaN(bf)) return 'text-warning';
-    if (isFemale) {
-      if (bf <= 14) return 'text-secondary';
-      if (bf <= 24) return 'text-success';
-      if (bf <= 31) return 'text-warning';
-      return 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]';
-    } else {
-      if (bf <= 5) return 'text-secondary';
-      if (bf <= 17) return 'text-success';
-      if (bf <= 24) return 'text-warning';
-      return 'text-red-500 dark:text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]';
-    }
-  };
-
-  const bfColorClass = getBfColorClass(latestBio?.bf);
-
   const calculatedLeanMass = useMemo(() => {
     const w = parseDecimalInput(bioWeight); const bf = parseDecimalInput(bioBf);
-    if (w > 0 && bf >= 0) return (w - (w * (bf / 100))).toFixed(1);
+    if (w > 0 && bf !== null && bf >= 0) return (w - (w * (bf / 100))).toFixed(1);
     return '--';
   }, [bioWeight, bioBf]);
 
@@ -97,7 +83,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
 
   const maxStat = Math.max(10, ...radarData.map(d => d.A));
 
-  const { age, imcClassification, rcq, rcqClass, currentWeight, goalProgress, isGoalMet } = useMemo(() => {
+  const { age, imc, rcq, currentWeight, goalProgress, isGoalMet } = useMemo(() => {
     const sm = userMetadata || {};
     let cAge = '--';
     if (sm.birthdate) {
@@ -106,32 +92,26 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
       if (td.getMonth() < bD.getMonth() || (td.getMonth() === bD.getMonth() && td.getDate() < bD.getDate())) cAge--;
     }
     let wToUse = stats?.latest?.weight && stats.latest.weight !== '--' ? stats.latest.weight : sm.starting_weight;
-    let clazz = 'Sem Dados';
-    const w = parseFloat(wToUse); const h = parseFloat(sm.height) / 100;
-    if (w && h) {
-      const iV = w / (h * h);
-      if (iV < 18.5) clazz = 'Abaixo do Peso'; else if (iV < 24.9) clazz = 'Peso Normal'; else if (iV < 29.9) clazz = 'Sobrepeso'; else clazz = 'Combate Pesado';
-    }
-    let cRcq = '--'; let rcqC = 'Sem Dados';
-    if (latestBio?.waist && latestBio?.hip) {
-      const ratio = parseFloat(latestBio.waist) / parseFloat(latestBio.hip); cRcq = ratio.toFixed(2);
-      if (ratio <= 0.95) rcqC = 'Risco Baixo'; else if (ratio <= 1.0) rcqC = 'Risco Moderado'; else rcqC = 'Risco Alto';
-    }
+    const w = parseDecimalInput(wToUse);
+    const cImc = formatBiometricValue(calculateBmi(w, sm.height), 1);
+    const cRcq = formatBiometricValue(calculateWaistHipRatio(latestBio?.waist, latestBio?.hip), 2);
     let prog = null; let gMet = false;
     if (sm.target_weight && w) {
       const target = parseFloat(sm.target_weight); const start = parseFloat(sm.starting_weight) || (target > w ? w - 10 : w + 10); 
       if (target === w) { prog = 100; gMet = true; } 
       else { prog = Math.max(0, Math.min(100, ((Math.abs(start - target) - Math.abs(w - target)) / Math.abs(start - target)) * 100)).toFixed(0); }
     }
-    return { age: cAge, imcClassification: clazz, rcq: cRcq, rcqClass: rcqC, currentWeight: wToUse || '--', goalProgress: prog, isGoalMet: gMet };
+    return { age: cAge, imc: cImc, rcq: cRcq, currentWeight: wToUse || '--', goalProgress: prog, isGoalMet: gMet };
   }, [userMetadata, stats, latestBio]);
 
   const displayClass = { hypertrophy: 'Titã (Força Bruta)', weight_loss: 'Sombra (Definição)', endurance: 'Nômade (Resistência)' }[userMetadata?.goal] || 'Ciborgue';
 
   const donutData = useMemo(() => {
-    if (latestBio?.weight && latestBio?.bf) {
-      const w = parseFloat(latestBio.weight); const fat = w * (parseFloat(latestBio.bf) / 100);
-      return [ { name: 'Massa Magra', value: parseFloat((w - fat).toFixed(1)), color: 'rgb(var(--success))' }, { name: 'Massa Gorda', value: parseFloat(fat.toFixed(1)), color: 'rgb(var(--warning))' } ];
+    const w = parseDecimalInput(latestBio?.weight);
+    const bf = parseDecimalInput(latestBio?.bf);
+    if (w > 0 && bf !== null && bf >= 0) {
+      const fat = w * (bf / 100);
+      return [ { name: 'Massa Magra', value: parseFloat((w - fat).toFixed(1)), color: 'rgb(var(--primary))' }, { name: 'Massa Gorda', value: parseFloat(fat.toFixed(1)), color: 'rgb(var(--secondary))' } ];
     }
     return null;
   }, [latestBio]);
@@ -246,7 +226,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         const payload = {
           user_id: session.user.id, date: bioDate, weight: parseDecimalInput(bioWeight), bf: parseDecimalInput(bioBf), lean_mass: calculatedLeanMass !== '--' ? parseDecimalInput(calculatedLeanMass) : null, waist: parseDecimalInput(bioWaist), abdomen: parseDecimalInput(bioAbdomen), hip: parseDecimalInput(bioHip), chest: parseDecimalInput(bioChest), shoulder: parseDecimalInput(bioShoulder), arm_left: parseDecimalInput(bioArmL), arm_right: parseDecimalInput(bioArmR), leg_left: parseDecimalInput(bioLegL), leg_right: parseDecimalInput(bioLegR), calf_left: parseDecimalInput(bioCalfL), calf_right: parseDecimalInput(bioCalfR), note: bioNote.trim() || null
         };
-        const { error } = await supabase.from('body_stats').upsert(payload, { onConflict: 'unique_user_date' });
+        const { error } = await supabase.from('body_stats').upsert(payload, { onConflict: 'user_id,date' });
         if (error) throw error;
         window.location.reload(); 
       }
@@ -270,8 +250,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
 
       <BiometricsDashboard 
         age={age} currentWeight={currentWeight} latestBio={latestBio}
-        imcClassification={imcClassification} rcq={rcq} rcqClass={rcqClass} 
-        bfColorClass={bfColorClass} donutData={donutData} 
+        imc={imc} rcq={rcq} donutData={donutData}
       />
 
       <BodyScanner 
@@ -282,7 +261,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         bioArmL={bioArmL} setBioArmL={setBioArmL} bioArmR={bioArmR} setBioArmR={setBioArmR} bioLegL={bioLegL} setBioLegL={setBioLegL} bioLegR={bioLegR} setBioLegR={setBioLegR}
         bioCalfL={bioCalfL} setBioCalfL={setBioCalfL} bioCalfR={bioCalfR} setBioCalfR={setBioCalfR} bioNote={bioNote} setBioNote={setBioNote}
         handleSaveBiometrics={handleSaveBiometrics} isSavingBio={isSavingBio} sortedBody={sortedBody} 
-        handleEditBio={handleEditBio} requestDelete={requestDelete} getBfColorClass={getBfColorClass}
+        handleEditBio={handleEditBio} requestDelete={requestDelete}
       />
 
       <TacticalRadar radarData={radarData} maxStat={maxStat} />

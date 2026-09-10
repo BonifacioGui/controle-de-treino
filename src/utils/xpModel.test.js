@@ -10,6 +10,10 @@ describe('XP oficial da sessão', () => {
     expect(calculateSessionXp({ earnedXp: 777, totalVolume: 1, overloadStatus: 'NORMAL' })).toBe(777);
   });
 
+  it.each(['MANUTENÇÃO', 'REDUÇÃO', 'NORMAL'])('não aplica multiplicador de overload para %s', (overloadStatus) => {
+    expect(calculateSessionXp({ totalVolume: 10_000, bonusXp: 40, overloadStatus })).toBe(540);
+  });
+
   it('calcula o volume pelas séries concluídas quando o total não existe', () => {
     expect(calculateSessionXp({ exercises: [{ sets: [
       { weight: 100, reps: 10, completed: true },

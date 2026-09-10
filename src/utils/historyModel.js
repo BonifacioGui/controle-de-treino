@@ -2,6 +2,7 @@ import { formatLocalDate, normalizeLocalDateKey } from './dateUtils';
 import { parseDecimalInput, parsePositiveInteger } from './numberUtils';
 import { calculateSessionXp } from './xpModel';
 import { getSetLoadMode, inferLegacyLoadMode, LOAD_MODES, normalizeLoadMode } from './loadModel';
+import { normalizeOverloadStatus } from './overloadModel';
 
 const makeLocalId = () => globalThis.crypto?.randomUUID?.()
   || `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -92,7 +93,7 @@ export const normalizeHistoryEntry = (entry = {}) => {
     hasNote: entry.hasNote ?? entry.has_note ?? Boolean(entry.note),
     exercisesSwapped: Number(entry.exercisesSwapped ?? entry.exercises_swapped) || 0,
     prsBroken: Number(entry.prsBroken ?? entry.prs_broken) || 0,
-    overloadStatus: entry.overloadStatus ?? entry.overload_status ?? 'NORMAL',
+    overloadStatus: normalizeOverloadStatus(entry.overloadStatus ?? entry.overload_status),
     partial,
     localRevision: Number(entry.localRevision) || 0,
     syncStatus,

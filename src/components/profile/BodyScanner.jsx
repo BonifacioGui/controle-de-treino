@@ -28,7 +28,7 @@ const BodyScanner = ({
   bioCalfR, setBioCalfR,
   bioNote, setBioNote,
   handleSaveBiometrics, isSavingBio,
-  sortedBody, handleEditBio, requestDelete, getBfColorClass
+  sortedBody, handleEditBio, requestDelete
 }) => {
 
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
@@ -39,16 +39,6 @@ const BodyScanner = ({
   const recentHistory = sortedBody.slice(0, RECENT_LIMIT);
   const olderHistoryCount = sortedBody.length - RECENT_LIMIT;
 
-  const getBfStatusText = (bfValue) => {
-    if (!bfValue || bfValue === '--') return '';
-    const val = parseFloat(bfValue);
-    if (isNaN(val)) return '';
-    if (val < 10) return 'ATLETA';
-    if (val <= 17) return 'FITNESS';
-    if (val <= 24) return 'MODERADO';
-    return 'ALTO';
-  };
-
   const ExpandedStats = ({ b, isCard }) => (
     <div className={`p-4 bg-black/5 dark:bg-black/20 border-t border-border animate-in slide-in-from-top-2 duration-200 ${isCard ? 'rounded-b-2xl' : ''}`}>
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -56,8 +46,8 @@ const BodyScanner = ({
            <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Cintura</span>
            <span className="text-xs font-black text-main dark:text-white">{b.waist || '--'}cm</span>
          </div>
-         <div className="flex flex-col items-center p-2 bg-warning/10 rounded-lg border border-warning/20">
-           <span className="text-[8px] text-warning uppercase font-bold tracking-widest">Abdome</span>
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Abdome</span>
            <span className="text-xs font-black text-main dark:text-white">{b.abdomen || '--'}cm</span>
          </div>
       </div>
@@ -140,11 +130,11 @@ const BodyScanner = ({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG)*</label>
-                <input type="text" inputMode="decimal" placeholder="80.5" value={bioWeight} onChange={(e) => setBioWeight(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-success outline-none focus:border-success transition-colors" />
+                <input type="text" inputMode="decimal" placeholder="80.5" value={bioWeight} onChange={(e) => setBioWeight(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main outline-none focus:border-primary transition-colors" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">BF (%)</label>
-                <input type="text" inputMode="decimal" placeholder="15.0" value={bioBf} onChange={(e) => setBioBf(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-warning outline-none focus:border-warning transition-colors" />
+                <input type="text" inputMode="decimal" placeholder="15.0" value={bioBf} onChange={(e) => setBioBf(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main outline-none focus:border-primary transition-colors" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">Massa Magra</label>
@@ -163,8 +153,8 @@ const BodyScanner = ({
                 <input type="text" inputMode="decimal" placeholder="00.0" value={bioWaist} onChange={(e) => setBioWaist(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-primary" />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-warning uppercase tracking-widest mb-1 block text-center">Abdome</label>
-                <input type="text" inputMode="decimal" placeholder="00.0" value={bioAbdomen} onChange={(e) => setBioAbdomen(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-warning" />
+                <label className="text-[8px] font-bold text-muted uppercase tracking-widest mb-1 block text-center">Abdome</label>
+                <input type="text" inputMode="decimal" placeholder="00.0" value={bioAbdomen} onChange={(e) => setBioAbdomen(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-primary" />
               </div>
               <div>
                 <label className="text-[8px] font-bold text-muted uppercase tracking-widest mb-1 block text-center">Quadril</label>
@@ -255,18 +245,13 @@ const BodyScanner = ({
             <div className="grid grid-cols-3 gap-2">
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Peso</span>
-                 <span className="text-sm font-black text-success mt-0.5">{b.weight || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">kg</span></span>
+                 <span className="mt-0.5 text-sm font-black text-main">{b.weight || '--'}<span className="ml-0.5 text-[8px] font-normal text-muted">kg</span></span>
                </div>
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm relative">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">BF</span>
-                 <span className={`text-sm font-black mt-0.5 ${getBfColorClass(b.bf)}`}>
-                   {b.bf || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">%</span>
-                 </span>
-                 {b.bf && (
-                   <span className={`text-[6px] font-black uppercase tracking-widest mt-1 opacity-80 ${getBfColorClass(b.bf)}`}>
-                     {getBfStatusText(b.bf)}
-                   </span>
-                 )}
+                  <span className="mt-0.5 text-sm font-black text-main">
+                    {b.bf || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">%</span>
+                  </span>
                </div>
                <div className="flex flex-col items-center justify-center p-2 bg-primary/10 rounded-xl border border-primary/30 shadow-sm">
                  <span className="text-[8px] text-primary uppercase font-bold tracking-widest">M. Magra</span>
@@ -320,8 +305,8 @@ const BodyScanner = ({
                   <div className="flex items-center gap-3">
                     <span className="w-20 text-[10px] font-black text-main dark:text-white">{formatLocalDate(normalizeLocalDateKey(b.date), { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                     <div className="flex gap-3 text-[10px] font-bold">
-                      <span className="text-success">{b.weight}kg</span>
-                      <span className={getBfColorClass(b.bf)}>{b.bf}% BF</span>
+                       <span className="text-main">{b.weight}kg</span>
+                       <span className="text-main">{b.bf}% BF</span>
                     </div>
                   </div>
                   

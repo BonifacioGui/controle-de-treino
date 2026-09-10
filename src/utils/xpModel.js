@@ -1,5 +1,6 @@
 import { calculateSessionVolume } from './gameLogic';
 import { parseDecimalInput } from './numberUtils';
+import { isOverloadStatus } from './overloadModel';
 
 export const VOLUME_XP_RATE = 0.05;
 export const OVERLOAD_XP_MULTIPLIER = 1.2;
@@ -11,8 +12,9 @@ export const calculateSessionXp = (session = {}) => {
   const storedVolume = parseDecimalInput(session.totalVolume ?? session.total_volume);
   const volume = storedVolume ?? calculateSessionVolume(session);
   const bonusXp = parseDecimalInput(session.bonusXp ?? session.bonus_xp) ?? 0;
-  const overloadStatus = String(session.overloadStatus ?? session.overload_status ?? '').toUpperCase();
-  const multiplier = overloadStatus === 'OVERLOAD' ? OVERLOAD_XP_MULTIPLIER : 1;
+  const multiplier = isOverloadStatus(session.overloadStatus ?? session.overload_status)
+    ? OVERLOAD_XP_MULTIPLIER
+    : 1;
 
   return Math.max(0, Math.floor(volume * VOLUME_XP_RATE * multiplier) + bonusXp);
 };

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
+import ShareCardControls from './ShareCardControls';
+import { createShareCardFieldSelection } from './ShareCardUtils';
 import { getBossBattleReport } from '../../utils/bossModel';
 
 const WorkoutComplete = ({
@@ -40,6 +42,10 @@ const WorkoutComplete = ({
   const [generatedImage, setGeneratedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [cardVariant, setCardVariant] = useState('rpg');
+  const [fieldSelection, setFieldSelection] = useState(() => createShareCardFieldSelection({
+    hasPr: Number(sessionPrs) > 0,
+    hasBoss: Boolean(bossEncounter),
+  }));
   const [feedback, setFeedback] = useState('');
   const cardRef = useRef(null);
   const previousImageUrl = useRef(null);
@@ -47,6 +53,13 @@ const WorkoutComplete = ({
   useEffect(() => {
     if (!showShareTools || !cardRef.current) return undefined;
     let cancelled = false;
+    if (previousImageUrl.current) {
+      URL.revokeObjectURL(previousImageUrl.current);
+      previousImageUrl.current = null;
+    }
+    setGeneratedImage(null);
+    setImageFile(null);
+    setIsGenerating(true);
     const timer = window.setTimeout(async () => {
       try {
         const blob = await toBlob(cardRef.current, {
@@ -71,7 +84,7 @@ const WorkoutComplete = ({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [cardVariant, selfieUrl, showShareTools]);
+  }, [cardVariant, fieldSelection, selfieUrl, showShareTools]);
 
   useEffect(() => () => {
     if (previousImageUrl.current) URL.revokeObjectURL(previousImageUrl.current);
@@ -88,13 +101,23 @@ const WorkoutComplete = ({
     setShowShareTools(true);
   };
 
+  const updateFieldSelection = (nextSelection) => {
+    setIsGenerating(true);
+    setFieldSelection(nextSelection);
+  };
+
   const handleSelfieCapture = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setIsGenerating(true);
     const reader = new FileReader();
     reader.onload = () => setSelfieUrl(reader.result);
+    reader.onerror = () => {
+      setIsGenerating(false);
+      setFeedback('Não foi possível carregar esta foto. O card atual foi preservado.');
+    };
     reader.readAsDataURL(file);
+    event.target.value = '';
   };
 
   const handleShare = async () => {
@@ -125,7 +148,7 @@ const WorkoutComplete = ({
     <div role="dialog" aria-modal="true" aria-labelledby="workout-summary-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md">
       {showShareTools && (
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1080px', height: '1920px' }}>
-          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl} currentLevel={currentLevel} totalXp={totalXp} variant={cardVariant} />
+          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl} currentLevel={currentLevel} totalXp={totalXp} variant={cardVariant} fieldSelection={fieldSelection} />
         </div>
       )}
 
@@ -171,7 +194,13 @@ const WorkoutComplete = ({
             </div>
           ) : (
             <section className="mt-6 space-y-3 border-t border-border pt-5">
-              <div className="flex rounded-xl border border-border bg-input p-1"><button type="button" onClick={() => regenerateWith('rpg')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'rpg' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo RPG</button><button type="button" onClick={() => regenerateWith('data')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'data' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo dados</button></div>
+              <div className="flex rounded-xl border border-border bg-input p-1"><button type="button" aria-pressed={cardVariant === 'rpg'} onClick={() => regenerateWith('rpg')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'rpg' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo RPG</button><button type="button" aria-pressed={cardVariant === 'data'} onClick={() => regenerateWith('data')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'data' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo dados</button></div>
+              <ShareCardControls
+                value={fieldSelection}
+                onChange={updateFieldSelection}
+                hasPr={Number(sessionPrs) > 0}
+                hasBoss={Boolean(bossEncounter)}
+              />
               <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-xl border border-primary/40 bg-black">
                 {isGenerating && <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60"><Loader2 className="animate-spin text-primary" /></div>}
                 {generatedImage && <img src={generatedImage} alt="Prévia do card do treino" className="h-full w-full object-contain" />}

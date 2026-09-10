@@ -2,6 +2,7 @@ import { calculateSessionVolume } from './gameLogic';
 import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
 import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER } from './xpModel';
 import { calculateSetCanonicalVolume } from './loadModel';
+import { isOverloadStatus } from './overloadModel';
 
 // --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
 const STAT_XP_MULTIPLIER = 0.05;
@@ -103,7 +104,7 @@ export const calculateStats = (history) => {
 
   history.forEach(session => {
     totalXp += calculateSessionXp(session);
-    const overloadMultiplier = String(session.overloadStatus || '').toUpperCase() === 'OVERLOAD'
+    const overloadMultiplier = isOverloadStatus(session.overloadStatus ?? session.overload_status)
       ? OVERLOAD_XP_MULTIPLIER
       : 1;
 

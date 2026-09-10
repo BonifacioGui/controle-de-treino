@@ -52,6 +52,10 @@ Antes de publicar uma versão que altere o modelo de dados, execute no SQL Edito
 
 O cliente mantém fallback para o esquema anterior, mas os novos snapshots e a deduplicação no banco só ficam completos após a segunda migração.
 
+As garantias do cliente e as políticas RLS que precisam existir no projeto estão
+documentadas em [`docs/SUPABASE_SECURITY.md`](docs/SUPABASE_SECURITY.md). O
+repositório não substitui automaticamente as políticas já configuradas no painel.
+
 ## Tecnologias
 
 React 19, Vite 7, Tailwind CSS, Supabase, Recharts, Lucide e Vite PWA.

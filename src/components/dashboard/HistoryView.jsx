@@ -1,9 +1,10 @@
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CalendarDays,
   CalendarRange,
+  Camera,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -11,18 +12,38 @@ import {
   CloudOff,
   Database,
   Download,
+  Loader2,
   Pencil,
   Share2,
   Swords,
   Trash2,
+  X,
 } from 'lucide-react';
 import { formatLocalDate } from '../../utils/dateUtils';
 import { groupHistoryByDate } from '../../utils/historyGrouping';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
 import { calculateSessionXp } from '../../utils/xpModel';
 import { formatEnteredLoad } from '../../utils/loadModel';
+import { OVERLOAD_STATUS } from '../../utils/overloadModel';
+import ShareCardControls from '../export/ShareCardControls';
+import { createShareCardFieldSelection } from '../export/ShareCardUtils';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
+
+const VOLUME_STATUS_PRESENTATION = Object.freeze({
+  [OVERLOAD_STATUS.overload]: {
+    label: 'Volume: aumento',
+    className: 'border-success/35 bg-success/10 text-success',
+  },
+  [OVERLOAD_STATUS.maintenance]: {
+    label: 'Volume: manutenção',
+    className: 'border-border bg-input text-muted',
+  },
+  [OVERLOAD_STATUS.reduction]: {
+    label: 'Volume: redução',
+    className: 'border-warning/40 bg-warning/10 text-warning',
+  },
+});
 
 const formatDuration = (seconds) => {
   const safe = Math.max(0, Number(seconds) || 0);
@@ -30,6 +51,15 @@ const formatDuration = (seconds) => {
   const remaining = Math.floor(safe % 60);
   return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
 };
+
+const getSessionShareStats = (session) => ({
+  duration: formatDuration(session.duration),
+  volume: Math.round(
+    session.totalVolume
+    || (session.exercises || []).reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0),
+  ).toString(),
+  prs: session.prsBroken || 0,
+});
 
 const ExerciseSummary = ({ exercise }) => {
   const completedSets = (exercise.sets || []).filter((set) => set.completed);
@@ -59,6 +89,7 @@ const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
   const [expanded, setExpanded] = useState(false);
   const entryId = session.id || session.localId;
   const synced = session.syncStatus === 'synced';
+  const volumeStatus = VOLUME_STATUS_PRESENTATION[session.overloadStatus];
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -67,6 +98,7 @@ const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-black text-main">{session.workoutTitle || session.workoutName}</h3>
             {session.partial && <span className="rounded-md bg-warning/15 px-2 py-1 text-[11px] font-black text-warning">Parcial</span>}
+            {volumeStatus && <span className={`rounded-md border px-2 py-1 text-[11px] font-black ${volumeStatus.className}`}>{volumeStatus.label}</span>}
           </div>
           <p className="mt-1 text-sm text-muted">{formatLocalDate(session.dateKey, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</p>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-muted">
@@ -235,52 +267,177 @@ const YearAccordion = ({ year, defaultOpen, onDelete, onUpdate, onCardAction, on
 const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }) => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
-  const [cardAction, setCardAction] = useState(null);
-  const shareCardRef = useRef(null);
+  const [cardDraft, setCardDraft] = useState(null);
+  const [shareCardNode, setShareCardNode] = useState(null);
+  const [cardPreviewUrl, setCardPreviewUrl] = useState(null);
+  const [cardImageFile, setCardImageFile] = useState(null);
+  const [isCardGenerating, setIsCardGenerating] = useState(false);
+  const previousCardPreviewUrl = useRef(null);
+  const cardDialogRef = useRef(null);
+  const cardCloseButtonRef = useRef(null);
+  const cardReturnFocusRef = useRef(null);
   const groups = useMemo(() => groupHistoryByDate(history), [history]);
 
   useEffect(() => {
-    if (!cardAction || !shareCardRef.current) return undefined;
+    if (!cardDraft || !shareCardNode) return undefined;
+    let cancelled = false;
+    if (previousCardPreviewUrl.current) {
+      URL.revokeObjectURL(previousCardPreviewUrl.current);
+      previousCardPreviewUrl.current = null;
+    }
+    setCardPreviewUrl(null);
+    setCardImageFile(null);
+    setIsCardGenerating(true);
     const timer = window.setTimeout(async () => {
       try {
-        const { toBlob, toPng } = await import('html-to-image');
-        const { session, type } = cardAction;
-        const filename = `SOLO-${session.dateKey}.png`;
-        if (type === 'download') {
-          const link = document.createElement('a');
-          link.download = filename;
-          link.href = await toPng(shareCardRef.current, { cacheBust: true, pixelRatio: 1 });
-          link.click();
-          setToastMessage('Card baixado com sucesso.');
-        } else {
-          const blob = await toBlob(shareCardRef.current, { cacheBust: true, pixelRatio: 1 });
-          const file = new File([blob], filename, { type: 'image/png' });
-          if (navigator.canShare?.({ files: [file] })) {
-            await navigator.share({ title: `Treino de ${formatLocalDate(session.dateKey)}`, files: [file] });
-          } else {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.download = filename;
-            link.href = url;
-            link.click();
-            URL.revokeObjectURL(url);
-            setToastMessage('Compartilhamento indisponível; o card foi baixado.');
-          }
-        }
-      } catch (error) {
-        if (error?.name !== 'AbortError') setToastMessage('Não foi possível gerar o card agora.');
+        const { toBlob } = await import('html-to-image');
+        const blob = await toBlob(shareCardNode, {
+          backgroundColor: '#050B14',
+          cacheBust: true,
+          pixelRatio: 1,
+          skipFonts: true,
+          filter: (node) => node.tagName === 'IMG' ? node.complete : true,
+        });
+        if (!blob || cancelled) return;
+        if (previousCardPreviewUrl.current) URL.revokeObjectURL(previousCardPreviewUrl.current);
+        const nextPreviewUrl = URL.createObjectURL(blob);
+        previousCardPreviewUrl.current = nextPreviewUrl;
+        const filename = `SOLO-${cardDraft.session.dateKey || 'TREINO'}.png`;
+        setCardImageFile(new File([blob], filename, { type: 'image/png' }));
+        setCardPreviewUrl(nextPreviewUrl);
+      } catch {
+        if (!cancelled) setToastMessage('Não foi possível gerar a prévia do card agora.');
       } finally {
-        setCardAction(null);
+        if (!cancelled) setIsCardGenerating(false);
       }
     }, 150);
-    return () => window.clearTimeout(timer);
-  }, [cardAction]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [cardDraft, shareCardNode]);
+
+  useEffect(() => () => {
+    if (previousCardPreviewUrl.current) URL.revokeObjectURL(previousCardPreviewUrl.current);
+  }, []);
+
+  const closeCardComposer = useCallback(() => {
+    if (previousCardPreviewUrl.current) {
+      URL.revokeObjectURL(previousCardPreviewUrl.current);
+      previousCardPreviewUrl.current = null;
+    }
+    setCardPreviewUrl(null);
+    setCardImageFile(null);
+    setCardDraft(null);
+    setIsCardGenerating(false);
+  }, []);
+
+  const isCardComposerOpen = Boolean(cardDraft);
+
+  useEffect(() => {
+    if (!isCardComposerOpen) return undefined;
+    const dialog = cardDialogRef.current;
+    const appRoot = document.getElementById('root');
+    const wasInert = appRoot?.inert ?? false;
+    if (appRoot) appRoot.inert = true;
+    cardCloseButtonRef.current?.focus();
+
+    const handleDialogKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCardComposer();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = [...dialog.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => !element.hasAttribute('hidden'));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    dialog?.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      dialog?.removeEventListener('keydown', handleDialogKeyDown);
+      if (appRoot) appRoot.inert = wasInert;
+      cardReturnFocusRef.current?.focus();
+      cardReturnFocusRef.current = null;
+    };
+  }, [closeCardComposer, isCardComposerOpen]);
+
+  const openCardComposer = (session, preferredAction) => {
+    const stats = getSessionShareStats(session);
+    cardReturnFocusRef.current = document.activeElement;
+    setCardPreviewUrl(null);
+    setCardImageFile(null);
+    setIsCardGenerating(true);
+    setCardDraft({
+      session,
+      preferredAction,
+      variant: 'rpg',
+      selfieUrl: null,
+      fieldSelection: createShareCardFieldSelection({
+        hasPr: Number(stats.prs) > 0,
+        hasBoss: Boolean(session.bossEncounter),
+      }),
+    });
+  };
+
+  const updateCardDraft = (updates) => {
+    setIsCardGenerating(true);
+    setCardDraft((current) => current ? { ...current, ...updates } : current);
+  };
+
+  const handleHistorySelfie = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updateCardDraft({ selfieUrl: reader.result });
+    reader.onerror = () => setToastMessage('Não foi possível carregar esta foto.');
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const executeCardAction = async (type) => {
+    if (!cardDraft || !cardImageFile || !cardPreviewUrl) return;
+    const { session } = cardDraft;
+    try {
+      if (type === 'share' && navigator.canShare?.({ files: [cardImageFile] })) {
+        await navigator.share({ title: `Treino de ${formatLocalDate(session.dateKey)}`, files: [cardImageFile] });
+        setToastMessage('Card compartilhado.');
+      } else {
+        const link = document.createElement('a');
+        link.download = cardImageFile.name;
+        link.href = cardPreviewUrl;
+        link.click();
+        setToastMessage(type === 'share' ? 'Compartilhamento indisponível; o card foi baixado.' : 'Card baixado com sucesso.');
+      }
+      closeCardComposer();
+    } catch (error) {
+      if (error?.name !== 'AbortError') setToastMessage('Não foi possível compartilhar o card agora.');
+    }
+  };
 
   useEffect(() => {
     if (!toastMessage) return undefined;
     const timer = window.setTimeout(() => setToastMessage(''), 3500);
     return () => window.clearTimeout(timer);
   }, [toastMessage]);
+
+  const draftStats = cardDraft ? getSessionShareStats(cardDraft.session) : null;
+  const hasDraftPr = Number(draftStats?.prs) > 0;
+  const hasDraftBoss = Boolean(cardDraft?.session.bossEncounter);
 
   return (
     <>
@@ -298,7 +455,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
             defaultOpen={index === 0}
             onDelete={setItemToDelete}
             onUpdate={updateEntry}
-            onCardAction={(entry, type) => setCardAction({ session: entry, type })}
+            onCardAction={openCardComposer}
             onReopen={(entryId) => {
               try {
                 reopenEntry(entryId);
@@ -322,9 +479,65 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
         </div>, document.body,
       )}
 
-      {cardAction && (
+      {cardDraft && createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby="history-share-title" className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md">
+          <section ref={cardDialogRef} className="max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/40 bg-card p-5 shadow-2xl">
+            <header className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="font-cyber text-xs font-black uppercase tracking-[0.18em] text-primary">Share Card</p>
+                <h2 id="history-share-title" className="mt-1 text-xl font-black text-main">Escolha o que compartilhar</h2>
+                <p className="mt-1 text-sm text-muted">A prévia é atualizada com suas escolhas.</p>
+              </div>
+              <button ref={cardCloseButtonRef} type="button" onClick={closeCardComposer} aria-label="Fechar Share Card" className="touch-target flex shrink-0 items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
+            </header>
+
+            <div className="space-y-3">
+              <div className="flex rounded-xl border border-border bg-input p-1">
+                <button type="button" aria-pressed={cardDraft.variant === 'rpg'} onClick={() => updateCardDraft({ variant: 'rpg' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'rpg' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo RPG</button>
+                <button type="button" aria-pressed={cardDraft.variant === 'data'} onClick={() => updateCardDraft({ variant: 'data' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'data' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo dados</button>
+              </div>
+
+              <ShareCardControls
+                value={cardDraft.fieldSelection}
+                onChange={(fieldSelection) => updateCardDraft({ fieldSelection })}
+                hasPr={hasDraftPr}
+                hasBoss={hasDraftBoss}
+              />
+
+              <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-xl border border-primary/40 bg-black">
+                {isCardGenerating && <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60"><Loader2 className="animate-spin text-primary" aria-label="Atualizando prévia" /></div>}
+                {cardPreviewUrl && <img src={cardPreviewUrl} alt="Prévia do card do treino" className="h-full w-full object-contain" />}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <label className="touch-target inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border px-3 text-sm font-bold text-main">
+                  <Camera size={18} /> {cardDraft.selfieUrl ? 'Trocar selfie' : 'Adicionar selfie'}
+                  <input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleHistorySelfie} />
+                </label>
+                {cardDraft.selfieUrl && <button type="button" onClick={() => updateCardDraft({ selfieUrl: null })} className="touch-target rounded-xl border border-border px-3 text-sm font-bold text-muted">Remover selfie</button>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {cardDraft.preferredAction === 'share' ? (
+                  <>
+                    <button type="button" onClick={() => executeCardAction('share')} disabled={isCardGenerating || !cardImageFile} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-on-primary disabled:opacity-40"><Share2 size={17} /> Compartilhar</button>
+                    <button type="button" onClick={() => executeCardAction('download')} disabled={isCardGenerating || !cardImageFile} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-main disabled:opacity-40"><Download size={17} /> Baixar</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => executeCardAction('download')} disabled={isCardGenerating || !cardImageFile} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-on-primary disabled:opacity-40"><Download size={17} /> Baixar</button>
+                    <button type="button" onClick={() => executeCardAction('share')} disabled={isCardGenerating || !cardImageFile} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-main disabled:opacity-40"><Share2 size={17} /> Compartilhar</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>, document.body,
+      )}
+
+      {cardDraft && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={shareCardRef} stats={{ duration: formatDuration(cardAction.session.duration), volume: Math.round(cardAction.session.totalVolume || cardAction.session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0)).toString(), prs: cardAction.session.prsBroken || 0 }} workoutTitle={cardAction.session.workoutTitle || cardAction.session.workoutName} bossEncounter={cardAction.session.bossEncounter || null} streak={cardAction.session.streak || 1} xp={calculateSessionXp(cardAction.session)} currentLevel={cardAction.session.level || 1} totalXp={0} variant="rpg" />
+          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.session.streak ?? 0} xp={calculateSessionXp(cardDraft.session)} currentLevel={cardDraft.session.level || 1} totalXp={0} variant={cardDraft.variant} selfieUrl={cardDraft.selfieUrl} fieldSelection={cardDraft.fieldSelection} />
         </Suspense>
       )}
 

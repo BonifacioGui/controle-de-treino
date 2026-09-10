@@ -28,4 +28,16 @@ describe('XP', () => {
 
     expect(result.xp).toBe(640);
   });
+
+  it('aplica o multiplicador dos atributos somente em OVERLOAD', () => {
+    const makeSession = (overloadStatus) => ({
+      dateKey: '2026-08-20',
+      overloadStatus,
+      exercises: [{ name: 'Supino reto', sets: [{ weight: 100, reps: 10, completed: true }] }],
+    });
+
+    expect(calculateStats([makeSession('REDUÇÃO')]).STR.xp).toBe(50);
+    expect(calculateStats([makeSession('MANUTENÇÃO')]).STR.xp).toBe(50);
+    expect(calculateStats([makeSession('OVERLOAD')]).STR.xp).toBe(60);
+  });
 });

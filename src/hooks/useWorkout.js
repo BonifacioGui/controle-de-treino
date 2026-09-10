@@ -49,6 +49,7 @@ import {
   writeUserStoredText,
 } from '../utils/storage';
 import { calculateSessionXp } from '../utils/xpModel';
+import { classifyVolumeProgress, findPreviousComparableVolume } from '../utils/overloadModel';
 import { addExerciseAlternative, hasCompletedExerciseSets } from '../utils/substitutionModel';
 import { HAPTIC_TYPES, triggerHaptic } from '../utils/haptics';
 import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
@@ -648,9 +649,13 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     const historyForMetrics = visibleHistory.filter((entry) => (
       !editTarget || (entry.id !== editTarget.id && entry.localId !== editTarget.localId)
     ));
-    const previousSessions = historyForMetrics.filter((entry) => entry.workoutName === safeDay);
-    const previousVolume = previousSessions[0]?.totalVolume || 0;
-    const overloadStatus = previousVolume > 0 && totalVolume > previousVolume ? 'OVERLOAD' : 'MANUTENÇÃO';
+    const previousSessions = historyForMetrics.filter((entry) => (
+      entry.workoutName === safeDay
+      && entry.dateKey
+      && entry.dateKey <= sessionDateKey
+    ));
+    const previousVolume = findPreviousComparableVolume(previousSessions);
+    const overloadStatus = classifyVolumeProgress({ currentVolume: totalVolume, previousVolume });
 
     const prsBroken = countLoadPrs(exercises, historyForMetrics);
     const exercisesSwapped = exercises
@@ -696,6 +701,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       completedSets: completion.completedSets,
       earnedXp: xpGained,
       prsBroken,
+      overloadStatus,
       partial,
       bossEncounter,
     };

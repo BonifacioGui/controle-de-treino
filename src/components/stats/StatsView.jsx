@@ -3,9 +3,9 @@ import { ChevronLeft, CalendarCheck, Shield, Target, Search } from 'lucide-react
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 🛠️ Importando as lógicas pesadas
-import { getMuscleGroup } from '../../utils/exerciseParser';
 import { daysBetweenLocalDates, formatLocalDate, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
+import { getMuscleVolumeDistribution } from '../../utils/muscleVolumeModel';
 import {
   getSemanticHallOfFame,
   getSemanticLoadSeries,
@@ -41,9 +41,10 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
   useEffect(() => { setIsModalOpen?.(isSelectorOpen); }, [isSelectorOpen, setIsModalOpen]);
 
   // 🧠 Processamento Central de Dados
-  const { biometry, volume, heatmap, hallOfFame, exercises, recentWorkoutsCount } = useMemo(() => {
+  const { biometry, volume, muscleDistribution, hallOfFame, exercises, recentWorkoutsCount } = useMemo(() => {
     const h = Array.isArray(history) ? history : [];
     const b = Array.isArray(bodyHistory) ? bodyHistory : [];
+    const referenceDateKey = getLocalDateKey();
     
     // 1. Biometria
     const biometry = b.map(e => ({ 
@@ -64,30 +65,24 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
     })).reverse();
 
     // 2. Heatmap, Volume & Consistência
-    const muscleCounts = { PEITO: 0, COSTAS: 0, PERNAS: 0, BRAÇOS: 0, OMBROS: 0, CORE: 0 };
+    const muscleDistribution = getMuscleVolumeDistribution(h, { referenceDateKey });
     let recentCount = 0;
 
     const volume = h.map(s => {
-      const isRecent = daysBetweenLocalDates(s.dateKey, getLocalDateKey()) <= 30;
+      const daysAgo = daysBetweenLocalDates(s.dateKey, referenceDateKey);
+      const isRecent = daysAgo !== null && daysAgo >= 0 && daysAgo <= 30;
       const vol = Number(s.totalVolume) || s.exercises.reduce(
         (sum, exercise) => sum + calculateCompletedVolume(exercise.sets || [], exercise),
         0,
       );
       
       if (isRecent) recentCount++;
-
-      s.exercises.forEach(ex => {
-        if (isRecent) {
-          const g = getMuscleGroup(ex.name);
-          if (muscleCounts[g] !== undefined) muscleCounts[g] += (ex.sets || []).filter((set) => set.completed).length;
-        }
-      });
       return { date: formatLocalDate(s.dateKey, { day: '2-digit', month: '2-digit' }), volume: Math.round(vol), full: s.dateKey };
     }).filter(v => v.volume > 0).reverse();
 
     return {
       biometry, volume, recentWorkoutsCount: recentCount,
-      heatmap: Object.entries(muscleCounts).map(([name, sets]) => ({ name, sets, intensity: Math.min(Math.round((sets / 25) * 100), 100) })),
+      muscleDistribution,
       hallOfFame: getSemanticHallOfFame(h, workoutData),
       exercises: getTrackableExerciseNames(h, workoutData),
     };
@@ -190,23 +185,29 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
 
       {/* DISTRIBUIÇÃO MUSCULAR */}
       <Section title="DISTRIBUIÇÃO MUSCULAR (30D)" icon={Shield} h="auto">
-        <div className="grid grid-cols-3 gap-2">
-          {heatmap.map(m => {
-            const isHot = m.intensity >= 80;
-            return (
-              <div 
-                key={m.name} 
-                className={`bg-input/30 border p-2 rounded-xl relative overflow-hidden transition-all duration-500 
-                  ${isHot ? 'border-danger/50' : 'border-border'}`}
-              >
-                <div className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ${isHot ? 'bg-danger opacity-20' : 'bg-primary opacity-15'}`} style={{ height: `${m.intensity}%` }} />
-                <div className="relative z-10">
-                    <span className={`text-xs font-black block uppercase ${isHot ? 'text-danger' : 'text-muted'}`}>{m.name}</span>
-                    <span className={`text-sm font-black ${isHot ? 'text-danger' : 'text-main'}`}>{m.intensity}%</span>
+        <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3">
+          {muscleDistribution.map((muscle) => (
+            <div
+              key={muscle.name}
+              aria-label={`${muscle.name}: ${muscle.percentage}% do volume, ${Math.round(muscle.volume).toLocaleString('pt-BR')} kg`}
+              className="relative overflow-hidden rounded-xl border border-border bg-input/30 p-2 transition-all duration-500"
+            >
+              <div
+                aria-hidden="true"
+                className="absolute bottom-0 left-0 w-full bg-primary opacity-15 transition-all duration-1000"
+                style={{ height: `${muscle.percentage}%` }}
+              />
+              <div className="relative z-10">
+                <span className="block text-xs font-black uppercase text-muted">{muscle.name}</span>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-1">
+                  <span className="text-sm font-black text-main">{muscle.percentage}%</span>
+                  <span className="text-[9px] font-bold text-muted">
+                    {Math.round(muscle.volume).toLocaleString('pt-BR')} kg
+                  </span>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </Section>
       

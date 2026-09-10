@@ -46,6 +46,22 @@ describe('modelo canônico do histórico', () => {
     }).earnedXp).toBe(777);
   });
 
+  it('normaliza status legados e preserva REDUÇÃO na escrita', () => {
+    const reduction = normalizeHistoryEntry({
+      workout_date: '2026-08-20',
+      overload_status: 'reducao',
+      exercises: [],
+    });
+    const legacy = normalizeHistoryEntry({
+      workout_date: '2026-08-19',
+      exercises: [],
+    });
+
+    expect(reduction.overloadStatus).toBe('REDUÇÃO');
+    expect(toSupabaseHistoryRow(reduction, 'user-1').overload_status).toBe('REDUÇÃO');
+    expect(legacy.overloadStatus).toBe('NORMAL');
+  });
+
   it('reconhece banco ainda sem as novas colunas para permitir fallback', () => {
     expect(isExtendedHistorySchemaError({ code: 'PGRST204', message: "Could not find the 'earned_xp' column" })).toBe(true);
     expect(isExtendedHistorySchemaError({ code: '42501', message: 'RLS violation' })).toBe(false);
