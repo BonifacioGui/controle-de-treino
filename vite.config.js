@@ -48,6 +48,8 @@ export default defineConfig({
       workbox: {
         // Diz para o navegador fazer download e guardar todos esses tipos de arquivo:
         globPatterns: ['**/*.{js,css,html,ico,png,webp,svg,woff,woff2}'],
+        // Faz a migração única do antigo autoUpdate para o fluxo de atualização com confirmação.
+        importScripts: ['sw-prompt-migration.js'],
         // Se o usuário entrar numa rota que não existe offline, joga ele pro index principal:
         navigateFallback: '/controle-de-treino/index.html',
         // Quando você lançar uma versão nova do app, ele limpa a memória velha pra não pesar o celular do usuário:
