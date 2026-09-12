@@ -1,14 +1,32 @@
-import React from 'react';
-import { Trophy, Terminal } from 'lucide-react';
+import React, { useId, useState } from 'react';
+import { CircleHelp, Trophy, Terminal } from 'lucide-react';
+import { getRpgLevelProgress, RPG_XP_INFO } from '../../utils/rpgProgressionModel';
+import ProgressionDetails from './ProgressionDetails';
 
 const UserLevel = ({ stats }) => {
-  
+  const detailsId = useId();
+  const [detailsPinned, setDetailsPinned] = useState(false);
+  const [detailsPreviewed, setDetailsPreviewed] = useState(false);
+  const detailsOpen = detailsPinned || detailsPreviewed;
   const barWidth = stats?.progress || 0;
 
-  if (!stats) return null; // Prevenção contra carregamento fantasma
+  if (!stats) return null;
+
+  const levelProgress = getRpgLevelProgress(stats.xp);
+
+  const toggleDetails = () => {
+    const closing = detailsPinned;
+    setDetailsPinned(!detailsPinned);
+    if (closing) setDetailsPreviewed(false);
+  };
 
   return (
     <div 
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        setDetailsPinned(false);
+        setDetailsPreviewed(false);
+      }}
       className="bg-card dark:bg-[#050B14] border border-yellow-500/30 dark:border-yellow-500/40 p-5 relative shadow-sm dark:shadow-[0_0_20px_rgba(250,204,21,0.1)] mt-2 group transition-colors"
       style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}
     >
@@ -22,11 +40,11 @@ const UserLevel = ({ stats }) => {
         <Trophy size={80} />
       </div>
 
-      <div className="flex justify-between items-end mb-4 relative z-10">
+      <div className="relative z-10 mb-4 flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-end min-[360px]:justify-between">
         <div>
           <div className="flex items-center gap-1.5 mb-1.5 opacity-80">
             <Terminal size={10} className="text-yellow-600 dark:text-yellow-500" />
-            <span className="text-[9px] font-mono font-black text-yellow-600 dark:text-yellow-500 uppercase tracking-widest block">
+            <span className="block whitespace-nowrap font-mono text-[9px] font-black uppercase tracking-widest text-yellow-600 dark:text-yellow-500">
               Status de Patente
             </span>
           </div>
@@ -34,11 +52,11 @@ const UserLevel = ({ stats }) => {
             {stats.title || 'Recruta'}
           </h2>
         </div>
-        <div className="text-right">
+        <div className="text-left min-[360px]:text-right">
           <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-500 via-yellow-600 to-yellow-800 dark:from-yellow-300 dark:via-yellow-500 dark:to-yellow-700 leading-none block drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">
             LVL {stats.level || 1}
           </span>
-          <span className="text-[9px] font-black text-yellow-600/80 dark:text-yellow-500/70 uppercase tracking-widest mt-1 block">
+          <span className="mt-1 block whitespace-nowrap text-[9px] font-black uppercase tracking-widest text-yellow-600/80 dark:text-yellow-500/70">
             {Math.floor(stats.xp || 0).toLocaleString()} XP TOTAL
           </span>
         </div>
@@ -46,9 +64,9 @@ const UserLevel = ({ stats }) => {
 
       {/* Barra de XP */}
       <div className="relative z-10">
-        <div className="flex justify-between text-[9px] font-black text-muted mb-1.5 uppercase tracking-wider">
+        <div className="mb-1.5 flex flex-col gap-1 text-[9px] font-black uppercase tracking-wider text-muted min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
           <span>PROGRESSO DE NÍVEL</span>
-          <span className="text-yellow-600 dark:text-yellow-500/80">
+          <span className="whitespace-nowrap text-yellow-600 dark:text-yellow-500/80">
             {Math.max(0, stats.xpRemaining || 0).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}
           </span>
         </div>
@@ -72,6 +90,33 @@ const UserLevel = ({ stats }) => {
             {Math.floor(stats?.progress || 0)}%
           </span>
         </div>
+      </div>
+
+      <div className="relative z-10 mt-4 border-t border-yellow-500/20 pt-3">
+        <button
+          type="button"
+          aria-expanded={detailsOpen}
+          aria-controls={detailsId}
+          onClick={toggleDetails}
+          onFocus={() => setDetailsPreviewed(true)}
+          onBlur={() => setDetailsPreviewed(false)}
+          onPointerEnter={(event) => event.pointerType === 'mouse' && setDetailsPreviewed(true)}
+          onPointerLeave={(event) => event.pointerType === 'mouse' && setDetailsPreviewed(false)}
+          className="touch-target inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-black text-yellow-700 transition-colors hover:bg-yellow-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 dark:text-yellow-400"
+        >
+          <CircleHelp aria-hidden="true" size={16} /> Como ganho XP?
+        </button>
+
+        {detailsOpen && (
+          <div className="mt-2" aria-live="polite">
+            <ProgressionDetails
+              id={detailsId}
+              info={RPG_XP_INFO}
+              levelProgress={levelProgress}
+              valueLabel={`${Math.floor(Math.max(0, Number(stats.xp) || 0)).toLocaleString('pt-BR')} XP`}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -57,6 +57,7 @@ import {
   getHapticDelivery,
   HAPTIC_DELIVERY,
   HAPTIC_TYPES,
+  isHapticRetryFresh,
   triggerHaptic,
 } from '../utils/haptics';
 import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
@@ -160,6 +161,38 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     bossHistory,
     session.workoutName || activeDay,
   ), [activeDay, activeSessionExercises, bossHistory, session.bossEncounter, session.workoutName]);
+
+  const cancelPendingRestHaptic = useCallback(() => {
+    const timerId = pendingRestHapticRef.current?.timerId;
+    pendingRestHapticRef.current = null;
+    if (timerId) claimHapticAttempt(attemptedRestHapticsRef.current, timerId);
+  }, []);
+
+  const deliverPendingRestHaptic = useCallback(() => {
+    const pending = pendingRestHapticRef.current;
+    const timerId = pending?.timerId;
+    if (!timerId) return;
+    if (attemptedRestHapticsRef.current.has(timerId) || !isHapticRetryFresh(pending)) {
+      cancelPendingRestHaptic();
+      return;
+    }
+
+    const delivery = getHapticDelivery({
+      enabled: hapticFeedbackRef.current,
+      visibilityState: document.visibilityState,
+      hasBeenActive: navigator.userActivation?.hasBeenActive ?? true,
+    });
+
+    if (delivery === HAPTIC_DELIVERY.skip) {
+      cancelPendingRestHaptic();
+      return;
+    }
+    if (delivery !== HAPTIC_DELIVERY.now) return;
+
+    const result = triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: true });
+    if (result.retryable) return;
+    cancelPendingRestHaptic();
+  }, [cancelPendingRestHaptic]);
 
   const setWorkoutData = useCallback((update) => {
     setWorkoutDataState((current) => (typeof update === 'function' ? update(current) : update));
@@ -344,19 +377,21 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, [isHydrated, timerState, userId]);
 
   useEffect(() => {
-    const deliverPendingRestHaptic = () => {
-      if (document.visibilityState !== 'visible') return;
-      const timerId = pendingRestHapticRef.current;
-      if (!timerId) return;
-
-      pendingRestHapticRef.current = null;
-      if (!claimHapticAttempt(attemptedRestHapticsRef.current, timerId)) return;
-      triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: hapticFeedbackRef.current });
-    };
-
     document.addEventListener('visibilitychange', deliverPendingRestHaptic);
-    return () => document.removeEventListener('visibilitychange', deliverPendingRestHaptic);
-  }, []);
+    document.addEventListener('pointerup', deliverPendingRestHaptic, { passive: true });
+    document.addEventListener('keydown', deliverPendingRestHaptic);
+    document.addEventListener('click', deliverPendingRestHaptic);
+    return () => {
+      document.removeEventListener('visibilitychange', deliverPendingRestHaptic);
+      document.removeEventListener('pointerup', deliverPendingRestHaptic);
+      document.removeEventListener('keydown', deliverPendingRestHaptic);
+      document.removeEventListener('click', deliverPendingRestHaptic);
+    };
+  }, [deliverPendingRestHaptic]);
+
+  useEffect(() => {
+    if (!hapticFeedback) cancelPendingRestHaptic();
+  }, [cancelPendingRestHaptic, hapticFeedback]);
 
   useEffect(() => {
     const timerId = timerState.timerId;
@@ -365,21 +400,12 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       || !timerId
       || attemptedRestHapticsRef.current.has(timerId)) return;
 
-    const delivery = getHapticDelivery({
-      enabled: hapticFeedbackRef.current,
-      visibilityState: document.visibilityState,
-    });
-    if (delivery === HAPTIC_DELIVERY.whenVisible) {
-      pendingRestHapticRef.current = timerId;
-      return;
-    }
-
-    pendingRestHapticRef.current = null;
-    if (!claimHapticAttempt(attemptedRestHapticsRef.current, timerId)) return;
-    if (delivery === HAPTIC_DELIVERY.now) {
-      triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: true });
-    }
-  }, [isHydrated, timerState.status, timerState.timerId]);
+    pendingRestHapticRef.current = {
+      timerId,
+      finishedAt: Number(timerState.finishedAt) || Date.now(),
+    };
+    deliverPendingRestHaptic();
+  }, [deliverPendingRestHaptic, isHydrated, timerState.finishedAt, timerState.status, timerState.timerId]);
 
   useEffect(() => {
     if (!timerState.active || !timerState.endTime || !timerState.timerId) return undefined;
@@ -593,9 +619,15 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     });
   }, []);
 
+  const closeRestTimer = useCallback(() => {
+    cancelPendingRestHaptic();
+    setTimerState(getIdleRestTimerState());
+  }, [cancelPendingRestHaptic]);
+
   const startRestTimer = useCallback((duration = 90) => {
+    cancelPendingRestHaptic();
     setTimerState(createRestTimerState(duration));
-  }, []);
+  }, [cancelPendingRestHaptic]);
 
   const toggleSetComplete = useCallback((id, setIndex, restSeconds = 90) => {
     const currentProgress = progressRef.current;
@@ -621,10 +653,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       const workout = session.workoutSnapshot || workoutData[workoutName];
       const completion = getSessionCompletion(workout, nextProgress, dateKey, workoutName);
       if (shouldStartRestTimer({ setCompleted: true, completion })) startRestTimer(restSeconds);
-      else setTimerState(getIdleRestTimerState());
+      else closeRestTimer();
       triggerHaptic(HAPTIC_TYPES.setComplete, { enabled: hapticFeedback });
     }
-  }, [activeDay, hapticFeedback, selectedDate, session.dateKey, session.workoutName, session.workoutSnapshot, startRestTimer, workoutData]);
+  }, [activeDay, closeRestTimer, hapticFeedback, selectedDate, session.dateKey, session.workoutName, session.workoutSnapshot, startRestTimer, workoutData]);
 
   const beginSession = useCallback(() => {
     const workout = workoutData[activeDay];
@@ -803,7 +835,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       Object.entries(progressRef.current).filter(([key]) => !key.startsWith(currentPrefix)),
     );
     setSessionNoteState('');
-    setTimerState(getIdleRestTimerState());
+    closeRestTimer();
     completeSession();
 
     let savedToCloud = false;
@@ -908,7 +940,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
         syncStatus: savedToCloud ? 'synced' : (navigator.onLine ? 'pending' : 'offline'),
       },
     };
-  }, [activeDay, completeSession, evaluateQuests, history, markFinishing, progress, selectedDate, session, sessionNote, userId, visibleHistory, workoutData, workoutTimer.elapsed]);
+  }, [activeDay, closeRestTimer, completeSession, evaluateQuests, history, markFinishing, progress, selectedDate, session, sessionNote, userId, visibleHistory, workoutData, workoutTimer.elapsed]);
 
   const abandonSession = useCallback(() => {
     const workoutName = session.workoutName || activeDay;
@@ -920,9 +952,9 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     progressRef.current = nextProgress;
     setProgress(nextProgress);
     setSessionNoteState('');
-    setTimerState(getIdleRestTimerState());
+    closeRestTimer();
     resetSession();
-  }, [activeDay, resetSession, selectedDate, session.dateKey, session.workoutName]);
+  }, [activeDay, closeRestTimer, resetSession, selectedDate, session.dateKey, session.workoutName]);
 
   const reopenHistoryEntry = useCallback((id) => {
     if (sessionActive) throw new Error('Finalize ou descarte o treino atual antes de corrigir outra sessão.');
@@ -960,7 +992,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     setActiveDay(entry.workoutName);
     setSelectedDate(entry.dateKey);
     setSessionNoteState(entry.note || '');
-    setTimerState(getIdleRestTimerState());
+    closeRestTimer();
     reopenSession({
       sessionId: entry.sessionId,
       workoutName: entry.workoutName,
@@ -975,7 +1007,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       editTarget: { id: entry.id, localId: entry.localId },
     });
     return true;
-  }, [reopenSession, sessionActive, visibleHistory]);
+  }, [closeRestTimer, reopenSession, sessionActive, visibleHistory]);
 
   const actions = useMemo(() => ({
     updateSetData,
@@ -1028,7 +1060,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       setWeightInput(entry?.weight || '');
       setWaistInput(entry?.waist || '');
     },
-    closeTimer: () => setTimerState(getIdleRestTimerState()),
+    closeTimer: closeRestTimer,
     adjustRestTimer: (seconds) => setTimerState((current) => ({
       ...current,
       active: true,
@@ -1122,6 +1154,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     acknowledgeRecovery,
     beginSession,
     bodyHistory,
+    closeRestTimer,
     fetchCloudData,
     finishWorkout,
     pauseSession,

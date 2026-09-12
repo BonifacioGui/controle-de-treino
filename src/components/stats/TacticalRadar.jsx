@@ -1,96 +1,121 @@
-import React, { useState } from 'react';
-import { 
-  Radar, 
-  RadarChart, 
-  PolarGrid, 
-  PolarAngleAxis, 
-  PolarRadiusAxis, 
-  ResponsiveContainer, 
-  Tooltip 
+import React, { useId, useState } from 'react';
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
 } from 'recharts';
+import {
+  getAttributeKeyFromSubject,
+  RPG_ATTRIBUTE_INFO,
+} from '../../utils/rpgProgressionModel';
+import ProgressionDetails from '../rpg/ProgressionDetails';
 
-// Dicionário de decodificação dos atributos
-const attributeLabels = {
-  'FOR': { full: 'FORÇA', desc: 'Capacidade de carga e explosão muscular.' },
-  'DES': { full: 'DESTREZA', desc: 'Precisão na execução e agilidade entre séries.' },
-  'VIT': { full: 'VITALIDADE', desc: 'Resistência cardiovascular e recuperação.' },
-  'CAR': { full: 'CARISMA', desc: 'Estética corporal e presença de palco (Ganhos Visuais).' },
-  'FOCO': { full: 'FOCO', desc: 'Consistência e assiduidade na última semana.' },
-  'DISCIPLINA': { full: 'DISCIPLINA', desc: 'Sua resiliência ao longo de todo o histórico.' }
-};
+const getMetricKey = (item) => item?.metricKey || getAttributeKeyFromSubject(item?.subject);
 
 const TacticalRadar = ({ radarData, maxStat }) => {
-  // Estado para o atributo selecionado (hover ou toque)
-  const [activeAttr, setActiveAttr] = useState(null);
+  const detailsId = useId();
+  const [pinnedKey, setPinnedKey] = useState(null);
+  const [previewKey, setPreviewKey] = useState(null);
+  const activeKey = previewKey || pinnedKey;
+  const activeItem = radarData.find((item) => getMetricKey(item) === activeKey);
 
+  const togglePinned = (key) => {
+    const closing = pinnedKey === key;
+    setPinnedKey(closing ? null : key);
+    if (closing) setPreviewKey(null);
+  };
+
+  const getChartKey = (state) => getMetricKey(state?.activePayload?.[0]?.payload);
 
   return (
-    <div className="bg-card border-2 border-border rounded-3xl p-5 shadow-sm space-y-4 transition-all duration-500">
-      
-      {/* HEADER DO RADAR COM HUD DINÂMICO */}
-      <div className="text-center min-h-[50px] flex flex-col justify-center">
-        {!activeAttr ? (
-          <h3 className="text-sm font-black text-primary uppercase tracking-widest animate-in fade-in duration-500">
-            Mapeamento Tático
-          </h3>
-        ) : (
-          <div className="animate-in slide-in-from-top-1 duration-300">
-            <h3 className="text-sm font-black text-secondary uppercase tracking-widest">
-              {attributeLabels[activeAttr]?.full}
-            </h3>
-            <p className="text-xs font-semibold text-muted">
-              {attributeLabels[activeAttr]?.desc}
-            </p>
-          </div>
-        )}
-      </div>
-      
-      {/* Aumentamos para h-64 para garantir o espaço do gráfico */}
-      <div className="h-64 w-full -ml-2 relative">
+    <section
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        setPinnedKey(null);
+        setPreviewKey(null);
+      }}
+      className="space-y-4 rounded-3xl border-2 border-border bg-card p-5 shadow-sm transition-all duration-500"
+    >
+      <header className="text-center">
+        <h3 className="text-sm font-black uppercase tracking-widest text-primary">Mapeamento tático</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted">Toque em um atributo, passe o mouse ou use Tab para entender o valor.</p>
+      </header>
+
+      <div aria-hidden="true" className="relative h-64 w-full">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 260 }}>
-          <RadarChart 
-            cx="50%" 
-            cy="50%" 
-            outerRadius="70%" 
+          <RadarChart
+            cx="50%"
+            cy="50%"
+            outerRadius="55%"
             data={radarData}
             onMouseMove={(state) => {
-              if (state && state.activePayload) {
-                setActiveAttr(state.activePayload[0].payload.subject);
-              }
+              const key = getChartKey(state);
+              if (key) setPreviewKey(key);
             }}
-            onMouseLeave={() => setActiveAttr(null)}
+            onMouseLeave={() => setPreviewKey(null)}
+            onClick={(state) => {
+              const key = getChartKey(state);
+              if (key) setPinnedKey((current) => current === key ? null : key);
+            }}
           >
-            {/* Sugando as variáveis nativas do Tailwind/CSS */}
             <PolarGrid stroke="var(--chart-grid)" />
-            <PolarAngleAxis 
-              dataKey="subject" 
-              tick={{ fill: "var(--chart-text)", fontSize: 11, fontWeight: 800 }}
-            />
-            <PolarRadiusAxis 
-              angle={30} 
-              domain={[0, maxStat]} 
-              tick={false} 
-              axisLine={false} 
-            />
-            <Radar 
-              name="Nível" 
-              dataKey="A" 
+            <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--chart-text)', fontSize: 11, fontWeight: 800 }} />
+            <PolarRadiusAxis angle={30} domain={[0, maxStat]} tick={false} axisLine={false} />
+            <Radar
+              name="Nível"
+              dataKey="A"
               stroke="var(--chart-primary)"
-              strokeWidth={3} 
+              strokeWidth={3}
               fill="var(--chart-primary)"
-              fillOpacity={0.3} 
-              dot={{ r: 3, fill: "var(--chart-primary)", fillOpacity: 1 }}
-              activeDot={{ r: 5, stroke: "var(--chart-tooltip-bg)", strokeWidth: 2 }}
+              fillOpacity={0.3}
+              dot={{ r: 3, fill: 'var(--chart-primary)', fillOpacity: 1 }}
+              activeDot={{ r: 5, stroke: 'var(--chart-tooltip-bg)', strokeWidth: 2 }}
             />
             <Tooltip content={() => null} />
           </RadarChart>
         </ResponsiveContainer>
-
-        <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 opacity-30 pointer-events-none">
-           <span className="text-[11px] font-bold text-muted">TOQUE PARA VER DETALHES</span>
-        </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3" aria-label="Atributos do mapeamento tático">
+        {radarData.map((item) => {
+          const key = getMetricKey(item);
+          const info = RPG_ATTRIBUTE_INFO[key];
+          const active = activeKey === key;
+          if (!key || !info) return null;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-expanded={active}
+              aria-controls={detailsId}
+              onClick={() => togglePinned(key)}
+              onFocus={() => setPreviewKey(key)}
+              onBlur={() => setPreviewKey((current) => current === key ? null : current)}
+              onPointerEnter={(event) => event.pointerType === 'mouse' && setPreviewKey(key)}
+              onPointerLeave={(event) => event.pointerType === 'mouse' && setPreviewKey((current) => current === key ? null : current)}
+              className={`touch-target flex min-h-11 items-center justify-between gap-1 rounded-xl border px-2 text-left text-[10px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-xs ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-input/40 text-main hover:border-primary/40'}`}
+            >
+              <span>{item.subject}</span>
+              <span className="tabular-nums text-muted">{item.A}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {activeKey && activeItem && (
+        <div aria-live="polite">
+          <ProgressionDetails
+            id={detailsId}
+            info={RPG_ATTRIBUTE_INFO[activeKey]}
+            valueLabel={activeKey === 'FOCUS' || activeKey === 'DISCIPLINE' ? `${activeItem.A} pontos` : `Nível ${activeItem.A}`}
+          />
+        </div>
+      )}
+    </section>
   );
 };
 

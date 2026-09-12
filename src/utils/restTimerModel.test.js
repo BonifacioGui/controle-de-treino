@@ -31,6 +31,14 @@ describe('temporizador de descanso', () => {
     expect(finishRestTimerState(finished.state, 32_000).didFinish).toBe(false);
   });
 
+  it('preserva o fim agendado quando uma aba congelada processa o timer com atraso', () => {
+    const active = createRestTimerState(30, 1_000);
+    expect(finishRestTimerState(active, 100_000)).toMatchObject({
+      didFinish: true,
+      state: { finishedAt: 31_000 },
+    });
+  });
+
   it('não reabre nem refaz o alerta de um timer expirado após reload', () => {
     const active = createRestTimerState(30, 1_000);
     expect(restoreRestTimerState(active, 31_000)).toMatchObject({ active: false, status: 'idle' });

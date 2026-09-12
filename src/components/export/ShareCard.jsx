@@ -20,10 +20,11 @@ const VARIANTS    = ['rpg', 'data'];
 
 // ─── StatCell ─────────────────────────────────────────────────────────────────
 
-const StatCell = ({ label, value, suffix, colorClass, hasDivider = false }) => (
+const StatCell = ({ label, value, suffix, colorClass, Icon, hasDivider = false }) => (
   <div className={`flex flex-col items-center justify-center text-center ${hasDivider ? 'border-l border-white/10' : ''}`}>
     <div className="flex items-center justify-center gap-3 mb-4">
-      <span style={{ fontSize: '26px' }} className="font-bold text-white/60 uppercase tracking-widest">
+      {Icon && <Icon aria-hidden="true" size={30} className={colorClass} />}
+      <span style={{ fontSize: '26px' }} className={`font-bold uppercase tracking-widest ${Icon ? colorClass : 'text-white/60'}`}>
         {label}
       </span>
     </div>
@@ -100,7 +101,7 @@ const SelfieVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, x
     fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
     fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-400' },
     fields.streak && { key: 'streak', label: 'Streak', value: streak, suffix: 'dias', colorClass: 'text-orange-500' },
-    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400' },
+    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
   ].filter(Boolean);
 
   return (
@@ -141,7 +142,7 @@ const RpgVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, 
   const performanceMetrics = [
     fields.duration && { key: 'duration', label: 'Duração', value: stats.duration, colorClass: 'text-purple-400' },
     fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
-    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400' },
+    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
   ].filter(Boolean);
   const progressionMetrics = [
     fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-500' },
@@ -348,7 +349,7 @@ const DataVariant = ({ stats, workoutTitle, bossEncounter, streak, xp, currentLe
           {fields.prs && !fields.volume && <div className="bg-black/90 border border-yellow-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
             <div>
               <p className="text-2xl text-yellow-400 font-mono uppercase tracking-widest mb-2">Recordes</p>
-              <p className="text-5xl font-black text-white uppercase tracking-tighter">{stats.prs} novos PRs</p>
+              <p className="text-5xl font-black uppercase tracking-tighter text-yellow-400">{stats.prs} novos PRs</p>
             </div>
             <Trophy size={60} className="text-yellow-500" />
           </div>}

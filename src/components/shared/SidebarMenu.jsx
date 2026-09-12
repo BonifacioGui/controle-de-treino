@@ -17,7 +17,14 @@ import {
 import { supabase } from '../../services/supabaseClient';
 import { getLocalDateKey } from '../../utils/dateUtils';
 import { getSoloBackup } from '../../utils/storage';
-import { getHapticTestMessage, HAPTIC_TYPES, triggerHaptic } from '../../utils/haptics';
+import {
+  getHapticCapability,
+  getHapticCapabilityMessage,
+  getHapticTestMessage,
+  HAPTIC_PLATFORMS,
+  HAPTIC_TYPES,
+  triggerHaptic,
+} from '../../utils/haptics';
 
 const EXPERIENCE_OPTIONS = [
   {
@@ -54,6 +61,7 @@ const SidebarMenu = ({
 }) => {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [hapticStatus, setHapticStatus] = useState('');
+  const hapticCapability = getHapticCapability();
 
   const handleClose = () => {
     setConfirmLogout(false);
@@ -96,7 +104,7 @@ const SidebarMenu = ({
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
-      <aside aria-label="Menu" className="relative flex h-full w-80 flex-col border-l border-primary/60 bg-card p-6 text-main shadow-2xl">
+      <aside aria-label="Menu" className="relative flex h-full w-80 flex-col overflow-y-auto overscroll-contain border-l border-primary/60 bg-card p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-main shadow-2xl">
         <div className="mb-7 flex items-center justify-between border-b border-border pb-4">
           <div><h2 className="text-xl font-black">Menu</h2><p className="mt-1 text-xs text-muted">Preferências e dados</p></div>
           <button type="button" onClick={handleClose} aria-label="Fechar menu" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X size={26} /></button>
@@ -123,11 +131,12 @@ const SidebarMenu = ({
           </fieldset>
           <div className="rounded-xl border border-border bg-input p-3">
             <label className="touch-target flex cursor-pointer items-center justify-between text-sm font-bold text-main">
-              <span className="flex items-center gap-2"><Vibrate size={18} className="text-primary" /> Feedback háptico</span>
+              <span className="flex items-center gap-2"><Vibrate size={18} className="text-primary" /> Vibração</span>
               <input type="checkbox" checked={hapticFeedback} onChange={(event) => setHapticFeedback(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
             </label>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Pulso curto ao concluir série e alerta distinto no fim do descanso. O alerta requer o app aberto e visível e depende do navegador e do hardware do celular.</p>
-            <button type="button" onClick={testHaptic} className="mt-3 min-h-10 w-full rounded-lg border border-primary/40 text-xs font-black text-primary">Testar vibração</button>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Pulso ao concluir série e alerta distinto no fim do descanso. O aviso visual de descanso fica ativo mesmo sem vibração.</p>
+            <p className="mt-2 rounded-lg border border-border bg-card/60 p-2 text-xs leading-relaxed text-muted">{getHapticCapabilityMessage(hapticCapability)}</p>
+            <button type="button" onClick={testHaptic} disabled={!hapticCapability.supported || hapticCapability.platform === HAPTIC_PLATFORMS.ios} className="mt-3 min-h-11 w-full rounded-lg border border-primary/40 text-xs font-black text-primary disabled:cursor-not-allowed disabled:opacity-50">Testar vibração</button>
             {hapticStatus && <p role="status" className="mt-2 text-xs text-muted">{hapticStatus}</p>}
           </div>
         </div>

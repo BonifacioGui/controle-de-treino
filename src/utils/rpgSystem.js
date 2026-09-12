@@ -1,26 +1,13 @@
 import { calculateSessionVolume } from './gameLogic';
 import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
-import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER } from './xpModel';
+import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER, VOLUME_XP_RATE } from './xpModel';
 import { calculateSetCanonicalVolume } from './loadModel';
 import { isOverloadStatus } from './overloadModel';
-
-// --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
-const STAT_XP_MULTIPLIER = 0.05;
-const STAT_LEVEL_DIVISOR = 100;
-
-// --- 1. ATRIBUTOS ---
-const EXERCISE_STATS = {
-  'supino reto': 'STR', 'supino inclinado': 'STR', 'desenvolvimento': 'STR',
-  'agachamento hack': 'STR', 'leg press': 'STR', 'remada baixa': 'STR',
-  'levantamento terra': 'STR', 'crossover': 'DEX', 'crucifixo inverso': 'DEX',
-  'stiff': 'DEX', 'afundo': 'DEX', 'serrote': 'DEX', 'face pull': 'DEX',
-  'remada curvada': 'DEX', 'cadeira extensora': 'VIT', 'mesa flexora': 'VIT',
-  'cadeira abdutora': 'VIT', 'panturrilha': 'VIT', 'prancha': 'VIT',
-  'vacuum': 'VIT', 'abdominal infra': 'VIT', 'caminhada': 'VIT', 'esteira': 'VIT',
-  'elevação lateral': 'CHA', 'tríceps francês': 'CHA', 'tríceps corda': 'CHA',
-  'tríceps testa': 'CHA', 'tríceps pulley': 'CHA', 'rosca direta': 'CHA',
-  'rosca martelo': 'CHA', 'rosca alternada': 'CHA', 'rosca 45º': 'CHA', 'elevação pélvica': 'CHA'
-};
+import {
+  getExerciseAttribute,
+  getRpgLevelFromXp,
+  getRpgLevelProgress,
+} from './rpgProgressionModel';
 
 // --- 2. MISSÕES DIÁRIAS ---
 export const DAILY_QUESTS_POOL = [
@@ -84,19 +71,19 @@ const calculateTotalReps = (session) => {
 
 // 🎯 FÓRMULA MESTRA
 export const getLevelFromXp = (xp) => {
-  return Math.floor(Math.sqrt(xp / STAT_LEVEL_DIVISOR)) + 1;
+  return getRpgLevelFromXp(xp);
 };
 
 export const calculateStats = (history) => {
   const stats = {
     STR: { xp: 0, level: 1, label: "FORÇA" },
-    DEX: { xp: 0, level: 1, label: "TÉCNICA" },
-    VIT: { xp: 0, level: 1, label: "RESISTÊNCIA" },
-    CHA: { xp: 0, level: 1, label: "ESTÉTICA" }
+    DEX: { xp: 0, level: 1, label: "DESTREZA" },
+    VIT: { xp: 0, level: 1, label: "VITALIDADE" },
+    CHA: { xp: 0, level: 1, label: "CARISMA" }
   };
   
   if (!history || !Array.isArray(history)) {
-    stats.level = 1; stats.xp = 0; stats.title = "Recruta"; stats.nextLevelProgress = 0;
+    stats.level = 1; stats.xp = 0; stats.title = "Recruta"; stats.nextLevelProgress = 0; stats.xpRemaining = 100;
     return stats;
   }
   
@@ -117,10 +104,9 @@ export const calculateStats = (history) => {
         return acc + calculateSetCanonicalVolume(s, ex);
       }, 0);
       
-      const normalizedName = ex.name.trim().toLowerCase();
-      const statType = EXERCISE_STATS[normalizedName] || 'STR';
+      const statType = getExerciseAttribute(ex.name);
       
-      const gainedXp = vol * STAT_XP_MULTIPLIER * overloadMultiplier;
+      const gainedXp = vol * VOLUME_XP_RATE * overloadMultiplier;
       stats[statType].xp += gainedXp;
     });
   });
@@ -150,20 +136,9 @@ export const calculateStats = (history) => {
 
   // 3. Matemática da Barra de Progresso (Fórmula Exponencial)
   // XP necessário para o nível atual e para o próximo
-  const currentLevelThreshold = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
-  const nextLevelThreshold = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
-  
-  // XP que o usuário já acumulou DENTRO do nível atual
-  const xpInCurrentLevel = stats.xp - currentLevelThreshold;
-  const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
-
-  // Cálculo da porcentagem (0 a 100)
-  const progressPercent = (xpInCurrentLevel / xpRequiredForNextLevel) * 100;
-  
-  stats.nextLevelProgress = Math.min(100, Math.max(0, progressPercent));
-  
-  // XP restante (arredondado para o display)
-  stats.xpRemaining = Math.ceil(nextLevelThreshold - stats.xp);
+  const levelProgress = getRpgLevelProgress(stats.xp);
+  stats.nextLevelProgress = levelProgress.progress;
+  stats.xpRemaining = levelProgress.xpRemaining;
   
   return stats;
 };

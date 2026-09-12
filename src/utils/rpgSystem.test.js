@@ -40,4 +40,20 @@ describe('XP', () => {
     expect(calculateStats([makeSession('MANUTENÇÃO')]).STR.xp).toBe(50);
     expect(calculateStats([makeSession('OVERLOAD')]).STR.xp).toBe(60);
   });
+
+  it('classifica variações reais de nomes sem despejar todo XP em força', () => {
+    const result = calculateStats([{
+      dateKey: '2026-08-20',
+      exercises: [
+        { name: 'Elevação Lateral (Halter)', sets: [{ weight: 10, reps: 10, completed: true }] },
+        { name: 'Crucifixo no Crossover', sets: [{ weight: 20, reps: 10, completed: true }] },
+        { name: 'Mesa Flexora Unilateral', sets: [{ weight: 30, reps: 10, completed: true }] },
+      ],
+    }]);
+
+    expect(result.CHA.xp).toBe(5);
+    expect(result.DEX.xp).toBe(10);
+    expect(result.VIT.xp).toBe(15);
+    expect(result.STR.xp).toBe(0);
+  });
 });

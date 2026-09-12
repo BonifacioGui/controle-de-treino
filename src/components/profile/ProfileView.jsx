@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { calculateStats } from '../../utils/rpgSystem';
-import { daysBetweenLocalDates, getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
+import { getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
+import { calculateDisciplineLevel, calculateFocusLevel } from '../../utils/rpgProgressionModel';
 import { parseDecimalInput } from '../../utils/numberUtils';
 import {
   calculateBmi,
@@ -60,24 +61,26 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
     try { return calculateStats(history || []); } catch { return { level: 1, STR: {level: 1}, DEX: {level: 1}, VIT: {level: 1}, CHA: {level: 1} }; }
   }, [history]);
 
-  const dynamicDiscipline = useMemo(() => {
-    if (!history || history.length === 0) return 1;
-    const baseDiscipline = Math.floor(history.length / 2);
-    const sortedHistory = [...history].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-    const daysInactive = daysBetweenLocalDates(sortedHistory[0].dateKey, getLocalDateKey());
-    let penalty = daysInactive > 7 ? Math.floor((daysInactive - 7) / 3) : 0;
-    return Math.max(1, baseDiscipline - penalty);
-  }, [history]);
+  const levelStats = useMemo(() => ({
+    level: rpgData.level,
+    xp: rpgData.xp,
+    title: rpgData.title,
+    progress: rpgData.nextLevelProgress,
+    xpRemaining: rpgData.xpRemaining,
+    ...stats,
+  }), [rpgData, stats]);
+
+  const dynamicDiscipline = useMemo(() => calculateDisciplineLevel(history), [history]);
 
   const radarData = useMemo(() => {
-    const focusLevel = Math.max(1, (stats?.streak || 0) * 2); 
+    const focusLevel = calculateFocusLevel(stats?.streak);
     return [
-      { subject: 'FOR', A: rpgData?.STR?.level || rpgData?.FOR?.level || 1 },
-      { subject: 'DES', A: rpgData?.DEX?.level || rpgData?.DES?.level || 1 },
-      { subject: 'VIT', A: rpgData?.VIT?.level || 1 },
-      { subject: 'CAR', A: rpgData?.CHA?.level || rpgData?.CAR?.level || 1 },
-      { subject: 'FOCO', A: focusLevel },
-      { subject: 'DISCIPLINA', A: dynamicDiscipline }
+      { subject: 'FOR', metricKey: 'STR', A: rpgData?.STR?.level || rpgData?.FOR?.level || 1 },
+      { subject: 'DES', metricKey: 'DEX', A: rpgData?.DEX?.level || rpgData?.DES?.level || 1 },
+      { subject: 'VIT', metricKey: 'VIT', A: rpgData?.VIT?.level || 1 },
+      { subject: 'CAR', metricKey: 'CHA', A: rpgData?.CHA?.level || rpgData?.CAR?.level || 1 },
+      { subject: 'FOCO', metricKey: 'FOCUS', A: focusLevel },
+      { subject: 'DISCIPLINA', metricKey: 'DISCIPLINE', A: dynamicDiscipline }
     ];
   }, [rpgData, stats?.streak, dynamicDiscipline]);
 
@@ -243,7 +246,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
         setIsEditing={setIsEditing} goalProgress={goalProgress} isGoalMet={isGoalMet} 
         displayClass={displayClass}
-        stats={stats}
+        stats={levelStats}
       />
 
       {feedback && <div role="alert" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-warning/10 p-4 text-sm text-muted"><AlertTriangle className="shrink-0 text-warning" size={19} /><div className="flex-1">{feedback}</div><button type="button" onClick={() => setFeedback('')} aria-label="Fechar aviso" className="font-black text-main">×</button></div>}

@@ -198,7 +198,12 @@ const ExerciseCard = ({
               ) : (
                 <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
               )}
-              {pr && <p className="mt-1 text-xs font-semibold text-gold"><span aria-hidden="true">🏆</span> PR: {pr.primary}{pr.secondary ? <span className="ml-1 font-normal text-muted">• {pr.secondary}</span> : null}</p>}
+              {pr && (
+                <p className="mt-1 inline-flex flex-wrap items-center gap-x-1 text-xs font-semibold text-gold">
+                  <Trophy aria-hidden="true" size={13} className="shrink-0" />
+                  <span>PR: {pr.primary}{pr.secondary ? <span className="ml-1 font-normal text-gold">• {pr.secondary}</span> : null}</span>
+                </p>
+              )}
             </div>
             {lastExercise && (
               <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">

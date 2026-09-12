@@ -8,6 +8,7 @@ import {
   Loader2,
   Play,
   RotateCcw,
+  Trophy,
 } from 'lucide-react';
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
@@ -222,7 +223,10 @@ const WorkoutView = ({
                           <p className="mt-1 text-xs text-muted">Sem sessão anterior registrada</p>
                         )}
                         {performance.pr && (
-                          <p className="mt-0.5 text-xs font-bold text-secondary">PR: {performance.pr.primary}{performance.pr.secondary ? ` • ${performance.pr.secondary}` : ''}</p>
+                          <p className="mt-0.5 inline-flex flex-wrap items-center gap-x-1 text-xs font-bold text-gold">
+                            <Trophy aria-hidden="true" size={13} className="shrink-0" />
+                            <span>PR: {performance.pr.primary}{performance.pr.secondary ? ` • ${performance.pr.secondary}` : ''}</span>
+                          </p>
                         )}
                       </div>
                       <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-1 text-xs font-black text-primary">{exercise.sets}</span>

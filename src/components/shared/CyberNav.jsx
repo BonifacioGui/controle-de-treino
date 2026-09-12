@@ -5,7 +5,7 @@ const CyberNav = ({ currentView, setView }) => {
   const navItems = [
     { id: 'workout', label: 'Treino', icon: Dumbbell },
     { id: 'history', label: 'Histórico', icon: History },
-    { id: 'stats', label: 'Progresso', icon: ChartNoAxesColumnIncreasing },
+    { id: 'stats', label: 'Dados', icon: ChartNoAxesColumnIncreasing },
     { id: 'profile', label: 'Perfil', icon: User },
   ];
 
@@ -23,7 +23,7 @@ const CyberNav = ({ currentView, setView }) => {
               type="button"
               onClick={() => setView(item.id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`nav-item touch-target relative flex min-w-16 flex-col items-center gap-1 rounded-xl px-1 outline-none tap-highlight-transparent ${isActive ? 'text-primary' : 'text-muted'}`}
+              className={`nav-item touch-target relative flex min-w-16 flex-col items-center gap-1 rounded-xl px-1 outline-none tap-highlight-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card ${isActive ? 'text-primary' : 'text-muted'}`}
             >
               
               <div className={`p-2 rounded-xl transition-all duration-300 relative z-10 ${

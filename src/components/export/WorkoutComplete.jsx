@@ -167,7 +167,7 @@ const WorkoutComplete = ({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3 text-sm font-bold text-muted">
-            <span className="flex items-center gap-2"><Trophy size={17} className="text-gold" /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
+            <span className="flex items-center gap-2 text-gold"><Trophy aria-hidden="true" size={17} /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
             <span className="flex items-center gap-2">🔥 sequência: {streak} {streak === 1 ? 'dia' : 'dias'}</span>
           </div>
 

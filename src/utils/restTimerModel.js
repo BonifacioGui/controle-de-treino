@@ -44,9 +44,10 @@ export const restoreRestTimerState = (state, now = Date.now()) => {
 };
 
 export const finishRestTimerState = (state = getIdleRestTimerState(), now = Date.now()) => {
+  const scheduledEndTime = Number(state.endTime);
   const canFinish = state.active === true
     && state.status !== REST_TIMER_STATUS.finished
-    && Number(state.endTime) <= now;
+    && scheduledEndTime <= now;
   if (!canFinish) return { didFinish: false, state };
   return {
     didFinish: true,
@@ -55,7 +56,8 @@ export const finishRestTimerState = (state = getIdleRestTimerState(), now = Date
       active: false,
       status: REST_TIMER_STATUS.finished,
       endTime: null,
-      finishedAt: now,
+      // Preserve when the countdown really ended so delayed tabs do not emit stale feedback.
+      finishedAt: scheduledEndTime,
     },
   };
 };

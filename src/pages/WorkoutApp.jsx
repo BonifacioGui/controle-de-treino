@@ -1,13 +1,15 @@
-import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Cloud,
   CloudOff,
   Flame,
+  BellRing,
   Loader2,
   Medal,
   Menu,
   RefreshCw,
+  X,
   Zap,
 } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout';
@@ -34,6 +36,7 @@ import {
   writeUserStoredJSON,
 } from '../utils/storage';
 import { SESSION_STATUS } from '../utils/sessionModel';
+import { REST_TIMER_STATUS } from '../utils/restTimerModel';
 
 const HistoryView = lazy(() => import('../components/dashboard/HistoryView'));
 const ProfileView = lazy(() => import('../components/profile/ProfileView'));
@@ -73,6 +76,8 @@ const WorkoutApp = () => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
+  const [restAlert, setRestAlert] = useState(null);
+  const announcedRestTimersRef = useRef(new Set());
   const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, days: null, dateKey: null, userId: null });
   const [pendingReport, setPendingReport] = useState(null);
   const [reportUserId, setReportUserId] = useState(null);
@@ -84,6 +89,37 @@ const WorkoutApp = () => {
   const showCurrentCelebration = reportUserId === userId && showCelebration;
   const showCurrentLevelUp = reportUserId === userId && showLevelUp;
   const showCurrentBadgeAlert = reportUserId === userId && showBadgeAlert;
+
+  useEffect(() => {
+    const timerId = state.timerState?.timerId;
+    const alertKey = userId && timerId ? `${userId}:${timerId}` : null;
+    if (!state.isHydrated
+      || state.timerState?.status !== REST_TIMER_STATUS.finished
+      || !timerId
+      || announcedRestTimersRef.current.has(alertKey)) return undefined;
+
+    const showRestAlert = () => {
+      if (document.visibilityState !== 'visible' || announcedRestTimersRef.current.has(alertKey)) return;
+      announcedRestTimersRef.current.add(alertKey);
+      setRestAlert({ timerId, userId });
+    };
+
+    showRestAlert();
+    document.addEventListener('visibilitychange', showRestAlert);
+    return () => document.removeEventListener('visibilitychange', showRestAlert);
+  }, [state.isHydrated, state.timerState?.status, state.timerState?.timerId, userId]);
+
+  useEffect(() => {
+    if (!restAlert) return undefined;
+    const timeout = window.setTimeout(() => setRestAlert(null), 7000);
+    return () => window.clearTimeout(timeout);
+  }, [restAlert]);
+
+  const currentRestAlert = restAlert?.userId === userId
+    && state.timerState?.status === REST_TIMER_STATUS.finished
+    && state.timerState?.timerId === restAlert.timerId
+    ? restAlert
+    : null;
   const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen;
   const syncCopy = SYNC_COPY[state.syncStatus] || SYNC_COPY.error;
   const SyncIcon = syncCopy.Icon;
@@ -325,6 +361,20 @@ const WorkoutApp = () => {
 
       {state.timerState?.active && state.timerState.endTime && (
         <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />
+      )}
+
+      {currentRestAlert && createPortal(
+        <div role="alert" aria-live="assertive" className="fixed bottom-24 left-1/2 z-[99998] flex w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 items-center gap-3 rounded-2xl border border-warning/50 bg-card/95 p-4 text-main shadow-2xl backdrop-blur-md">
+          <BellRing aria-hidden="true" className="shrink-0 text-warning" size={22} />
+          <div className="min-w-0 flex-1">
+            <p className="font-black">Descanso concluído</p>
+            <p className="mt-0.5 text-sm text-muted">Hora da próxima série.</p>
+          </div>
+          <button type="button" onClick={() => setRestAlert(null)} aria-label="Fechar aviso de descanso" className="touch-target flex shrink-0 items-center justify-center rounded-xl text-muted hover:text-main">
+            <X size={19} />
+          </button>
+        </div>,
+        document.body,
       )}
 
       {successToast && createPortal(
