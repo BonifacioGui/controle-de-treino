@@ -1,16 +1,61 @@
-# React + Vite
+# SOLO — Controle de Treino
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicativo de treino com acompanhamento de séries, cargas, descanso, histórico, biometria, estatísticas e progressão gamificada. A interface é responsiva, pode ser instalada como PWA e sincroniza os dados com Supabase.
 
-Currently, two official plugins are available:
+## Recursos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- criação e importação de rotinas;
+- registro de séries, repetições, carga e tempo de treino;
+- modos explícitos de carga (total, por lado, por halter, máquina, peso corporal, assistido, duração e distância);
+- temporizador de descanso com alerta e vibração;
+- histórico, recordes pessoais e gráficos de evolução;
+- perfil biométrico e metas corporais;
+- missões, conquistas, XP, níveis e sequência de treinos;
+- cartão compartilhável ao concluir uma sessão;
+- modo claro/escuro persistente e suporte offline via PWA.
 
-## React Compiler
+## Executar localmente
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+Requisitos: Node.js 20 ou superior e uma instância Supabase configurada.
 
-## Expanding the ESLint configuration
+```bash
+npm ci
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Crie um arquivo `.env.local` com as variáveis usadas em `src/services/supabaseClient.js`:
+
+```env
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-publica
+```
+
+## Qualidade
+
+```bash
+npm run lint
+npm test
+npm run test:theme-parity
+npm run build
+```
+
+O build de produção é gerado em `dist/`.
+
+Mudanças visuais só são concluídas após validação em DARK e LIGHT. A matriz de componentes, fixtures e critérios está em [`docs/THEME_PARITY.md`](docs/THEME_PARITY.md).
+
+## Migrações do Supabase
+
+Antes de publicar uma versão que altere o modelo de dados, execute no SQL Editor do projeto Supabase os arquivos de `supabase/migrations`, em ordem.
+
+- `202608220001_history_integrity.sql`: adiciona e preenche o estado de treino parcial e o XP oficial de cada sessão.
+- `202608260001_session_integrity.sql`: adiciona identidade única da sessão, título/foco imutáveis, encontro de Boss e snapshot do relatório; também cria a proteção contra sessões duplicadas.
+
+O cliente mantém fallback para o esquema anterior, mas os novos snapshots e a deduplicação no banco só ficam completos após a segunda migração.
+
+As garantias do cliente e as políticas RLS que precisam existir no projeto estão
+documentadas em [`docs/SUPABASE_SECURITY.md`](docs/SUPABASE_SECURITY.md). O
+repositório não substitui automaticamente as políticas já configuradas no painel.
+
+## Tecnologias
+
+React 19, Vite 7, Tailwind CSS, Supabase, Recharts, Lucide e Vite PWA.

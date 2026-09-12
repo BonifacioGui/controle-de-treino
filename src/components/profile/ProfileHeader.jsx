@@ -9,16 +9,14 @@ const ProfileHeader = ({
   setIsEditing, 
   goalProgress, 
   isGoalMet, 
-  displayClass, 
-  history,
+  displayClass,
   stats
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       
-      {/* 🔥 ID CARD CYBERPUNK ADAPTÁVEL */}
       <div 
-        className="bg-card border border-primary/40 p-6 relative shadow-[0_0_20px_rgba(var(--primary),0.1)] mt-2 transition-colors group/profile"
+        className="group/profile relative mt-2 border border-primary/40 bg-card p-4 shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-colors min-[380px]:p-6"
         style={{ clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)' }}
       >
         {/* Scanlines táticas no fundo */}
@@ -31,10 +29,9 @@ const ProfileHeader = ({
         <div className="absolute top-0 left-0 w-8 h-1 bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]"></div>
         <div className="absolute bottom-0 right-0 w-12 h-1 bg-secondary shadow-[0_0_8px_rgba(var(--secondary),0.8)]"></div>
 
-        {/* 🔥 BOTÃO DE CONFIGURAÇÃO CORRIGIDO (Puxa as variáveis do tema e remove o bloco preto) */}
         <button 
           onClick={() => setIsEditing(true)} 
-          className="absolute top-4 right-4 z-30 p-2.5 bg-input border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary transition-all shadow-[0_0_10px_rgba(var(--primary),0.1)] active:scale-95 flex items-center justify-center"
+          className="absolute right-3 top-3 z-30 flex items-center justify-center border border-primary/30 bg-input p-2.5 text-primary shadow-[0_0_10px_rgba(var(--primary),0.1)] transition-all hover:border-primary hover:bg-primary/20 active:scale-95 min-[380px]:right-4 min-[380px]:top-4"
           style={{ clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}
           title="Acessar Configurações"
         >
@@ -42,10 +39,10 @@ const ProfileHeader = ({
         </button>
 
         {/* Info do Usuário */}
-        <div className="flex items-center gap-5 relative z-10 mb-5">
+        <div className="relative z-10 mb-5 flex items-start gap-3 min-[380px]:items-center min-[380px]:gap-5">
           
           {/* Avatar com frame Sci-Fi adaptável */}
-          <div className="relative w-24 h-24 shrink-0 cursor-pointer z-20 group">
+          <div className="group relative z-20 h-20 w-20 shrink-0 cursor-pointer min-[380px]:h-24 min-[380px]:w-24">
             <input type="file" id="avatar-upload" accept="image/*" className="hidden" onChange={handleImageUpload} />
             <label 
               htmlFor="avatar-upload" 
@@ -72,13 +69,13 @@ const ProfileHeader = ({
             <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-secondary pointer-events-none"></div>
           </div>
 
-          <div className="flex-1 min-w-0 pr-12">
+          <div className="min-w-0 flex-1 pr-8 min-[380px]:pr-10">
             <div className="flex items-center gap-1.5 mb-1 opacity-70">
               <Fingerprint size={10} className="text-primary" />
               <span className="text-[8px] font-mono font-black text-primary uppercase tracking-[0.3em]">ID Confirmada</span>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] truncate leading-none">
+            <h2 className="break-normal font-cyber text-base font-black uppercase leading-tight tracking-tighter text-main drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] min-[360px]:text-xl min-[390px]:text-2xl sm:text-3xl dark:text-white dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
             
@@ -96,7 +93,7 @@ const ProfileHeader = ({
           <div className="relative z-10 pt-4 mt-2 border-t border-primary/10">
             <div className="flex justify-between items-end mb-1.5">
               <span className="text-[9px] font-black text-muted uppercase tracking-widest flex items-center gap-1.5">
-                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary animate-pulse"} /> 
+                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary"} />
                 OBJETIVO: {userMetadata.target_weight}KG
               </span>
               <span className={`text-xs font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>

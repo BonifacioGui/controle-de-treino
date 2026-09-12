@@ -1,263 +1,114 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Trophy, Zap, Award, Target } from 'lucide-react';
-import { parseDateTimestamp, safeParseFloat } from '../../utils/workoutUtils';
-// 🔥 IMPORTAÇÕES WEBP SEM ERRO 🔥
+import React, { useEffect, useRef, useState } from 'react';
+import { Crosshair, ShieldCheck, Sparkles, Swords, X } from 'lucide-react';
 import scavengerImg from '../../assets/scavenger.webp';
-import t800Img from '../../assets/t-800.webp'; 
-import mechagodzillaImg from '../../assets/mechagodzilla.webp';
-import irontitanImg from '../../assets/irontitan.webp'; 
-import adamsmasherImg from '../../assets/adamsmasher.webp';
+import revenantImg from '../../assets/t-800.webp';
+import colossusImg from '../../assets/mechagodzilla.webp';
+import ironTitanImg from '../../assets/irontitan.webp';
+import wardenImg from '../../assets/adamsmasher.webp';
+import { readUserStoredJSON, STORAGE_KEYS, writeUserStoredJSON } from '../../utils/storage';
 
-const BOSS_ROSTER = [
-  { name: "SCAVENGER UNIT", image: scavengerImg, aura: "rgba(156, 163, 175, 0.8)" },
-  { name: "T-800", image: t800Img, aura: "rgba(34, 197, 94, 0.8)" }, 
-  { name: "MECHA-GODZILLA", image: mechagodzillaImg, aura: "rgba(59, 130, 246, 0.8)" }, 
-  { name: "IRON TITAN", image: irontitanImg, aura: "rgba(168, 85, 247, 0.8)" }, 
-  { name: "ADAM SMASHER", image: adamsmasherImg, aura: "rgba(239, 68, 68, 0.8)" } 
-];
+const BOSS_ASSETS = {
+  scavenger: scavengerImg,
+  revenant: revenantImg,
+  colossus: colossusImg,
+  'iron-titan': ironTitanImg,
+  warden: wardenImg,
+};
 
-const LOOT_TABLE = [
-  { title: "NÚCLEO DE FORÇA", desc: "+20% XP", icon: <Zap size={24} className="text-yellow-400 fill-yellow-400/20" /> },
-  { title: "PLACA DE TITÂNIO", desc: "Defesa Aumentada", icon: <Trophy size={24} className="text-zinc-400 dark:text-zinc-300 fill-zinc-400/20" /> },
-  { title: "MOTOR DE DOBRA", desc: "Recuperação Turbo", icon: <Zap size={24} className="text-blue-400 fill-blue-400/20" /> },
-  { title: "MEDALHA DE HONRA", desc: "Badge Liberada", icon: <Award size={24} className="text-purple-400 fill-purple-400/20" /> }
-];
-
-const BossSection = ({ currentWorkout, todayVolume, history, selectedDate, activeDay, prHit = false }) => {
-  const [damageAnim, setDamageAnim] = useState(false);
-  const prevVolumeRef = useRef(todayVolume);
-  const [showLootOverlay, setShowLootOverlay] = useState(false);
-  const [droppedLoot, setDroppedLoot] = useState(null);
-  const wasAliveRef = useRef(true);
-
-  const effectiveVolume = prHit ? todayVolume * 1.2 : todayVolume;
+const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', userId }) => {
+  const previousDamage = useRef(encounter?.damage || 0);
+  const previousDefeated = useRef(encounter?.defeated === true);
+  const [hit, setHit] = useState(false);
+  const [defeatFeedback, setDefeatFeedback] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => Boolean(
+    userId && !readUserStoredJSON(userId, STORAGE_KEYS.bossIntroSeen, false),
+  ));
 
   useEffect(() => {
-    if (effectiveVolume > prevVolumeRef.current) {
-      // 1. Inicia a animação de forma assíncrona (resolve o erro do ESLint)
-      const startTimer = setTimeout(() => setDamageAnim(true), 0);
-      
-      // 2. Desliga a animação após 300ms
-      const endTimer = setTimeout(() => setDamageAnim(false), 200); 
-      
-      // 3. Atualiza a referência
-      prevVolumeRef.current = effectiveVolume;
-      
-      return () => {
-        clearTimeout(startTimer);
-        clearTimeout(endTimer);
-      };
-    } else {
-      prevVolumeRef.current = effectiveVolume;
+    if (!encounter) return undefined;
+    const timers = [];
+    if (encounter.damage > previousDamage.current) {
+      timers.push(window.setTimeout(() => setHit(true), 0));
+      timers.push(window.setTimeout(() => setHit(false), 260));
     }
-  }, [effectiveVolume]);
-
-  const currentBoss = useMemo(() => {
-    const dateStr = selectedDate || new Date().toISOString().split('T')[0];
-    const workoutStr = (activeDay || "") + (currentWorkout?.title || "") + (currentWorkout?.focus || "");
-    if (!workoutStr) return BOSS_ROSTER[0];
-
-    const seedString = dateStr + workoutStr;
-    let hash = 0;
-    for (let i = 0; i < seedString.length; i++) {
-        hash = Math.imul(31, hash) + seedString.charCodeAt(i) | 0;
+    if (encounter.defeated && !previousDefeated.current) {
+      timers.push(window.setTimeout(() => setDefeatFeedback(true), 0));
+      timers.push(window.setTimeout(() => setDefeatFeedback(false), 2400));
     }
-    const pseudoRandom = (Math.abs((1664525 * hash + 1013904223) % 4294967296)) / 4294967296;
+    previousDamage.current = encounter.damage;
+    previousDefeated.current = encounter.defeated;
+    return () => timers.forEach(window.clearTimeout);
+  }, [encounter]);
 
-    return BOSS_ROSTER[Math.floor(pseudoRandom * BOSS_ROSTER.length)];
-  }, [selectedDate, activeDay, currentWorkout]);
+  if (!encounter) return null;
 
-  const bossStats = useMemo(() => {
-    // Fallback de segurança caso os dados não tenham carregado
-    if (!currentWorkout || !currentWorkout.exercises?.length) {
-        return { max: 5000, current: 5000, percent: 100, status: 'ALIVE' };
-    }
-    
-    let maxHp = 5000; // HP Base para novos utilizadores / novos treinos
-    
-    // 1. Filtra o histórico APENAS pelos treinos do mesmo protocolo (ex: "A")
-    // e capta os últimos 3 treinos registados para esse dia.
-    const pastSessions = history
-        ?.filter(h => h.dayName === activeDay)
-        ?.sort((a, b) => parseDateTimestamp(b.date) - parseDateTimestamp(a.date))
-        ?.slice(0, 3) || [];
-    
-    if (pastSessions.length > 0) {
-        let totalVolumeOfPastSessions = 0;
-
-        // 2. Soma o volume de todos esses últimos 3 treinos
-        pastSessions.forEach(session => {
-            let sessionVolume = 0;
-            session.exercises.forEach(ex => { 
-                ex.sets?.forEach(s => {
-                    sessionVolume += (safeParseFloat(s.weight) * safeParseFloat(s.reps));
-                }); 
-            });
-            totalVolumeOfPastSessions += sessionVolume;
-        });
-
-        // 3. Calcula a Média de Volume real da tua fase atual
-        const avgVolume = totalVolumeOfPastSessions / pastSessions.length;
-        
-        // 4. O HP do Boss passa a ser a tua Média + 5% de desafio
-        // O Math.max garante que o Boss nunca tem menos de 2000 HP, mesmo em dias de Deload
-        maxHp = Math.max(Math.round(avgVolume * 1.05), 2000); 
-    }
-    
-    // 5. Calcula a vida restante com base no que já levantaste hoje
-    const remainingHp = Math.max(0, maxHp - effectiveVolume);
-    const percent = (remainingHp / maxHp) * 100;
-    
-    return { 
-        max: maxHp, 
-        current: remainingHp, 
-        percent, 
-        status: percent <= 0 ? 'DEFEATED' : 'ALIVE' 
-    };
-  }, [effectiveVolume, currentWorkout, history, activeDay]);
-
-  useEffect(() => {
-    if (wasAliveRef.current && bossStats.status === 'DEFEATED') {
-      
-      // Envolvemos a mudança de estado num setTimeout(..., 0) para não travar o render
-      const dropTimer = setTimeout(() => {
-        const randomLootIndex = Math.floor(Math.random() * LOOT_TABLE.length);
-        setDroppedLoot(LOOT_TABLE[randomLootIndex]);
-        setShowLootOverlay(true);
-      }, 0);
-      
-      // Some com o Loot depois de 4 segundos
-      const hideTimer = setTimeout(() => setShowLootOverlay(false), 4000);
-      
-      wasAliveRef.current = false; 
-
-      return () => {
-        clearTimeout(dropTimer);
-        clearTimeout(hideTimer);
-      };
-
-    } else if (bossStats.status === 'ALIVE') { 
-      wasAliveRef.current = true; 
-    }
-  }, [bossStats.status]);
+  const progress = Math.min(100, Math.max(0, (encounter.damage / encounter.maxHp) * 100));
+  const image = BOSS_ASSETS[encounter.bossAssetKey] || scavengerImg;
+  const discreet = experienceMode === 'discreet';
+  const immersive = experienceMode === 'immersive';
+  const tacticalLab = theme === 'light';
+  const dismissIntro = () => {
+    if (userId) writeUserStoredJSON(userId, STORAGE_KEYS.bossIntroSeen, true);
+    setShowIntro(false);
+  };
 
   return (
-    <div className={`relative w-full mb-4 sm:mb-6 transition-all duration-75 ease-out ${damageAnim ? 'scale-[0.98] -translate-x-1 rotate-[0.5deg]' : 'scale-100 translate-x-0 rotate-0'}`}>
-      
-      {/* FRAME METÁLICO CHANFRADO */}
-      <div 
-        className={`relative bg-card dark:bg-black border border-black dark:border-0 transition-colors duration-500 shadow-xl sm:shadow-2xl border-red-600 ring-1 ring-red-600/30
-          ${bossStats.status === 'DEFEATED' ? 'border-green-600 ring-green-600/30 shadow-[0_0_15px_rgba(22,163,74,0.4)]' : ''}
-          ${damageAnim ? 'bg-red-500/10 border-red-500' : ''}`}
-        style={{ clipPath: 'polygon(0% 15%, 2% 0%, 98% 0%, 100% 15%, 100% 85%, 98% 100%, 2% 100%, 0% 85%)' }}
-      >
-        <div className="bg-transparent flex items-stretch relative overflow-hidden h-16 sm:h-22" 
-             style={{ clipPath: 'polygon(0% 15%, 2% 0%, 98% 0%, 100% 15%, 100% 85%, 98% 100%, 2% 100%, 0% 85%)' }}>
-          
-          {/* PORTRAIT DO BOSS */}
-          <div className="relative w-20 h-20 sm:w-36 sm:h-32 shrink-0 bg-transparent flex items-center justify-center overflow-hidden">
-            
-            {/* 🔥 FLASH DE DANO BRANCO/VERMELHO (Fica por cima da imagem invisível, só aparece no hit) */}
-            <div className={`absolute inset-0 z-20 bg-white transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-60' : 'opacity-0'}`}></div>
-            <div className={`absolute inset-0 z-20 bg-red-600 mix-blend-color transition-opacity duration-75 pointer-events-none ${damageAnim ? 'opacity-80' : 'opacity-0'}`}></div>
+    <section
+      aria-label={discreet ? 'Meta de performance' : `${tacticalLab ? 'Análise do alvo' : 'Boss de treino'}: ${encounter.bossName}`}
+      className={`solo-boss-card relative overflow-hidden rounded-2xl border bg-card ${tacticalLab ? 'is-light-dossier' : ''} ${encounter.defeated ? 'is-defeated border-success/60' : 'border-secondary/40'} ${hit ? 'is-hit' : ''} ${immersive ? 'is-immersive' : ''}`}
+    >
+      {showIntro && (
+        <div className="relative z-20 flex items-start gap-3 border-b border-primary/30 bg-primary/10 px-3 py-3 text-xs leading-relaxed text-muted sm:px-4">
+          <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={17} />
+          <p className="flex-1"><strong className="text-main">Como funciona:</strong> séries confirmadas causam dano pelo volume real. Um novo recorde de carga dá +20% somente naquela série.</p>
+          <button type="button" onClick={dismissIntro} aria-label="Entendi, fechar explicação" className="touch-target -m-2 flex items-center justify-center text-muted hover:text-main"><X size={18} /></button>
+        </div>
+      )}
+      <div className="flex min-h-24 items-stretch">
+        {!discreet && (
+          <div className="boss-portrait relative w-24 shrink-0 overflow-hidden border-r border-border bg-black/50 sm:w-32">
+            <img src={image} alt={`Retrato de ${encounter.bossName}`} loading="lazy" className="h-full w-full object-cover opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card" />
+          </div>
+        )}
 
-            {bossStats.status === 'DEFEATED' ? (
-              <div className="relative flex flex-col items-center justify-center">
-                <div className="absolute w-12 h-12 sm:w-20 sm:h-20 bg-green-500/30 rounded-full blur-xl animate-pulse"></div>
-                <Trophy 
-                  size={42} 
-                  strokeWidth={1.5}
-                  className="relative z-10 text-green-500 dark:text-green-400 fill-green-500/30 filter drop-shadow-[0_0_20px_rgba(34,197,94,1)] animate-bounce" 
-                />
-              </div>
-            ) : (
-              <img 
-                src={currentBoss.image} 
-                alt={currentBoss.name} 
-                // 🔥 A imagem não estoura mais o brilho, apenas dá um leve solavanco (scale-105)
-                className={`relative z-10 w-full h-full object-cover grayscale-[15%] transition-transform duration-75 ${damageAnim ? 'scale-105' : 'scale-100 opacity-90'}`}
-                style={{ filter: `drop-shadow(0px 0px 8px ${currentBoss.aura})` }}
-              />
-            )}
+        <div className="min-w-0 flex-1 p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-secondary">
+                {discreet || tacticalLab ? <Crosshair size={14} /> : <Swords size={14} />}
+                {encounter.defeated ? (tacticalLab ? 'TARGET NEUTRALIZED' : 'Alvo neutralizado') : discreet ? 'Meta de performance' : tacticalLab ? 'TARGET ANALYSIS' : 'Boss de treino'}
+              </p>
+              <h2 className="mt-1 truncate font-cyber text-base font-black uppercase text-main sm:text-lg">
+                {discreet ? 'Superar desempenho recente' : tacticalLab ? <><span className="hidden sm:inline">TARGET // </span>{encounter.bossName}</> : encounter.bossName}
+              </h2>
+            </div>
+            <span className={`shrink-0 rounded-lg border px-2 py-1 text-xs font-black ${encounter.defeated ? 'border-success/40 text-success' : 'border-secondary/30 text-secondary'}`}>
+              {encounter.defeated ? <span className="flex items-center gap-1"><ShieldCheck size={14} /> Derrotado</span> : `Tier ${encounter.bossTier || 1}`}
+            </span>
           </div>
 
-          {/* ... HUD CENTRAL CONTINUA IGUAL ... */}
-
-          {/* HUD CENTRAL */}
-          <div className="flex-1 flex flex-col justify-center px-2 sm:px-6">
-            
-            <div className="flex justify-between items-end mb-1 sm:mb-2 pt-1 sm:pt-0">
-              <div className="min-w-0 pr-1 sm:pr-2">
-                <div className="flex items-center gap-0.5 sm:gap-1 text-red-600 dark:text-red-500 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] mb-0.5 sm:mb-1 truncate pr-1">
-                  <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-600 rotate-45 ${damageAnim ? 'animate-ping' : 'animate-pulse'}`}></div>
-                  {bossStats.status === 'DEFEATED' ? 'NEUTRALIZADO' : 'ALVO ATUAL'}
-                </div>
-                <h3 className="text-xs sm:text-2xl font-black uppercase tracking-tight sm:tracking-tighter text-main leading-none truncate pr-1">
-                  {currentBoss.name}
-                </h3>
-              </div>
-              
-              <div className="text-right shrink-0">
-                <span className="text-base sm:text-2xl font-black text-red-600 dark:text-red-500 leading-none tabular-nums drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">
-                  {bossStats.current.toLocaleString()} <span className="text-[10px] text-muted dark:text-zinc-400 font-bold uppercase tabular-nums">HP</span>
-                </span>
-              </div>
-            </div>
-
-            {/* BARRA DE VIDA PLASMA */}
-            {/* 🔥 Correção: Usando border-border no claro para ficar uma linha limpa, e zinc-800 no escuro */}
-            <div className="relative h-2 sm:h-6 w-full bg-input dark:bg-zinc-900 border border-border dark:border-zinc-800 shadow-[inset_0_1px_5px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_1px_5px_rgba(0,0,0,1)] overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-700 ease-out relative 
-                  ${bossStats.status === 'DEFEATED' ? 'bg-green-500 dark:bg-green-600' : 'bg-red-600 dark:bg-red-500 shadow-[0_0_10px_rgba(220,38,38,0.6)]'}`}
-                style={{ width: `${bossStats.percent}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/30 animate-pulse"></div>
-                {prHit && (
-                   <div className="absolute inset-0 bg-white/30 animate-pulse flex items-center justify-center">
-                      <span className="text-[6px] sm:text-[8px] font-black text-white uppercase tracking-[0.6em] drop-shadow-md">CRITICAL HIT</span>
-                   </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-between mt-1 sm:mt-2 items-center px-0.5 sm:px-1 text-[8px] sm:text-[11px] font-black uppercase tracking-widest">
-               {/* 🔥 Correção: Removida a opacidade quebrada. Fonte bold com a cor exata do tema. */}
-               <span className="text-muted dark:text-zinc-500 font-bold leading-none truncate pr-1">
-                 LIMIT: <span className="text-main tabular-nums font-black">{bossStats.max.toLocaleString()} KG</span>
-               </span>
-               <div className="text-red-600 dark:text-red-500 font-black leading-none flex gap-1 items-center shrink-0">
-                <span>{Math.round(100 - bossStats.percent)}% DANO</span>
-                {/* 🔥 Correção: "Integridade" agora está visível, com contraste real (text-muted) */}
-                <span className="text-[8px] hidden sm:inline text-muted dark:text-zinc-500 font-bold ml-1">Integridade: 100%</span>
-               </div>
-            </div>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full border border-border bg-input" role="progressbar" aria-label="Dano causado ao alvo" aria-valuemin="0" aria-valuemax={encounter.maxHp} aria-valuenow={Math.min(encounter.damage, encounter.maxHp)}>
+            <div className={`h-full transition-[width] duration-500 ${encounter.defeated ? 'bg-success' : 'bg-gradient-to-r from-secondary to-primary'}`} style={{ width: `${progress}%` }} />
           </div>
+
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+            <span className="font-bold text-main">{Math.round(encounter.damage).toLocaleString('pt-BR')} / {Math.round(encounter.maxHp).toLocaleString('pt-BR')} dano</span>
+            <span className="text-muted">HP restante: {Math.round(encounter.remainingHp).toLocaleString('pt-BR')}</span>
+          </div>
+          {encounter.criticalBonus > 0 && (
+            <p className="mt-2 flex items-center gap-1 text-xs font-bold text-gold"><Sparkles size={14} /> {encounter.criticalHits} critical {encounter.criticalHits === 1 ? 'hit' : 'hits'} • +{Math.round(encounter.criticalBonus).toLocaleString('pt-BR')} dano</p>
+          )}
+          {encounter.overkill > 0 && <p className="mt-1 text-xs font-bold text-success">Overkill: {Math.round(encounter.overkill).toLocaleString('pt-BR')}</p>}
         </div>
       </div>
 
-      <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 sm:w-1.5 sm:h-12 bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)] hidden dark:block"></div>
-      <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-1 h-6 sm:w-1.5 sm:h-12 bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)] hidden dark:block"></div>
-
-      {/* OVERLAY DE LOOT */}
-      {showLootOverlay && droppedLoot && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-black/95 backdrop-blur-md animate-in fade-in zoom-in duration-300 p-2 sm:p-4">
-           <div className="bg-card dark:bg-black border-2 border-green-500 py-3 sm:py-4 px-4 sm:px-6 rounded-lg shadow-[0_0_40px_rgba(34,197,94,0.3)] flex items-center justify-center gap-3 sm:gap-4 w-full">
-              
-              <div className="relative p-2 sm:p-3 bg-green-500/10 dark:bg-green-900/30 border border-green-500/80 text-green-500 dark:text-green-400 rounded-lg animate-bounce shadow-[0_0_15px_rgba(34,197,94,0.5)]">
-                <div className="absolute inset-0 bg-green-500/20 blur-md animate-pulse"></div>
-                <div className="relative z-10">{droppedLoot.icon}</div>
-              </div>
-              
-              <div className="flex-1">
-                <p className="text-[9px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest leading-none mb-1">RECOMPENSA DE COMBATE</p>
-                <p className="text-sm sm:text-2xl font-black text-main uppercase tracking-tight leading-none mb-1">{droppedLoot.title}</p>
-                <p className="text-[10px] text-muted dark:text-zinc-500 font-bold uppercase">{droppedLoot.desc}</p>
-              </div>
-           </div>
+      {defeatFeedback && (
+        <div role="status" className="absolute inset-x-3 bottom-3 rounded-xl border border-success/50 bg-card/95 px-4 py-3 text-center text-sm font-black uppercase tracking-wider text-success shadow-lg">
+          Alvo neutralizado — continue seu treino
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

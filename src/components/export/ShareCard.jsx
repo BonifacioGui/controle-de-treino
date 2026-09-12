@@ -1,15 +1,16 @@
 import React from 'react';
 import {
   Skull, Zap, Trophy, Flame, Target,
-  ChevronUp, Clock, Activity, Terminal, Dumbbell,
+  Clock, Activity, Terminal, Dumbbell,
 } from 'lucide-react';
 import {
-  parseNumeric,
   stripUnit,
   calcDensity,
-  getBattleReport,
+  createShareCardFieldSelection,
+  getShareCardGridClass,
   levelProgressPercent,
 } from './ShareCardUtils';
+import { getBossBattleReport } from '../../utils/bossModel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -19,11 +20,11 @@ const VARIANTS    = ['rpg', 'data'];
 
 // ─── StatCell ─────────────────────────────────────────────────────────────────
 
-const StatCell = ({ icon: Icon, label, value, suffix, colorClass, hasDivider = false }) => (
+const StatCell = ({ label, value, suffix, colorClass, Icon, hasDivider = false }) => (
   <div className={`flex flex-col items-center justify-center text-center ${hasDivider ? 'border-l border-white/10' : ''}`}>
     <div className="flex items-center justify-center gap-3 mb-4">
-      <Icon size={36} className={colorClass} />
-      <span style={{ fontSize: '26px' }} className="font-bold text-white/60 uppercase tracking-widest">
+      {Icon && <Icon aria-hidden="true" size={30} className={colorClass} />}
+      <span style={{ fontSize: '26px' }} className={`font-bold uppercase tracking-widest ${Icon ? colorClass : 'text-white/60'}`}>
         {label}
       </span>
     </div>
@@ -39,6 +40,23 @@ const StatCell = ({ icon: Icon, label, value, suffix, colorClass, hasDivider = f
     </div>
   </div>
 );
+
+const StatGrid = ({ metrics, className = '' }) => {
+  if (metrics.length === 0) return null;
+  const columnCount = Math.min(metrics.length, 3);
+
+  return (
+    <div className={`grid ${getShareCardGridClass(metrics.length)} gap-6 ${className}`}>
+      {metrics.map(({ key, ...metric }, index) => (
+        <StatCell
+          key={key}
+          {...metric}
+          hasDivider={index % columnCount !== 0}
+        />
+      ))}
+    </div>
+  );
+};
 
 // ─── CardBackground ───────────────────────────────────────────────────────────
 
@@ -73,12 +91,18 @@ const CardBackground = ({ selfieUrl }) => (
 
 // ─── SelfieVariant ────────────────────────────────────────────────────────────
 
-// ─── SelfieVariant ────────────────────────────────────────────────────────────
-
-const SelfieVariant = ({ stats, bossName, streak }) => {
-  const hasPr = stats.prs > 0;
+const SelfieVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, variant, fields }) => {
   // Gera a data no formato DD.MM.YYYY para um visual mais tático/cyberpunk
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
+  const isDataVariant = variant === 'data';
+  const visibleBoss = fields.boss ? bossEncounter : null;
+  const metrics = [
+    fields.duration && { key: 'duration', label: 'Duração', value: stats.duration, colorClass: 'text-purple-400' },
+    fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
+    fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-400' },
+    fields.streak && { key: 'streak', label: 'Streak', value: streak, suffix: 'dias', colorClass: 'text-orange-500' },
+    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
+  ].filter(Boolean);
 
   return (
     <div className="flex flex-col h-full justify-between pb-4 pt-12">
@@ -86,9 +110,9 @@ const SelfieVariant = ({ stats, bossName, streak }) => {
       {/* Topo: Etiqueta do Alvo e Data da Operação */}
       <div className="flex justify-between items-start w-full">
         <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 shadow-xl">
-          <Target size={36} className="text-cyan-400" />
-          <span style={{ fontSize: '32px' }} className="text-white font-black tracking-widest uppercase drop-shadow-md">
-            ALVO: {bossName}
+          {isDataVariant ? <Terminal size={36} className="text-cyan-400" /> : <Target size={36} className="text-fuchsia-400" />}
+          <span style={{ fontSize: '32px' }} className="max-w-[650px] truncate text-white font-black tracking-widest uppercase drop-shadow-md">
+            {visibleBoss ? `ALVO: ${bossName}` : isDataVariant ? `SYS.LOG: ${workoutTitle}` : `TREINO: ${workoutTitle}`}
           </span>
         </div>
         
@@ -99,30 +123,31 @@ const SelfieVariant = ({ stats, bossName, streak }) => {
         </div>
       </div>
 
-      {/* Base: Bloco de dados dinâmico (2 ou 3 colunas dependendo do PR) */}
-      <div className="bg-black/60 backdrop-blur-xl p-10 rounded-[40px] border border-white/20 shadow-2xl flex flex-col gap-6">
-        <div className={`grid ${hasPr ? 'grid-cols-3' : 'grid-cols-2'} gap-6`}>
-          <StatCell icon={Clock}  label="Duração" value={stats.duration} colorClass="text-purple-400" />
-          <StatCell icon={Flame}  label="Streak"  value={streak} suffix="Dias" colorClass="text-orange-500" hasDivider />
-          
-          {hasPr && (
-            <StatCell icon={Trophy} label="Recordes" value={stats.prs} colorClass="text-yellow-400" hasDivider />
-          )}
-        </div>
-      </div>
+      {/* Base: somente os dados que o usuário autorizou no compartilhamento. */}
+      {metrics.length > 0 && (
+        <StatGrid metrics={metrics} className="bg-black/60 backdrop-blur-xl p-10 rounded-[40px] border border-white/20 shadow-2xl" />
+      )}
     </div>
   );
 };
 
 // ─── RpgVariant ───────────────────────────────────────────────────────────────
 
-const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp }) => {
-  const volume       = parseNumeric(stats.volume);
-  const hpTarget     = parseNumeric(bossHp) || 1;
-  const bossDefeated = volume >= hpTarget;
-  const battleReport = getBattleReport(stats, bossHp);
+const RpgVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, currentLevel, totalXp, fields }) => {
+  const visibleBoss = fields.boss ? bossEncounter : null;
+  const bossDefeated = visibleBoss?.defeated === true;
+  const battleReport = getBossBattleReport(visibleBoss, fields.prs ? stats.prs : 0);
   const progressPct  = levelProgressPercent(totalXp, currentLevel);
   const horaAtual    = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const performanceMetrics = [
+    fields.duration && { key: 'duration', label: 'Duração', value: stats.duration, colorClass: 'text-purple-400' },
+    fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
+    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
+  ].filter(Boolean);
+  const progressionMetrics = [
+    fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-500' },
+    fields.streak && { key: 'streak', label: 'Streak', value: streak, suffix: 'dias', colorClass: 'text-orange-500' },
+  ].filter(Boolean);
 
   return (
     <div className="flex flex-col h-full">
@@ -145,7 +170,7 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
 
       {/* Body */}
       <div className="flex-1 flex flex-col justify-center gap-10">
-        {/* Boss card */}
+        {/* Snapshot canônico do treino e, quando disponível, do Boss */}
         <div className="bg-black/80 p-12 rounded-[40px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-8 mb-10">
             <div className="w-32 h-32 bg-red-900/30 rounded-3xl flex items-center justify-center border border-red-500/40 shrink-0">
@@ -153,14 +178,15 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
             </div>
             <div className="overflow-hidden flex-1">
               <p style={{ fontSize: '28px' }} className="font-bold text-red-500 uppercase tracking-widest mb-2">
-                {bossDefeated ? 'Alvo Neutralizado' : 'Alvo Sobreviveu'}
+                {visibleBoss ? (bossDefeated ? 'Alvo Neutralizado' : 'Sessão Registrada') : 'Relatório de Performance'}
               </p>
               <h2
                 style={{ fontSize: '80px', lineHeight: '1' }}
                 className="font-black text-white uppercase tracking-tighter truncate"
               >
-                {bossName}
+                {visibleBoss ? bossName : workoutTitle}
               </h2>
+              {visibleBoss && <p style={{ fontSize: '28px' }} className="mt-3 font-bold text-white/60">{Math.round(visibleBoss.damage).toLocaleString('pt-BR')} / {Math.round(visibleBoss.maxHp).toLocaleString('pt-BR')} dano</p>}
             </div>
           </div>
 
@@ -171,38 +197,29 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
             </p>
           </div>
 
-          {/* Level progress */}
-          <div className="space-y-6">
-            <div className="flex justify-between items-end">
-              <span style={{ fontSize: '48px' }} className="font-black text-fuchsia-400 uppercase tracking-widest">
-                Nível {currentLevel}
-              </span>
-              <span style={{ fontSize: '32px' }} className="font-bold text-fuchsia-400/80">
-                Progresso
-              </span>
+          {/* O progresso de nível pertence ao dado de XP e segue a mesma escolha. */}
+          {fields.xp && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-end">
+                <span style={{ fontSize: '48px' }} className="font-black text-fuchsia-400 uppercase tracking-widest">
+                  Nível {currentLevel}
+                </span>
+                <span style={{ fontSize: '32px' }} className="font-bold text-fuchsia-400/80">
+                  Progresso
+                </span>
+              </div>
+              <div className="w-full h-8 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className="h-full bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-8 bg-black/60 rounded-full overflow-hidden border border-white/10">
-              <div
-                className="h-full bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Stats row 1 */}
-        <div className="grid grid-cols-3 gap-8 bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0">
-          <StatCell icon={Clock}  label="Duração"  value={stats.duration}           colorClass="text-purple-400" />
-          <StatCell icon={Zap}    label="Volume"   value={stripUnit(stats.volume)}  colorClass="text-cyan-400"   hasDivider suffix="kg" />
-          <StatCell icon={Trophy} label="Recordes" value={stats.prs ?? 0}           colorClass="text-yellow-400" hasDivider />
-        </div>
-
-        {/* Stats row 2 */}
-        <div className="grid grid-cols-3 gap-8 bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0">
-          <StatCell icon={ChevronUp} label="XP Ganho" value={`+${xp}`}            colorClass="text-fuchsia-500" />
-          <StatCell icon={Flame}     label="Streak"   value={streak} suffix="Dias" colorClass="text-orange-500" hasDivider />
-          <StatCell icon={Target}    label="Foco"     value="100%"                 colorClass="text-green-400"  hasDivider />
-        </div>
+        <StatGrid metrics={performanceMetrics} className="bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0" />
+        <StatGrid metrics={progressionMetrics} className="bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0" />
       </div>
     </div>
   );
@@ -210,9 +227,12 @@ const RpgVariant = ({ stats, bossName, streak, xp, currentLevel, totalXp, bossHp
 
 // ─── DataVariant ──────────────────────────────────────────────────────────────
 
-const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
+const DataVariant = ({ stats, workoutTitle, bossEncounter, streak, xp, currentLevel, fields }) => {
   const cleanVolume = stripUnit(stats.volume);
   const density     = calcDensity(stats.volume, stats.duration);
+  const visibleBoss = fields.boss ? bossEncounter : null;
+  const detailCardCount = Number(fields.duration) + Number(fields.volume && fields.duration);
+  const statusCardCount = Number(fields.xp) + Number(fields.streak) + Number(fields.prs && !fields.volume);
 
   return (
     <div className="flex flex-col h-full">
@@ -222,7 +242,7 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
           <div className="flex items-center gap-4 mb-4">
             <Terminal size={40} className="text-cyan-400" />
             <h2 className="text-3xl font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-              SYS.LOG // {bossName}
+              SYS.LOG // {workoutTitle}
             </h2>
           </div>
           <h1
@@ -238,11 +258,26 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
 
       {/* Body */}
       <div className="flex-1 flex flex-col justify-center gap-8">
+        {visibleBoss && (
+          <div className="bg-black/90 p-10 rounded-[40px] border border-red-500/35 shadow-2xl">
+            <div className="flex items-center justify-between gap-8">
+              <div className="min-w-0">
+                <p className="text-2xl text-red-400 font-mono uppercase tracking-widest mb-2">Boss // relatório</p>
+                <p className="truncate text-5xl font-black uppercase text-white">{visibleBoss.bossName}</p>
+              </div>
+              <p className="shrink-0 text-4xl font-black text-red-400">
+                {Math.round(visibleBoss.damage).toLocaleString('pt-BR')} / {Math.round(visibleBoss.maxHp).toLocaleString('pt-BR')}
+              </p>
+            </div>
+            <p className="mt-5 text-3xl text-white/70">{getBossBattleReport(visibleBoss, fields.prs ? stats.prs : 0)}</p>
+          </div>
+        )}
+
         {/* Volume card */}
-        <div className="relative bg-black/90 p-12 rounded-[40px] border-l-8 border-cyan-500 shadow-2xl flex flex-col items-center justify-center overflow-hidden">
+        {fields.volume && <div className="relative bg-black/90 p-12 rounded-[40px] border-l-8 border-cyan-500 shadow-2xl flex flex-col items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-cyan-500/5 pointer-events-none" />
 
-          {stats.prs > 0 && (
+          {fields.prs && (
             <div className="absolute top-8 right-8 bg-yellow-500/20 border border-yellow-500/50 px-6 py-2 rounded-full flex items-center gap-3">
               <Trophy size={24} className="text-yellow-500" />
               <span className="text-yellow-500 font-bold text-2xl tracking-widest uppercase">
@@ -259,11 +294,11 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
             </p>
             <span className="text-6xl text-cyan-500 font-bold">KG</span>
           </div>
-        </div>
+        </div>}
 
         {/* Duration / Density grid */}
-        <div className="grid grid-cols-2 gap-8">
-          <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
+        {detailCardCount > 0 && <div className={`grid ${getShareCardGridClass(detailCardCount)} gap-8`}>
+          {fields.duration && <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
             <div className="absolute -top-4 -right-4 p-6 opacity-20 pointer-events-none">
               <Clock size={160} className="text-white" />
             </div>
@@ -271,9 +306,9 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
             <p style={{ fontSize: '90px', lineHeight: '1' }} className="relative font-black text-white tracking-tighter drop-shadow-md">
               {stats.duration}
             </p>
-          </div>
+          </div>}
 
-          <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
+          {fields.volume && fields.duration && <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
             <div className="absolute -top-4 -right-4 p-6 opacity-20 pointer-events-none">
               <Zap size={160} className="text-cyan-500" />
             </div>
@@ -284,12 +319,12 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
               {density}{' '}
               <span className="text-4xl text-white/70">kg/min</span>
             </p>
-          </div>
-        </div>
+          </div>}
+        </div>}
 
         {/* Status / Streak grid */}
-        <div className="grid grid-cols-2 gap-8">
-          <div className="bg-[#1a2332] border border-cyan-500/30 p-10 rounded-[40px] flex items-center justify-between shadow-2xl">
+        {statusCardCount > 0 && <div className={`grid ${statusCardCount === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-8`}>
+          {fields.xp && <div className="bg-[#1a2332] border border-cyan-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
             <div>
               <p className="text-2xl text-cyan-300 font-mono uppercase tracking-widest mb-2">Status</p>
               <p className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">
@@ -299,9 +334,9 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
             <p className="text-5xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
               +{xp} XP
             </p>
-          </div>
+          </div>}
 
-          <div className="bg-black/90 border border-orange-500/30 p-10 rounded-[40px] flex items-center justify-between shadow-2xl">
+          {fields.streak && <div className="bg-black/90 border border-orange-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
             <div>
               <p className="text-2xl text-orange-400 font-mono uppercase tracking-widest mb-2">Streak</p>
               <p className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">
@@ -309,8 +344,16 @@ const DataVariant = ({ stats, bossName, streak, xp, currentLevel }) => {
               </p>
             </div>
             <Flame size={60} className="text-orange-500" />
-          </div>
-        </div>
+          </div>}
+
+          {fields.prs && !fields.volume && <div className="bg-black/90 border border-yellow-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
+            <div>
+              <p className="text-2xl text-yellow-400 font-mono uppercase tracking-widest mb-2">Recordes</p>
+              <p className="text-5xl font-black uppercase tracking-tighter text-yellow-400">{stats.prs} novos PRs</p>
+            </div>
+            <Trophy size={60} className="text-yellow-500" />
+          </div>}
+        </div>}
       </div>
     </div>
   );
@@ -334,19 +377,27 @@ const CardFooter = ({ variant }) => (
 const ShareCard = ({
   stats,
   bossName,
+  bossEncounter = null,
+  workoutTitle = 'Treino',
   streak,
   xp,
   cardRef,
   selfieUrl,
   currentLevel = 1,
   totalXp      = 0,
-  bossHp       = 10_000,
   variant      = 'rpg',
+  fieldSelection,
 }) => {
   const safeVariant = VARIANTS.includes(variant) ? variant : 'rpg';
+  const resolvedBossName = bossEncounter?.bossName || bossName || '';
+  const fields = createShareCardFieldSelection({
+    selection: fieldSelection,
+    hasPr: Number(stats?.prs) > 0,
+    hasBoss: Boolean(bossEncounter),
+  });
 
   return (
-    <div className="fixed top-0 left-[-9999px] pointer-events-none">
+    <div aria-hidden="true" className="fixed top-0 left-[-9999px] pointer-events-none">
       <div
         ref={cardRef}
         style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px`, backgroundColor: '#050B14' }}
@@ -360,30 +411,39 @@ const ShareCard = ({
           {selfieUrl ? (
             <SelfieVariant 
               stats={stats} 
-              bossName={bossName} 
-              streak={streak} 
+              bossName={resolvedBossName}
+              workoutTitle={workoutTitle}
+              bossEncounter={bossEncounter}
+              streak={streak}
+              xp={xp}
+              variant={safeVariant}
+              fields={fields}
             />
           ) : (
             <>
               {safeVariant === 'rpg' && (
                 <RpgVariant
                   stats={stats}
-                  bossName={bossName}
+                  bossName={resolvedBossName}
+                  workoutTitle={workoutTitle}
+                  bossEncounter={bossEncounter}
                   streak={streak}
                   xp={xp}
                   currentLevel={currentLevel}
                   totalXp={totalXp}
-                  bossHp={bossHp}
+                  fields={fields}
                 />
               )}
 
               {safeVariant === 'data' && (
                 <DataVariant
                   stats={stats}
-                  bossName={bossName}
+                  workoutTitle={workoutTitle}
+                  bossEncounter={bossEncounter}
                   streak={streak}
                   xp={xp}
                   currentLevel={currentLevel}
+                  fields={fields}
                 />
               )}
 

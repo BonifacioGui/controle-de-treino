@@ -76,7 +76,9 @@ const SignUpWizard = ({ onSwitch }) => {
       if (error) throw error;
       if (data?.user) setIsSignedUp(true);
     } catch (err) {
-      setErrorMsg(err.message === 'User already registered' ? 'Este e-mail já está em uso por outro usuário.' : err.message);
+      setErrorMsg(err?.message === 'User already registered'
+        ? 'Este e-mail já está em uso por outro usuário.'
+        : 'Não foi possível criar sua conta agora. Confira os dados e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -154,7 +156,7 @@ const SignUpWizard = ({ onSwitch }) => {
             <button onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 translate-y-[4px] text-muted hover:text-primary p-1"><Eye size={18}/></button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 bg-black/30 p-3.5 rounded-xl border border-border/40 shadow-inner">
+          <div className="grid grid-cols-2 gap-2 bg-input/70 p-3.5 rounded-xl border border-border/40 shadow-inner">
             {PASSWORD_RULES.map((rule, i) => (
               <div key={i} className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-wider transition-colors ${rule.test(password) ? 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' : 'text-muted/70'}`}>
                 {rule.test(password) ? <Check size={12}/> : <X size={12}/>} {rule.label}
@@ -162,7 +164,7 @@ const SignUpWizard = ({ onSwitch }) => {
             ))}
           </div>
 
-          <button disabled={!isEmailValid || !isPasswordValid || !passwordsMatch} onClick={nextStep} className="w-full mt-4 bg-primary text-black font-black py-4 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.3)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-40 uppercase text-sm">Próxima Fase <ChevronRight size={18}/></button>
+          <button disabled={!isEmailValid || !isPasswordValid || !passwordsMatch} onClick={nextStep} className="w-full mt-4 bg-primary text-on-primary font-black py-4 rounded-xl shadow-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-40 uppercase text-sm">Próxima Fase <ChevronRight size={18}/></button>
         </div>
       )}
 
@@ -187,7 +189,7 @@ const SignUpWizard = ({ onSwitch }) => {
             <div><label className="text-[10px] font-black uppercase text-muted mb-1.5 block">Altura</label><div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-3 py-3.5"><Ruler className="text-muted mr-2" size={16}/><input type="text" className="flex-1 bg-transparent outline-none font-black text-sm" placeholder="175" value={metadata.height} onChange={(e) => setMetadata({...metadata, height: formatNumberInput(e.target.value)})} /></div></div>
             <div><label className="text-[10px] font-black uppercase text-muted mb-1.5 block">Peso</label><div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-3 py-3.5"><Scale className="text-muted mr-2" size={16}/><input type="text" className="flex-1 bg-transparent outline-none font-black text-sm" placeholder="70" value={metadata.weight} onChange={(e) => setMetadata({...metadata, weight: formatNumberInput(e.target.value)})} /></div></div>
           </div>
-          <div className="flex gap-2 pt-4 relative z-0"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-[10px] text-muted hover:text-main">Voltar</button><button disabled={!isStep2Valid} onClick={nextStep} className="flex-[2] bg-primary text-black font-black py-4 rounded-xl disabled:opacity-40 uppercase text-sm">Prosseguir</button></div>
+          <div className="flex gap-2 pt-4 relative z-0"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted hover:text-main">Voltar</button><button disabled={!isStep2Valid} onClick={nextStep} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl disabled:opacity-40 uppercase text-sm">Prosseguir</button></div>
         </div>
       )}
 
@@ -204,7 +206,7 @@ const SignUpWizard = ({ onSwitch }) => {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 mt-6"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-[10px] text-muted">Voltar</button><button onClick={nextStep} className="flex-[2] bg-primary text-black font-black py-4 rounded-xl uppercase text-sm">Escolher Classe</button></div>
+          <div className="flex gap-2 mt-6"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button onClick={nextStep} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl uppercase text-sm">Escolher Classe</button></div>
         </div>
       )}
 
@@ -221,7 +223,7 @@ const SignUpWizard = ({ onSwitch }) => {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-4"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-[10px] text-muted">Voltar</button><button onClick={handleSignUp} disabled={loading} className="flex-[2] bg-primary text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 uppercase text-sm">{loading ? <Loader2 size={18} className="animate-spin" /> : 'Finalizar'}</button></div>
+          <div className="flex gap-2 pt-4"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button onClick={handleSignUp} disabled={loading} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl flex items-center justify-center gap-2 uppercase text-sm">{loading ? <Loader2 size={18} className="animate-spin" /> : 'Finalizar'}</button></div>
         </div>
       )}
     </div>

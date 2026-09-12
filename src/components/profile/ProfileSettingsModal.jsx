@@ -122,7 +122,7 @@ const ProfileSettingsModal = ({
           <button 
             onClick={handleSaveProfile}
             disabled={isSaving}
-            className="w-full mt-4 bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(var(--primary),0.6)] transition-all disabled:opacity-50 shrink-0 shadow-sm"
+            className="w-full mt-4 bg-primary text-on-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(var(--primary),0.6)] transition-all disabled:opacity-50 shrink-0 shadow-sm"
           >
             {isSaving ? 'Sincronizando...' : <><Save size={18} /> Salvar Ficha</>}
           </button>

@@ -2,7 +2,9 @@ name: Deploy para GitHub Pages
 
 on:
   push:
-    branches: ["main"] # Verifique se sua branch principal se chama main ou master
+    # A branch de revisão publica uma prévia no Pages antes do merge.
+    # Remover agent/revisao-ux-features desta lista antes de concluir o PR.
+    branches: ["main", "agent/revisao-ux-features"]
 
 concurrency:
   group: "pages"
@@ -43,5 +45,3 @@ jobs:
 
       - name: Deploy
         uses: actions/deploy-pages@v4
-
-        

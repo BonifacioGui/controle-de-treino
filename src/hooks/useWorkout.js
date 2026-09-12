@@ -1,480 +1,1218 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
 import { calculateStats, calculateStreak } from '../utils/rpgSystem';
-import { useWorkoutTimer } from './useWorkoutTimer';
 import { getUnlockedBadges } from '../utils/gameLogic';
+import { getLocalDateKey, isSameLocalDay, normalizeLocalDateKey } from '../utils/dateUtils';
+import {
+  normalizeHistory,
+  normalizeHistoryEntry,
+  normalizeWorkoutSet,
+  sortHistoryNewestFirst,
+  isExtendedHistorySchemaError,
+  toSupabaseHistoryRow,
+} from '../utils/historyModel';
+import {
+  getVisibleHistory,
+  HISTORY_SYNC_STATUS,
+  isPendingHistoryEntry,
+  mergeCloudAndLocalHistory,
+  sessionFingerprint,
+} from '../utils/historySync';
+import { countLoadPrs } from '../utils/progressionUtils';
+import { DEFAULT_PLAN_SYNC, markPlanDirty, markPlanSynced, normalizePlanSync } from '../utils/planSync';
+import {
+  buildSessionExercises,
+  calculateCompletedVolume,
+  createSessionId,
+  getSessionCompletion,
+  getSessionProgress,
+  SESSION_STATUS,
+} from '../utils/sessionModel';
+import { createBossEncounter, updateBossEncounter } from '../utils/bossModel';
+import {
+  adjustRestTimerEndTime,
+  createRestTimerState,
+  finishRestTimerState,
+  getIdleRestTimerState,
+  REST_TIMER_STATUS,
+  restoreRestTimerState,
+  shouldStartRestTimer,
+} from '../utils/restTimerModel';
+import { QUEST_RULES } from '../utils/questRules';
+import {
+  migrateLegacyStorage,
+  readUserStoredJSON,
+  readUserStoredText,
+  removeUserStoredItem,
+  STORAGE_KEYS,
+  writeUserStoredJSON,
+  writeUserStoredText,
+} from '../utils/storage';
+import { calculateSessionXp } from '../utils/xpModel';
+import { classifyVolumeProgress, findPreviousComparableVolume } from '../utils/overloadModel';
+import { addExerciseAlternative, hasCompletedExerciseSets } from '../utils/substitutionModel';
+import {
+  claimHapticAttempt,
+  getHapticDelivery,
+  HAPTIC_DELIVERY,
+  HAPTIC_TYPES,
+  isHapticRetryFresh,
+  triggerHaptic,
+} from '../utils/haptics';
+import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
+import { useWorkoutSession } from './useWorkoutSession';
 
-const getInitialWorkout = (data) => {
-  const keys = Object.keys(data || {});
-  return keys[0] || 'A';
+const getInitialWorkout = (data) => Object.keys(data || {})[0] || 'A';
+const normalizeWorkoutPlan = (plan) => {
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return {};
+  if (Object.keys(plan).length === 1 && plan['INÍCIO']) return {};
+  return plan;
+};
+const normalizeBodyHistory = (entries) => Array.isArray(entries)
+  ? entries.map((entry) => ({ ...entry, date: normalizeLocalDateKey(entry.date) })).filter((entry) => entry.date)
+  : [];
+
+const writeHistoryWithSchemaFallback = async (operation, entry, userId) => {
+  let result = await operation(toSupabaseHistoryRow(entry, userId));
+  if (result.error && isExtendedHistorySchemaError(result.error)) {
+    result = await operation(toSupabaseHistoryRow(entry, userId, { includeExtendedFields: false }));
+  }
+  return result;
 };
 
-export const useWorkout = () => {
-  // 1. ESTADOS PRINCIPAIS
-  const [userId, setUserId] = useState(null);
-  const [workoutData, setWorkoutData] = useState(() => {
-    try {
-      const saved = localStorage.getItem('workout_plan');
-      return saved ? JSON.parse(saved) : initialWorkoutData;
-    } catch { return initialWorkoutData; }
-  });
-
-  const [activeDay, setActiveDay] = useState(() => {
-    try {
-      const savedDay = localStorage.getItem('active_day');
-      const planKeys = Object.keys(workoutData || {});
-      if (savedDay && planKeys.includes(savedDay)) return savedDay;
-      return planKeys[0] || 'A';
-    } catch { 
-      return getInitialWorkout(workoutData); 
-    }
-  });
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [sessionNote, setSessionNote] = useState('');
+export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
+  const {
+    session,
+    isHydrated: isSessionHydrated,
+    workoutTimer,
+    startSession,
+    reopenSession,
+    pauseSession,
+    resumeSession,
+    toggleWorkoutTimer,
+    markFinishing,
+    restoreAfterFailedFinish,
+    completeSession,
+    resetSession,
+    acknowledgeRecovery,
+    updateSessionNote,
+    updateSessionSnapshot,
+  } = useWorkoutSession(userId);
+  const [hydratedUserId, setHydratedUserId] = useState(null);
+  const [workoutData, setWorkoutDataState] = useState({});
+  const [planSync, setPlanSync] = useState(DEFAULT_PLAN_SYNC);
+  const [activeDay, setActiveDay] = useState('A');
+  const [selectedDate, setSelectedDate] = useState(getLocalDateKey);
+  const [sessionNote, setSessionNoteState] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [waistInput, setWaistInput] = useState('');
   const [view, setView] = useState('workout');
-  const [timerState, setTimerState] = useState({ active: false, seconds: 90 });
+  const [syncStatus, setSyncStatus] = useState(navigator.onLine ? 'synced' : 'offline');
   const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
+  const syncInFlight = useRef(false);
+  const activeUserRef = useRef(userId);
+  activeUserRef.current = userId;
 
-  // 2. HOOKS MODULARIZADOS
-  const { workoutTimer, toggleWorkoutTimer, resetWorkoutTimer, setWorkoutTimer } = useWorkoutTimer();
+  const [progress, setProgress] = useState({});
+  const [history, setHistory] = useState([]);
+  const [bodyHistory, setBodyHistory] = useState([]);
+  const [timerState, setTimerState] = useState(getIdleRestTimerState);
+  const handledRestTimersRef = useRef(new Set());
+  const pendingRestHapticRef = useRef(null);
+  const attemptedRestHapticsRef = useRef(new Set());
+  const hapticFeedbackRef = useRef(hapticFeedback);
+  hapticFeedbackRef.current = hapticFeedback;
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
+  const restoredSessionRef = useRef(null);
+  const isHydrated = Boolean(userId && hydratedUserId === userId && isSessionHydrated);
+  const visibleHistory = useMemo(() => getVisibleHistory(history), [history]);
+  const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
+    .includes(session.status);
+  const activeWorkout = sessionActive
+    ? (session.workoutSnapshot || workoutData[session.workoutName || activeDay])
+    : workoutData[activeDay];
+  const activeSessionProgress = useMemo(() => (
+    sessionActive
+      ? getSessionProgress(progress, session.dateKey || selectedDate, session.workoutName || activeDay)
+      : {}
+  ), [activeDay, progress, selectedDate, session.dateKey, session.workoutName, sessionActive]);
+  const activeSessionExercises = useMemo(() => (
+    sessionActive && activeWorkout
+      ? buildSessionExercises(
+          activeWorkout,
+          progress,
+          session.dateKey || selectedDate,
+          session.workoutName || activeDay,
+        )
+      : []
+  ), [activeDay, activeWorkout, progress, selectedDate, session.dateKey, session.workoutName, sessionActive]);
+  const bossHistory = useMemo(() => visibleHistory.filter((entry) => (
+    !session.editTarget
+    || (entry.id !== session.editTarget.id && entry.localId !== session.editTarget.localId)
+  )), [session.editTarget, visibleHistory]);
+  const activeBossEncounter = useMemo(() => updateBossEncounter(
+    session.bossEncounter,
+    activeSessionExercises,
+    bossHistory,
+    session.workoutName || activeDay,
+  ), [activeDay, activeSessionExercises, bossHistory, session.bossEncounter, session.workoutName]);
 
-  const [progress, setProgress] = useState(() => {
-    try {
-      const saved = localStorage.getItem('daily_progress');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('workout_history');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  const [bodyHistory, setBodyHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('body_history');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  // 3. AUTH & CLOUD FETCH
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserId(session?.user?.id || null);
-    };
-    getSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
-    });
-    return () => subscription.unsubscribe();
+  const cancelPendingRestHaptic = useCallback(() => {
+    const timerId = pendingRestHapticRef.current?.timerId;
+    pendingRestHapticRef.current = null;
+    if (timerId) claimHapticAttempt(attemptedRestHapticsRef.current, timerId);
   }, []);
 
-  const fetchCloudData = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const { data: bodyData } = await supabase.from('body_stats').select('*').eq('user_id', userId).order('date', { ascending: false });
-      if (bodyData) setBodyHistory(bodyData.map(b => ({ ...b, date: b.date.split('T')[0].split('-').reverse().join('/') })));
-      
-      const { data: trainData } = await supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false });
-      let historyParsed = [];
-      if (trainData) {
-        historyParsed = trainData.map(t => ({ ...t, id: t.id, date: t.workout_date.split('T')[0].split('-').reverse().join('/'), dayName: t.workout_name }));
-        setHistory(historyParsed);
-      }
-
-      const { data: planList } = await supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1); 
-      const planData = planList && planList.length > 0 ? planList[0] : null;
-
-      if (planData && planData.plan_data) {
-        const parsedData = typeof planData.plan_data === 'string' ? JSON.parse(planData.plan_data) : planData.plan_data;
-        setWorkoutData(parsedData);
-        
-        // 🔥 A MÁGICA COMEÇA AQUI: AUTO-ROUTING INTELIGENTE
-        const planKeys = Object.keys(parsedData);
-        if (historyParsed.length > 0 && planKeys.length > 0) {
-          const lastSession = historyParsed[0];
-          const lastWorkoutIndex = planKeys.indexOf(lastSession.dayName);
-          
-          // Formata a data de hoje para bater com a do banco
-          const todayStr = new Date().toISOString().split('T')[0].split('-').reverse().join('/');
-          
-          if (lastSession.date === todayStr) {
-            // Se ele já treinou HOJE, mantém a aba no treino feito para ele ver o card de "Sessão Concluída"
-            if (planKeys.includes(lastSession.dayName)) {
-              setActiveDay(lastSession.dayName);
-            }
-          } else if (lastWorkoutIndex !== -1) {
-            // Se ele treinou ONTEM ou ANTES, calcula o próximo treino e já joga ele lá!
-            const nextIndex = (lastWorkoutIndex + 1) % planKeys.length;
-            setActiveDay(planKeys[nextIndex]);
-          }
-        } else {
-          // Fallback caso não tenha histórico
-          const savedDay = localStorage.getItem('active_day');
-          setActiveDay(currentDay => (savedDay && parsedData[savedDay]) ? savedDay : (parsedData[currentDay] ? currentDay : (planKeys[0] || 'A')));
-        }
-        
-        localStorage.setItem('workout_plan', JSON.stringify(parsedData));
-      }
-    } catch (err) { 
-      console.error("Offline ou erro de rede:", err); 
-    } finally {
-      setIsCloudSyncReady(true);
+  const deliverPendingRestHaptic = useCallback(() => {
+    const pending = pendingRestHapticRef.current;
+    const timerId = pending?.timerId;
+    if (!timerId) return;
+    if (attemptedRestHapticsRef.current.has(timerId) || !isHapticRetryFresh(pending)) {
+      cancelPendingRestHaptic();
+      return;
     }
+
+    const delivery = getHapticDelivery({
+      enabled: hapticFeedbackRef.current,
+      visibilityState: document.visibilityState,
+      hasBeenActive: navigator.userActivation?.hasBeenActive ?? true,
+    });
+
+    if (delivery === HAPTIC_DELIVERY.skip) {
+      cancelPendingRestHaptic();
+      return;
+    }
+    if (delivery !== HAPTIC_DELIVERY.now) return;
+
+    const result = triggerHaptic(HAPTIC_TYPES.restComplete, { enabled: true });
+    if (result.retryable) return;
+    cancelPendingRestHaptic();
+  }, [cancelPendingRestHaptic]);
+
+  const setWorkoutData = useCallback((update) => {
+    setWorkoutDataState((current) => (typeof update === 'function' ? update(current) : update));
+    setPlanSync(markPlanDirty);
+    setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated || !sessionActive) return;
+    const progressChanged = JSON.stringify(session.progress || {}) !== JSON.stringify(activeSessionProgress);
+    const bossChanged = JSON.stringify(session.bossEncounter || null) !== JSON.stringify(activeBossEncounter || null);
+    if (!progressChanged && !bossChanged) return;
+    updateSessionSnapshot({ progress: activeSessionProgress, bossEncounter: activeBossEncounter });
+  }, [activeBossEncounter, activeSessionProgress, isHydrated, session.bossEncounter, session.progress, sessionActive, updateSessionSnapshot]);
+
+  useEffect(() => {
+    if (!userId) {
+      setHydratedUserId(null);
+      setWorkoutDataState({});
+      setPlanSync(DEFAULT_PLAN_SYNC);
+      setActiveDay('A');
+      setProgress({});
+      setHistory([]);
+      setBodyHistory([]);
+      setTimerState(getIdleRestTimerState());
+      handledRestTimersRef.current.clear();
+      pendingRestHapticRef.current = null;
+      attemptedRestHapticsRef.current.clear();
+      setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
+      setView('workout');
+      setIsCloudSyncReady(false);
+      return;
+    }
+
+    migrateLegacyStorage(userId);
+    const plan = normalizeWorkoutPlan(readUserStoredJSON(
+      userId,
+      STORAGE_KEYS.workoutPlan,
+      initialWorkoutData,
+    ));
+    const savedDay = readUserStoredText(userId, STORAGE_KEYS.activeDay, '');
+    const savedTimer = readUserStoredJSON(userId, STORAGE_KEYS.restTimer, null);
+    setWorkoutDataState(plan);
+    setPlanSync(normalizePlanSync(readUserStoredJSON(userId, STORAGE_KEYS.planSync, DEFAULT_PLAN_SYNC)));
+    setActiveDay(savedDay && plan[savedDay] ? savedDay : getInitialWorkout(plan));
+    const savedProgress = readUserStoredJSON(userId, STORAGE_KEYS.progress, {});
+    setProgress(savedProgress);
+    progressRef.current = savedProgress;
+    setHistory(normalizeHistory(readUserStoredJSON(userId, STORAGE_KEYS.history, [])));
+    setBodyHistory(normalizeBodyHistory(readUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, [])));
+    setTimerState(restoreRestTimerState(savedTimer));
+    handledRestTimersRef.current.clear();
+    pendingRestHapticRef.current = null;
+    attemptedRestHapticsRef.current.clear();
+    setSelectedDate(getLocalDateKey());
+    setSessionNoteState('');
+    setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
+    setView('workout');
+    setIsCloudSyncReady(false);
+    setHydratedUserId(userId);
   }, [userId]);
 
-  useEffect(() => { fetchCloudData(); }, [fetchCloudData]);
-
-  // 4. CÁLCULO DE STREAK
-  const streak = useMemo(() => calculateStreak(history), [history]);
-
-  // 5. LOCAL SYNC
   useEffect(() => {
-    localStorage.setItem('workout_plan', JSON.stringify(workoutData));
-    localStorage.setItem('daily_progress', JSON.stringify(progress));
-    localStorage.setItem('workout_history', JSON.stringify(history));
-    localStorage.setItem('body_history', JSON.stringify(bodyHistory));
-    localStorage.setItem('active_day', activeDay); 
-    
-    const syncPlanToCloud = async () => {
-      if (!isCloudSyncReady) return;
-      if (userId && Object.keys(workoutData).length > 0) {
-        try {
-          await supabase.from('workout_plans').upsert({ user_id: userId, plan_data: workoutData }, { onConflict: 'user_id' });
-        } catch (err) {
-          console.error("Erro na sincronização:", err);
+    if (!isHydrated || session.status === SESSION_STATUS.idle) return;
+    if (session.workoutName) setActiveDay(session.workoutName);
+    if (session.dateKey) setSelectedDate(session.dateKey);
+    setSessionNoteState(session.note || '');
+  }, [isHydrated, session.dateKey, session.note, session.status, session.workoutName]);
+
+  useEffect(() => {
+    if (!isHydrated || session.status === SESSION_STATUS.idle) return;
+    const recoveryKey = `${userId}:${session.sessionId || session.dateKey}:${session.workoutName}`;
+    if (restoredSessionRef.current === recoveryKey) return;
+    restoredSessionRef.current = recoveryKey;
+    if (session.progress && Object.keys(session.progress).length > 0) {
+      setProgress((current) => {
+        const next = { ...current, ...session.progress };
+        progressRef.current = next;
+        return next;
+      });
+    }
+  }, [isHydrated, session.dateKey, session.progress, session.sessionId, session.status, session.workoutName, userId]);
+
+  useEffect(() => {
+    if (!isHydrated || !sessionActive) return;
+    const workoutName = session.workoutName || activeDay;
+    const workoutSnapshot = session.workoutSnapshot || workoutData[workoutName];
+    if (!workoutSnapshot) return;
+    const patch = {};
+    const upgradedSessionId = session.sessionId || createSessionId();
+    if (!session.sessionId) patch.sessionId = upgradedSessionId;
+    if (!session.workoutName) patch.workoutName = workoutName;
+    if (!session.workoutSnapshot) patch.workoutSnapshot = structuredClone(workoutSnapshot);
+    if (!session.workoutTitle) patch.workoutTitle = workoutSnapshot.title || workoutName;
+    if (!session.workoutFocus) patch.workoutFocus = workoutSnapshot.focus || '';
+    if (!session.bossEncounter) {
+      const bossEncounter = createBossEncounter({
+        sessionId: upgradedSessionId,
+        dateKey: session.dateKey || selectedDate,
+        workoutName,
+        workout: workoutSnapshot,
+        history: visibleHistory,
+      });
+      if (bossEncounter) patch.bossEncounter = bossEncounter;
+    }
+    if (Object.keys(patch).length > 0) updateSessionSnapshot(patch);
+  }, [activeDay, isHydrated, selectedDate, session.bossEncounter, session.dateKey, session.sessionId, session.workoutFocus, session.workoutName, session.workoutSnapshot, session.workoutTitle, sessionActive, updateSessionSnapshot, visibleHistory, workoutData]);
+
+  const setSessionNote = useCallback((note) => {
+    setSessionNoteState(note);
+    updateSessionNote(note);
+  }, [updateSessionNote]);
+
+  const fetchCloudData = useCallback(async () => {
+    if (!isHydrated || !userId) return;
+
+    try {
+      setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+      const [bodyResult, historyResult, planResult] = await Promise.all([
+        supabase.from('body_stats').select('*').eq('user_id', userId).order('date', { ascending: false }),
+        supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false }),
+        supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1),
+      ]);
+      if (activeUserRef.current !== userId) return;
+      if (bodyResult.error) throw bodyResult.error;
+      if (historyResult.error) throw historyResult.error;
+      if (planResult.error) throw planResult.error;
+
+      if (bodyResult.data) {
+        setBodyHistory(normalizeBodyHistory(bodyResult.data));
+      }
+
+      const cloudHistory = normalizeHistory(historyResult.data || []);
+      setHistory((current) => mergeCloudAndLocalHistory(cloudHistory, current));
+
+      const planRow = planResult.data?.[0];
+      if (planRow?.plan_data && !planSync.dirty) {
+        const parsedPlan = normalizeWorkoutPlan(typeof planRow.plan_data === 'string'
+          ? JSON.parse(planRow.plan_data)
+          : planRow.plan_data);
+        setWorkoutDataState(parsedPlan);
+        const latestSession = cloudHistory[0];
+
+        setActiveDay((current) => resolveSelectedWorkoutDay({
+          plan: parsedPlan,
+          currentDay: current,
+          sessionStatus: session.status,
+          sessionWorkoutName: session.workoutName,
+          latestSession,
+          today: getLocalDateKey(),
+        }));
+        if (session.status !== SESSION_STATUS.idle && session.dateKey) setSelectedDate(session.dateKey);
+      } else if (!planRow?.plan_data && Object.keys(workoutData).length > 0 && !planSync.dirty) {
+        setPlanSync(markPlanDirty);
+      }
+      setSyncStatus('synced');
+    } catch {
+      if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    } finally {
+      if (activeUserRef.current === userId) setIsCloudSyncReady(true);
+    }
+  }, [isHydrated, planSync.dirty, session.dateKey, session.status, session.workoutName, userId, workoutData]);
+
+  useEffect(() => {
+    if (isHydrated && !isCloudSyncReady) fetchCloudData();
+  }, [fetchCloudData, isCloudSyncReady, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    writeUserStoredJSON(userId, STORAGE_KEYS.workoutPlan, workoutData);
+    writeUserStoredJSON(userId, STORAGE_KEYS.planSync, planSync);
+    writeUserStoredJSON(userId, STORAGE_KEYS.progress, progress);
+    writeUserStoredJSON(userId, STORAGE_KEYS.history, history);
+    writeUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, bodyHistory);
+    writeUserStoredText(userId, STORAGE_KEYS.activeDay, activeDay);
+  }, [activeDay, bodyHistory, history, isHydrated, planSync, progress, userId, workoutData]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (timerState.active) writeUserStoredJSON(userId, STORAGE_KEYS.restTimer, timerState);
+    else removeUserStoredItem(userId, STORAGE_KEYS.restTimer);
+  }, [isHydrated, timerState, userId]);
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', deliverPendingRestHaptic);
+    document.addEventListener('pointerup', deliverPendingRestHaptic, { passive: true });
+    document.addEventListener('keydown', deliverPendingRestHaptic);
+    document.addEventListener('click', deliverPendingRestHaptic);
+    return () => {
+      document.removeEventListener('visibilitychange', deliverPendingRestHaptic);
+      document.removeEventListener('pointerup', deliverPendingRestHaptic);
+      document.removeEventListener('keydown', deliverPendingRestHaptic);
+      document.removeEventListener('click', deliverPendingRestHaptic);
+    };
+  }, [deliverPendingRestHaptic]);
+
+  useEffect(() => {
+    if (!hapticFeedback) cancelPendingRestHaptic();
+  }, [cancelPendingRestHaptic, hapticFeedback]);
+
+  useEffect(() => {
+    const timerId = timerState.timerId;
+    if (!isHydrated
+      || timerState.status !== REST_TIMER_STATUS.finished
+      || !timerId
+      || attemptedRestHapticsRef.current.has(timerId)) return;
+
+    pendingRestHapticRef.current = {
+      timerId,
+      finishedAt: Number(timerState.finishedAt) || Date.now(),
+    };
+    deliverPendingRestHaptic();
+  }, [deliverPendingRestHaptic, isHydrated, timerState.finishedAt, timerState.status, timerState.timerId]);
+
+  useEffect(() => {
+    if (!timerState.active || !timerState.endTime || !timerState.timerId) return undefined;
+    const timerId = timerState.timerId;
+    const finishIfExpired = () => {
+      if (handledRestTimersRef.current.has(timerId)) return;
+      setTimerState((current) => {
+        if (current.timerId !== timerId) return current;
+        const transition = finishRestTimerState(current);
+        if (!transition.didFinish) return current;
+        handledRestTimersRef.current.add(timerId);
+        return transition.state;
+      });
+    };
+    const delay = Math.max(0, Number(timerState.endTime) - Date.now());
+    const timeout = window.setTimeout(finishIfExpired, delay);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') finishIfExpired();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [timerState.active, timerState.endTime, timerState.timerId]);
+
+  const syncPendingWorkoutPlan = useCallback(async () => {
+    if (!planSync.dirty) return;
+    const revision = planSync.revision;
+    const planSnapshot = workoutData;
+    const { error } = await supabase
+      .from('workout_plans')
+      .upsert({ user_id: userId, plan_data: planSnapshot }, { onConflict: 'user_id' });
+    if (error) throw error;
+    if (activeUserRef.current !== userId) return;
+    setPlanSync((current) => markPlanSynced(current, revision));
+  }, [planSync, userId, workoutData]);
+
+  const syncPendingHistory = useCallback(async () => {
+    const pending = history.filter(isPendingHistoryEntry);
+    for (const entry of pending) {
+      if (entry.syncStatus === HISTORY_SYNC_STATUS.delete) {
+        if (entry.id) {
+          const { error } = await supabase
+            .from('workout_history')
+            .delete()
+            .eq('id', entry.id)
+            .eq('user_id', userId);
+          if (error) throw error;
+        } else {
+          const { data: possibleMatches, error: queryError } = await supabase
+            .from('workout_history')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('workout_date', entry.dateKey)
+            .eq('workout_name', entry.workoutName);
+          if (queryError) throw queryError;
+          const matchingIds = normalizeHistory(possibleMatches || [])
+            .filter((candidate) => sessionFingerprint(candidate) === sessionFingerprint(entry))
+            .map((candidate) => candidate.id)
+            .filter(Boolean);
+          if (matchingIds.length > 0) {
+            const { error } = await supabase
+              .from('workout_history')
+              .delete()
+              .in('id', matchingIds)
+              .eq('user_id', userId);
+            if (error) throw error;
+          }
+        }
+        if (activeUserRef.current !== userId) return;
+        setHistory((current) => current.filter((item) => item.localId !== entry.localId));
+        continue;
+      }
+
+      let syncedEntry;
+      if (entry.syncStatus === HISTORY_SYNC_STATUS.update && entry.id) {
+        const { data, error } = await writeHistoryWithSchemaFallback(
+          (row) => supabase
+            .from('workout_history')
+            .update(row)
+            .eq('id', entry.id)
+            .eq('user_id', userId)
+            .select()
+            .single(),
+          entry,
+          userId,
+        );
+        if (error) throw error;
+        if (activeUserRef.current !== userId) return;
+        syncedEntry = normalizeHistoryEntry(data);
+      } else {
+        const { data: possibleMatches, error: queryError } = await supabase
+          .from('workout_history')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('workout_date', entry.dateKey)
+          .eq('workout_name', entry.workoutName);
+        if (queryError) throw queryError;
+        const existing = normalizeHistory(possibleMatches || [])
+          .find((candidate) => sessionFingerprint(candidate) === sessionFingerprint(entry));
+        syncedEntry = existing;
+        if (!syncedEntry) {
+          const { data, error } = await writeHistoryWithSchemaFallback(
+            (row) => supabase.from('workout_history').insert([row]).select().single(),
+            entry,
+            userId,
+          );
+          if (error) throw error;
+          if (activeUserRef.current !== userId) return;
+          syncedEntry = normalizeHistoryEntry(data);
         }
       }
-    };
-    syncPlanToCloud();
-  }, [workoutData, progress, history, bodyHistory, userId, isCloudSyncReady, activeDay]);
 
-  // MOTOR DO CRONÔMETRO DE DESCANSO
-  useEffect(() => {
-    let interval = null;
+      if (activeUserRef.current !== userId) return;
+      if (!historyRef.current.some((item) => item.localId === entry.localId)) {
+        if (syncedEntry.id) {
+          const { error } = await supabase
+            .from('workout_history')
+            .delete()
+            .eq('id', syncedEntry.id)
+            .eq('user_id', userId);
+          if (error) throw error;
+        }
+        continue;
+      }
+      setHistory((current) => current.map((item) => {
+        if (item.localId !== entry.localId) return item;
+        if (item.syncStatus === HISTORY_SYNC_STATUS.delete) {
+          return { ...item, id: syncedEntry.id };
+        }
+        if (item.localRevision !== entry.localRevision) {
+          return item.id ? item : {
+            ...item,
+            id: syncedEntry.id,
+            syncStatus: HISTORY_SYNC_STATUS.update,
+          };
+        }
+        return {
+          ...syncedEntry,
+          localId: entry.localId,
+          partial: entry.partial,
+          earnedXp: entry.earnedXp,
+          sessionId: entry.sessionId,
+          workoutTitle: entry.workoutTitle,
+          workoutFocus: entry.workoutFocus,
+          bossEncounter: entry.bossEncounter,
+          reportSnapshot: entry.reportSnapshot,
+          localRevision: entry.localRevision,
+          syncStatus: HISTORY_SYNC_STATUS.synced,
+        };
+      }));
+    }
+  }, [history, userId]);
 
-    if (timerState.active) {
-      interval = setInterval(() => {
-        setTimerState(prev => {
-          if (prev.seconds <= 1) {
-            clearInterval(interval);
-            return { active: false, seconds: 0 };
-          }
-          return { ...prev, seconds: prev.seconds - 1 };
-        });
-      }, 1000);
+  const hasPendingChanges = planSync.dirty || history.some(isPendingHistoryEntry);
+
+  const syncPendingChanges = useCallback(async () => {
+    if (!isCloudSyncReady || !isHydrated || !userId || !navigator.onLine || syncInFlight.current) return;
+    if (!planSync.dirty && !history.some(isPendingHistoryEntry)) {
+      setSyncStatus('synced');
+      return;
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
+    syncInFlight.current = true;
+    setSyncStatus('syncing');
+    try {
+      await syncPendingWorkoutPlan();
+      await syncPendingHistory();
+      if (activeUserRef.current === userId) setSyncStatus('synced');
+    } catch {
+      if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    } finally {
+      syncInFlight.current = false;
+      if (activeUserRef.current !== userId) setIsCloudSyncReady(false);
+    }
+  }, [history, isCloudSyncReady, isHydrated, planSync.dirty, syncPendingHistory, syncPendingWorkoutPlan, userId]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      setSyncStatus('syncing');
+      setIsCloudSyncReady(false);
     };
-  }, [timerState.active]);
+    const onOffline = () => setSyncStatus('offline');
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
-  // 6. AÇÕES DO TREINO
-  const updateSetData = useCallback((id, i, f, v) => {
-    setProgress(p => {
-      const c = p[id] || { sets: [] };
-      const n = [...(c.sets || [])];
-      while (n.length <= i) n.push({ weight: '', reps: '', completed: false });
-      n[i] = { ...n[i], [f]: v };
-      return { ...p, [id]: { ...c, sets: n } };
+  useEffect(() => {
+    if (hasPendingChanges && navigator.onLine && syncStatus !== 'error') {
+      syncPendingChanges();
+    }
+  }, [hasPendingChanges, syncPendingChanges, syncStatus]);
+
+  const streak = useMemo(() => calculateStreak(visibleHistory), [visibleHistory]);
+  const globalRPG = useMemo(() => calculateStats(visibleHistory), [visibleHistory]);
+
+  const updateSetData = useCallback((id, index, field, value) => {
+    setProgress((currentProgress) => {
+      const exerciseProgress = currentProgress[id] || { sets: [] };
+      const sets = [...(exerciseProgress.sets || [])];
+      while (sets.length <= index) sets.push(normalizeWorkoutSet());
+      sets[index] = { ...sets[index], [field]: value };
+      const next = { ...currentProgress, [id]: { ...exerciseProgress, sets } };
+      progressRef.current = next;
+      return next;
     });
   }, []);
 
-  const toggleCheck = useCallback((id) => {
-    setProgress(p => {
-      const isDone = !p[id]?.done;
-      if (isDone) setTimerState({ active: true, seconds: 90 });
-      return { ...p, [id]: { ...p[id], done: isDone } };
+  const closeRestTimer = useCallback(() => {
+    cancelPendingRestHaptic();
+    setTimerState(getIdleRestTimerState());
+  }, [cancelPendingRestHaptic]);
+
+  const startRestTimer = useCallback((duration = 90) => {
+    cancelPendingRestHaptic();
+    setTimerState(createRestTimerState(duration));
+  }, [cancelPendingRestHaptic]);
+
+  const toggleSetComplete = useCallback((id, setIndex, restSeconds = 90) => {
+    const currentProgress = progressRef.current;
+    const exerciseProgress = currentProgress[id] || { sets: [] };
+    const sets = [...(exerciseProgress.sets || [])];
+    while (sets.length <= setIndex) sets.push(normalizeWorkoutSet());
+    const completed = sets[setIndex]?.completed !== true;
+    sets[setIndex] = {
+      ...normalizeWorkoutSet(sets[setIndex]),
+      completed,
+      finishedAt: completed ? Date.now() : null,
+    };
+    const nextProgress = {
+      ...currentProgress,
+      [id]: { ...exerciseProgress, skipped: false, sets },
+    };
+    progressRef.current = nextProgress;
+    setProgress(nextProgress);
+
+    if (completed) {
+      const workoutName = session.workoutName || activeDay;
+      const dateKey = session.dateKey || selectedDate;
+      const workout = session.workoutSnapshot || workoutData[workoutName];
+      const completion = getSessionCompletion(workout, nextProgress, dateKey, workoutName);
+      if (shouldStartRestTimer({ setCompleted: true, completion })) startRestTimer(restSeconds);
+      else closeRestTimer();
+      triggerHaptic(HAPTIC_TYPES.setComplete, { enabled: hapticFeedback });
+    }
+  }, [activeDay, closeRestTimer, hapticFeedback, selectedDate, session.dateKey, session.workoutName, session.workoutSnapshot, startRestTimer, workoutData]);
+
+  const beginSession = useCallback(() => {
+    const workout = workoutData[activeDay];
+    if (!workout) return;
+    const sessionId = createSessionId();
+    const sessionProgress = getSessionProgress(progressRef.current, selectedDate, activeDay);
+    const bossEncounter = createBossEncounter({
+      sessionId,
+      dateKey: selectedDate,
+      workoutName: activeDay,
+      workout,
+      history: visibleHistory,
     });
-  }, []);
+    startSession({
+      sessionId,
+      workoutName: activeDay,
+      dateKey: selectedDate,
+      workoutSnapshot: workout,
+      progress: sessionProgress,
+      bossEncounter,
+    });
+    setSessionNoteState('');
+  }, [activeDay, selectedDate, startSession, visibleHistory, workoutData]);
+
+  const evaluateQuests = useCallback((sessionData, dateKey) => {
+    if (!isSameLocalDay(dateKey, getLocalDateKey())) return { bonusXp: 0, newlyCompleted: [] };
+    const quests = readUserStoredJSON(userId, STORAGE_KEYS.quests, []);
+    const newlyCompleted = [];
+    const updated = quests.map((quest) => {
+      if (quest.completed) return quest;
+      const rule = QUEST_RULES[quest.type];
+      if (!rule || rule(sessionData) !== true) return quest;
+      const completedQuest = { ...quest, completed: true };
+      newlyCompleted.push(completedQuest);
+      return completedQuest;
+    });
+    return {
+      bonusXp: newlyCompleted.reduce((sum, quest) => sum + (Number(quest.reward) || 0), 0),
+      newlyCompleted,
+      commit: () => {
+        writeUserStoredJSON(userId, STORAGE_KEYS.quests, updated);
+        const questData = readUserStoredJSON(userId, STORAGE_KEYS.questData, {});
+        writeUserStoredJSON(userId, STORAGE_KEYS.questData, { ...questData, quests: updated });
+        window.dispatchEvent(new Event('quest_update'));
+      },
+    };
+  }, [userId]);
+
+  const finishWorkout = useCallback(async ({ allowPartial = false } = {}) => {
+    const safeDay = session.workoutName || (workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0]);
+    const workout = session.workoutSnapshot || workoutData[safeDay];
+    if (!workout) throw new Error('O treino selecionado não existe mais no plano.');
+    const sessionDateKey = session.dateKey || selectedDate;
+    const completion = getSessionCompletion(workout, progress, sessionDateKey, safeDay);
+    if (completion.completedSets === 0 && completion.skippedExercises === 0) {
+      throw new Error('Conclua ao menos uma série antes de finalizar o treino.');
+    }
+    if (completion.incompleteSets > 0 && !allowPartial) {
+      return { requiresConfirmation: true, completion };
+    }
+
+    markFinishing();
+    const exercises = buildSessionExercises(workout, progress, sessionDateKey, safeDay)
+      .map((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map(normalizeWorkoutSet),
+      }));
+    const totalVolume = exercises.reduce(
+      (sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise),
+      0,
+    );
+    const durationSeconds = Math.max(1, workoutTimer.elapsed);
+    const editTarget = session.editTarget;
+    const historyForMetrics = visibleHistory.filter((entry) => (
+      !editTarget || (entry.id !== editTarget.id && entry.localId !== editTarget.localId)
+    ));
+    const previousSessions = historyForMetrics.filter((entry) => (
+      entry.workoutName === safeDay
+      && entry.dateKey
+      && entry.dateKey <= sessionDateKey
+    ));
+    const previousVolume = findPreviousComparableVolume(previousSessions);
+    const overloadStatus = classifyVolumeProgress({ currentVolume: totalVolume, previousVolume });
+
+    const prsBroken = countLoadPrs(exercises, historyForMetrics);
+    const exercisesSwapped = exercises
+      .filter((exercise, index) => exercise.name !== workout.exercises[index].name).length;
+    const existingEntry = editTarget
+      ? visibleHistory.find((entry) => entry.id === editTarget.id || entry.localId === editTarget.localId)
+      : null;
+    const questEvaluation = existingEntry
+      ? { bonusXp: existingEntry.bonusXp || 0, newlyCompleted: [] }
+      : evaluateQuests({
+          totalVolume,
+          duration: durationSeconds,
+          hasNote: Boolean(sessionNote.trim()),
+          totalSets: completion.totalSets,
+          completedSets: completion.completedSets,
+          exercisesSwapped,
+          prsBroken,
+          finished: true,
+        }, sessionDateKey);
+    const partial = completion.incompleteSets > 0 || completion.skippedExercises > 0;
+    const xpGained = calculateSessionXp({
+      totalVolume,
+      bonusXp: questEvaluation.bonusXp,
+      overloadStatus,
+    });
+    const statsBefore = calculateStats(visibleHistory);
+    const badgesBefore = new Set(getUnlockedBadges(visibleHistory).filter((badge) => badge.unlocked).map((badge) => badge.id));
+    const bossEncounter = updateBossEncounter(
+      session.bossEncounter,
+      exercises,
+      previousSessions,
+      safeDay,
+    );
+    const reportSnapshot = {
+      version: 2,
+      sessionId: session.sessionId || createSessionId(),
+      dateKey: sessionDateKey,
+      workoutName: safeDay,
+      workoutTitle: session.workoutTitle || workout.title || safeDay,
+      workoutFocus: session.workoutFocus || workout.focus || '',
+      duration: durationSeconds,
+      volume: totalVolume,
+      completedSets: completion.completedSets,
+      earnedXp: xpGained,
+      prsBroken,
+      overloadStatus,
+      partial,
+      bossEncounter,
+    };
+
+    let localEntry = normalizeHistoryEntry({
+      id: existingEntry?.id || null,
+      localId: existingEntry?.localId,
+      sessionId: reportSnapshot.sessionId,
+      dateKey: sessionDateKey,
+      workoutName: safeDay,
+      workoutTitle: reportSnapshot.workoutTitle,
+      workoutFocus: reportSnapshot.workoutFocus,
+      note: sessionNote,
+      exercises,
+      totalVolume,
+      bonusXp: questEvaluation.bonusXp,
+      duration: durationSeconds,
+      hasNote: Boolean(sessionNote.trim()),
+      exercisesSwapped,
+      prsBroken,
+      overloadStatus,
+      partial,
+      earnedXp: xpGained,
+      bossEncounter,
+      reportSnapshot,
+      localRevision: (existingEntry?.localRevision || 0) + 1,
+      syncStatus: existingEntry?.id ? HISTORY_SYNC_STATUS.update : HISTORY_SYNC_STATUS.create,
+    });
+    const localHistory = sortHistoryNewestFirst(existingEntry
+      ? history.map((entry) => entry.localId === existingEntry.localId ? localEntry : entry)
+      : [localEntry, ...history]);
+
+    writeUserStoredJSON(userId, STORAGE_KEYS.history, localHistory);
+    historyRef.current = localHistory;
+    setHistory(localHistory);
+    questEvaluation.commit?.();
+    setLastSessionStats({
+      duration: Math.max(1, Math.floor(durationSeconds / 60)),
+      volume: totalVolume,
+      xp: xpGained,
+    });
+    const currentPrefix = `${sessionDateKey}-${safeDay}-`;
+    setProgress((current) => Object.fromEntries(
+      Object.entries(current).filter(([key]) => !key.startsWith(currentPrefix)),
+    ));
+    progressRef.current = Object.fromEntries(
+      Object.entries(progressRef.current).filter(([key]) => !key.startsWith(currentPrefix)),
+    );
+    setSessionNoteState('');
+    closeRestTimer();
+    completeSession();
+
+    let savedToCloud = false;
+    if (userId && navigator.onLine && !syncInFlight.current) {
+      syncInFlight.current = true;
+      const submittedRevision = localEntry.localRevision;
+      try {
+        setSyncStatus('syncing');
+        const { data, error } = await writeHistoryWithSchemaFallback(
+          (row) => localEntry.id
+            ? supabase
+                .from('workout_history')
+                .update(row)
+                .eq('id', localEntry.id)
+                .eq('user_id', userId)
+                .select()
+                .single()
+            : supabase.from('workout_history').insert([row]).select().single(),
+          localEntry,
+          userId,
+        );
+        if (error) throw error;
+        const synced = {
+          ...normalizeHistoryEntry(data),
+          localId: localEntry.localId,
+          partial: localEntry.partial,
+          earnedXp: localEntry.earnedXp,
+          sessionId: localEntry.sessionId,
+          workoutTitle: localEntry.workoutTitle,
+          workoutFocus: localEntry.workoutFocus,
+          bossEncounter: localEntry.bossEncounter,
+          reportSnapshot: localEntry.reportSnapshot,
+          localRevision: localEntry.localRevision,
+          syncStatus: HISTORY_SYNC_STATUS.synced,
+        };
+        localEntry = synced;
+        savedToCloud = true;
+        if (activeUserRef.current === userId) {
+          const latestLocalEntry = historyRef.current.find((entry) => entry.localId === synced.localId);
+          if (!latestLocalEntry && synced.id) {
+            const { error: deleteError } = await supabase
+              .from('workout_history')
+              .delete()
+              .eq('id', synced.id)
+              .eq('user_id', userId);
+            if (deleteError) throw deleteError;
+          }
+          setHistory((current) => current.map((entry) => {
+            if (entry.localId !== synced.localId) return entry;
+            if (entry.syncStatus === HISTORY_SYNC_STATUS.delete) {
+              return { ...entry, id: synced.id };
+            }
+            if (entry.localRevision !== submittedRevision) {
+              return entry.id ? entry : {
+                ...entry,
+                id: synced.id,
+                syncStatus: HISTORY_SYNC_STATUS.update,
+              };
+            }
+            return synced;
+          }));
+          setSyncStatus('synced');
+        }
+      } catch {
+        if (activeUserRef.current === userId) setSyncStatus('error');
+      } finally {
+        syncInFlight.current = false;
+      }
+    } else if (!navigator.onLine) {
+      setSyncStatus('offline');
+    }
+
+    const finalHistory = sortHistoryNewestFirst(existingEntry
+      ? visibleHistory.map((entry) => entry.localId === existingEntry.localId ? localEntry : entry)
+      : [localEntry, ...visibleHistory]);
+    const statsAfter = calculateStats(finalHistory);
+    const newBadges = getUnlockedBadges(finalHistory)
+      .filter((badge) => badge.unlocked && !badgesBefore.has(badge.id));
+
+    return {
+      requiresConfirmation: false,
+      savedLocally: true,
+      savedToCloud,
+      syncStatus: savedToCloud ? 'synced' : 'pending',
+      subiuDeNivel: (statsAfter.level || 1) > (statsBefore.level || 1),
+      sessionXp: xpGained,
+      sessionVolume: totalVolume,
+      sessionDuration: Math.max(1, Math.floor(durationSeconds / 60)),
+      completedSets: completion.completedSets,
+      prsBroken,
+      newLevel: statsAfter.level || 1,
+      newStreak: calculateStreak(finalHistory),
+      newBadges,
+      newlyCompletedQuests: questEvaluation.newlyCompleted,
+      overloadStatus,
+      partial,
+      reportSnapshot: {
+        ...reportSnapshot,
+        streak: calculateStreak(finalHistory),
+        level: statsAfter.level || 1,
+        newBadges,
+        syncStatus: savedToCloud ? 'synced' : (navigator.onLine ? 'pending' : 'offline'),
+      },
+    };
+  }, [activeDay, closeRestTimer, completeSession, evaluateQuests, history, markFinishing, progress, selectedDate, session, sessionNote, userId, visibleHistory, workoutData, workoutTimer.elapsed]);
+
+  const abandonSession = useCallback(() => {
+    const workoutName = session.workoutName || activeDay;
+    const dateKey = session.dateKey || selectedDate;
+    const prefix = `${dateKey}-${workoutName}-`;
+    const nextProgress = Object.fromEntries(
+      Object.entries(progressRef.current).filter(([key]) => !key.startsWith(prefix)),
+    );
+    progressRef.current = nextProgress;
+    setProgress(nextProgress);
+    setSessionNoteState('');
+    closeRestTimer();
+    resetSession();
+  }, [activeDay, closeRestTimer, resetSession, selectedDate, session.dateKey, session.workoutName]);
+
+  const reopenHistoryEntry = useCallback((id) => {
+    if (sessionActive) throw new Error('Finalize ou descarte o treino atual antes de corrigir outra sessão.');
+    const entry = visibleHistory.find((item) => item.id === id || item.localId === id);
+    if (!entry) throw new Error('A sessão selecionada não foi encontrada.');
+    const workoutSnapshot = {
+      title: entry.workoutTitle || entry.workoutName,
+      focus: entry.workoutFocus || '',
+      exercises: (entry.exercises || []).map((exercise) => ({
+        name: exercise.name,
+        sets: exercise.actualSets || `${Math.max(1, exercise.sets?.length || 1)}x`,
+        note: exercise.note || '',
+        alternatives: exercise.alternatives || [],
+        loadMode: exercise.loadMode,
+        barWeight: exercise.barWeight ?? null,
+      })),
+    };
+    const restoredProgress = Object.fromEntries((entry.exercises || []).map((exercise, index) => [
+      `${entry.dateKey}-${entry.workoutName}-${index}`,
+      {
+        sets: exercise.sets || [],
+        actualSets: exercise.actualSets,
+        skipped: exercise.skipped === true,
+      },
+    ]));
+    const prefix = `${entry.dateKey}-${entry.workoutName}-`;
+    setProgress((current) => {
+      const withoutPrevious = Object.fromEntries(
+        Object.entries(current).filter(([key]) => !key.startsWith(prefix)),
+      );
+      const next = { ...withoutPrevious, ...restoredProgress };
+      progressRef.current = next;
+      return next;
+    });
+    setActiveDay(entry.workoutName);
+    setSelectedDate(entry.dateKey);
+    setSessionNoteState(entry.note || '');
+    closeRestTimer();
+    reopenSession({
+      sessionId: entry.sessionId,
+      workoutName: entry.workoutName,
+      workoutTitle: entry.workoutTitle,
+      workoutFocus: entry.workoutFocus,
+      workoutSnapshot,
+      dateKey: entry.dateKey,
+      elapsedSeconds: entry.duration,
+      note: entry.note,
+      progress: restoredProgress,
+      bossEncounter: entry.bossEncounter,
+      editTarget: { id: entry.id, localId: entry.localId },
+    });
+    return true;
+  }, [closeRestTimer, reopenSession, sessionActive, visibleHistory]);
 
   const actions = useMemo(() => ({
     updateSetData,
+    toggleSetComplete,
+    startSession: beginSession,
+    pauseSession,
+    resumeSession,
     toggleWorkoutTimer,
-    resetWorkoutTimer,
-    toggleCheck,
-    
-    updateSessionSets: (id, value) => {
-      setProgress(p => ({ ...p, [id]: { ...p[id], actualSets: value } }));
-    },
-
-    toggleSetComplete: (id, setIdx) => {
-      const now = Date.now();
-      setProgress(p => {
-        const current = p[id] || { sets: [] };
-        const newSets = [...(current.sets || [])];
-        while (newSets.length <= setIdx) newSets.push({ completed: false });
-        const isNowCompleted = !newSets[setIdx].completed;
-
-        newSets[setIdx] = { ...newSets[setIdx], completed: isNowCompleted, finishedAt: now };
-
-        if (isNowCompleted) {
-          setTimerState({ active: true, seconds: 90 });
-        }
-
-        return { ...p, [id]: { ...current, sets: newSets }, lastSetTimestamp: now };
+    resetWorkoutTimer: abandonSession,
+    acknowledgeRecovery,
+    restoreAfterFailedFinish,
+    reopenHistoryEntry,
+    finishWorkout,
+    syncPendingSessions: syncPendingChanges,
+    syncPendingChanges,
+    syncPendingWorkoutPlan,
+    updateSessionSets: (id, value) => setProgress((current) => {
+      const next = { ...current, [id]: { ...current[id], actualSets: value } };
+      progressRef.current = next;
+      return next;
+    }),
+    skipExercise: (id, skipped = true) => setProgress((current) => {
+      const next = { ...current, [id]: { ...current[id], skipped } };
+      progressRef.current = next;
+      return next;
+    }),
+    onSwap: (id, newName, options = {}) => {
+      if (hasCompletedExerciseSets(progressRef.current[id])) return false;
+      setProgress((current) => {
+        const next = { ...current, [id]: { ...current[id], swappedName: newName } };
+        progressRef.current = next;
+        return next;
       });
-    },
-
-    onSwap: (id, newName) => {
-      setProgress(p => ({ ...p, [id]: { ...p[id], swappedName: newName } }));
-    },
-
-    setWeight: (val) => setWeightInput(val),
-    setWaist: (val) => setWaistInput(val),
-    setNote: (val) => setSessionNote(val),
-
-    handleDateChange: (newDate) => {
-      setSelectedDate(newDate);
-      const formattedDate = newDate.split('-').reverse().join('/');
-      const entryForDate = bodyHistory.find(h => h.date === formattedDate);
-      setWeightInput(entryForDate ? entryForDate.weight : '');
-      setWaistInput(entryForDate ? entryForDate.waist : '');
-    },
-
-    finishWorkout: async (bonusXP = 0) => {
-      const safeDay = workoutData[activeDay] ? activeDay : Object.keys(workoutData)[0];
-      let totalVolume = 0;
-
-      const exercisesToSave = workoutData[safeDay].exercises.map((ex, i) => {
-        const id = `${selectedDate}-${safeDay}-${i}`;
-        const p = progress[id];
-        
-        if (p && p.sets) {
-          p.sets.forEach(set => {
-            if (set.completed) {
-              const w = parseFloat(set.weight) || 0;
-              const r = parseInt(set.reps) || 0;
-              totalVolume += (w * r);
-            }
-          });
-        }
-        return { name: p?.swappedName || ex.name, sets: p?.sets || [], done: p?.done || false, actualSets: p?.actualSets || ex.sets };
-      });
-
-      const durationMins = Math.max(1, Math.floor(workoutTimer.elapsed / 60));
-      const durationSeconds = workoutTimer.elapsed > 0 ? workoutTimer.elapsed : durationMins * 60;
-      
-      let exercisesSwappedCount = 0;
-      progress && Object.keys(progress).forEach(key => {
-        if(progress[key]?.swappedName) exercisesSwappedCount++;
-      });
-
-      const treinosPassados = history.filter(t => t.workout_name === safeDay);
-      let multiplicadorXP = 1.0;
-      let overloadStatus = 'NORMAL';
-
-      if (treinosPassados.length > 0 && treinosPassados[0].total_volume > 0) {
-        const volumeAnterior = treinosPassados[0].total_volume;
-        
-        if (totalVolume > volumeAnterior) {
-          multiplicadorXP = 1.2; 
-          overloadStatus = 'OVERLOAD';
-        } else if (totalVolume < volumeAnterior) {
-          multiplicadorXP = 0.8; 
-          overloadStatus = 'REGRESSÃO';
-        } else {
-          let repeticoesDoVolume = 0;
-          for (let i = 0; i < treinosPassados.length; i++) {
-            if (treinosPassados[i].total_volume === totalVolume) {
-              repeticoesDoVolume++;
-            } else {
-              break; 
-            }
-          }
-
-          if (repeticoesDoVolume >= 3) {
-            multiplicadorXP = 0.85; 
-            overloadStatus = 'ESTAGNAÇÃO';
-          } else {
-            multiplicadorXP = 1.0; 
-            overloadStatus = 'MANUTENÇÃO';
-          }
-        }
+      if (options.scope === 'alternative' && Number.isInteger(options.exerciseIndex)) {
+        setWorkoutData((currentPlan) => {
+          const workoutName = session.workoutName || activeDay;
+          const exercises = [...(currentPlan[workoutName]?.exercises || [])];
+          exercises[options.exerciseIndex] = addExerciseAlternative(exercises[options.exerciseIndex], newName);
+          return { ...currentPlan, [workoutName]: { ...currentPlan[workoutName], exercises } };
+        });
       }
-
-      const xpBase = Math.floor(totalVolume * 0.05);
-      const xpGained = Math.floor(xpBase * multiplicadorXP) + bonusXP;
-
-      setLastSessionStats({ duration: durationMins, volume: totalVolume, xp: xpGained });
-
-      const sessionBase = {
-        user_id: userId,
-        workout_date: selectedDate,
-        workout_name: safeDay,
-        note: sessionNote,
-        exercises: exercisesToSave,
-        total_volume: totalVolume,
-        bonus_xp: bonusXP,
-        duration: durationSeconds, 
-        has_note: !!sessionNote,
-        exercises_swapped: exercisesSwappedCount,
-        prs_broken: 0,
-        overload_status: overloadStatus 
-      };
-
-      const statsAntes = calculateStats(history);
-      const levelAntes = statsAntes.level || 1;
-
-      const badgesAntes = getUnlockedBadges(history).filter(b => b.unlocked).map(b => b.id);
-      
-      const newEntry = {...sessionBase, date: selectedDate.split('-').reverse().join('/')};
-      const newHistory = [newEntry, ...history];
-      
-      const statsDepois = calculateStats(newHistory);
-      const levelDepois = statsDepois.level || 1;
-      
-      const subiuDeNivel = levelDepois > levelAntes;
-
-      const badgesDepoisCompleto = getUnlockedBadges(newHistory).filter(b => b.unlocked);
-      const novasConquistas = badgesDepoisCompleto.filter(b => !badgesAntes.includes(b.id));
-      
-      setHistory(newHistory);
-
-      if (userId) {
-        const { error } = await supabase.from('workout_history').insert([sessionBase]);
-        
-        if (error) {
-          console.error("[ERRO CRÍTICO SUPABASE] O treino não foi salvo na nuvem:", error.message);
-          alert(`Falha no Banco de Dados: ${error.message}\nVerifique se todas as colunas existem no Supabase!`);
-        } else {
-          fetchCloudData();
-        }
-      }
-
-      setProgress({});
-      setSessionNote('');
-      setWorkoutTimer({ isRunning: false, startTime: null, elapsed: 0 });
-
-      return {
-        subiuDeNivel,
-        sessionXp: xpGained,
-        sessionVolume: totalVolume,
-        sessionDuration: durationMins,
-        newLevel: levelDepois,
-        newStreak: calculateStreak(newHistory), 
-        newBadges: novasConquistas,
-        overloadStatus: overloadStatus 
-      };
+      return true;
     },
-
-    closeTimer: () => setTimerState(prev => ({ ...prev, active: false })),
+    setWeight: setWeightInput,
+    setWaist: setWaistInput,
+    setNote: setSessionNote,
+    handleDateChange: (dateKey) => {
+      setSelectedDate(dateKey);
+      const entry = bodyHistory.find((item) => normalizeLocalDateKey(item.date) === dateKey);
+      setWeightInput(entry?.weight || '');
+      setWaistInput(entry?.waist || '');
+    },
+    closeTimer: closeRestTimer,
+    adjustRestTimer: (seconds) => setTimerState((current) => ({
+      ...current,
+      active: true,
+      status: 'active',
+      endTime: adjustRestTimerEndTime(current.endTime, seconds),
+    })),
     fetchCloudData,
-    
     deleteEntry: async (id, type) => {
-      if (type !== 'body') {
-        const questsData = localStorage.getItem('daily_quests');
-        if (questsData) {
-          try {
-            const quests = JSON.parse(questsData);
-            const resetQuests = quests.map(q => ({ ...q, completed: false, progress: 0 }));
-            localStorage.setItem('daily_quests', JSON.stringify(resetQuests));
-          } catch (e) { console.error("Erro ao resetar missões:", e); }
-        }
+      if (type === 'body') {
+        setBodyHistory((current) => current.filter((entry) => entry.id !== id));
+        if (id) await supabase.from('body_stats').delete().eq('id', id).eq('user_id', userId);
+        return;
       }
-      await supabase.from(type === 'body' ? 'body_stats' : 'workout_history').delete().eq('id', id);
-      fetchCloudData();
+      setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+      setHistory((current) => {
+        const target = current.find((entry) => entry.id === id || entry.localId === id);
+        if (!target) return current;
+        const next = current.map((entry) => entry.localId === target.localId ? {
+          ...entry,
+          localRevision: (entry.localRevision || 0) + 1,
+          syncStatus: HISTORY_SYNC_STATUS.delete,
+        } : entry);
+        historyRef.current = next;
+        return next;
+      });
     },
-
     updateHistoryEntry: async (id, updatedSession) => {
-      if (!userId) return;
-      
-      try {
-        let newVolume = 0;
-        updatedSession.exercises.forEach(ex => {
-          if (ex.sets) {
-            ex.sets.forEach(set => {
-              const w = parseFloat(set.weight) || 0;
-              const r = parseInt(set.reps) || 0;
-              newVolume += (w * r);
-            });
-          }
+      setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
+      setHistory((current) => {
+        const next = current.map((entry) => {
+          if (entry.id !== id && entry.localId !== id) return entry;
+          const normalized = normalizeHistoryEntry({
+            ...updatedSession,
+            id: entry.id,
+            localId: entry.localId,
+          });
+          const totalVolume = normalized.exercises.reduce(
+            (sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0,
+          );
+          const earnedXp = calculateSessionXp({ ...normalized, totalVolume, earnedXp: undefined });
+          return {
+            ...normalized,
+            totalVolume,
+            earnedXp,
+            localRevision: (entry.localRevision || 0) + 1,
+            syncStatus: entry.id ? HISTORY_SYNC_STATUS.update : HISTORY_SYNC_STATUS.create,
+          };
         });
-
-        const dateToday = new Date().toLocaleDateString('pt-BR');
-        if (updatedSession.date === dateToday) {
-          const questsData = localStorage.getItem('daily_quests');
-          if (questsData) {
-            try {
-              const quests = JSON.parse(questsData);
-              const resetQuests = quests.map(q => ({ ...q, completed: false, progress: 0 }));
-              localStorage.setItem('daily_quests', JSON.stringify(resetQuests));
-            } catch (e) { console.error("Erro ao resetar missões:", e); }
-          }
-        }
-
-        await supabase
-          .from('workout_history')
-          .update({
-            note: updatedSession.note,
-            exercises: updatedSession.exercises,
-            total_volume: newVolume,
-            bonus_xp: 0 
-          })
-          .eq('id', id);
-
-        fetchCloudData();
-        
-      } catch (err) {
-        console.error("Erro ao atualizar o histórico de treino:", err);
-      }
+        historyRef.current = next;
+        return next;
+      });
     },
-
     manageData: {
-      add: (day) => { setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: [...prev[day].exercises, {name:"Novo", sets:"3x12", note:""}] } })); },
-      addFromCatalog: (day, selectedExercises) => {
-        setWorkoutData(prev => {
-          const newExercises = selectedExercises.map(exName => ({ name: exName, sets: "3x10", note: "" }));
-          return { ...prev, [day]: { ...prev[day], exercises: [...(prev[day]?.exercises || []), ...newExercises] } };
-        });
-      },
-      remove: (day, i) => { setWorkoutData(prev => ({ ...prev, [day]: { ...prev[day], exercises: prev[day].exercises.filter((_, idx) => idx !== i) } })); },
-      edit: (day, i, f, v) => { 
-        setWorkoutData(prev => {
-          const n = JSON.parse(JSON.stringify(prev)); 
-          n[day].exercises[i][f] = v;
-          return n;
-        });
-      },
-      addDay: (newDayName) => {
-        setWorkoutData(prev => {
-          if (prev[newDayName]) return prev; 
-          return { ...prev, [newDayName]: { title: `TREINO ${newDayName}`, focus: "GERAL", exercises: [] } };
-        });
-      },
-      removeDay: (dayName) => {
-        setWorkoutData(prev => {
-          const copy = { ...prev };
-          delete copy[dayName];
-          return copy;
-        });
-      },
-    }
-  }), [userId, activeDay, workoutData, selectedDate, sessionNote, progress, bodyHistory, history, updateSetData, toggleWorkoutTimer, resetWorkoutTimer, toggleCheck, fetchCloudData, workoutTimer, setWorkoutTimer]); 
-
-  const globalRPG = useMemo(() => calculateStats(history), [history]);
+      add: (day) => setWorkoutData((current) => ({
+        ...current,
+        [day]: {
+          ...current[day],
+          exercises: [...current[day].exercises, { name: 'Novo exercício', sets: '3x12', note: '', loadMode: 'total' }],
+        },
+      })),
+      addFromCatalog: (day, exercisesToAdd) => setWorkoutData((current) => ({
+        ...current,
+        [day]: {
+          ...current[day],
+          exercises: [
+            ...(current[day]?.exercises || []),
+            ...exercisesToAdd.map((name) => ({ name, sets: '3x10', note: '', loadMode: 'total' })),
+          ],
+        },
+      })),
+      remove: (day, index) => setWorkoutData((current) => ({
+        ...current,
+        [day]: { ...current[day], exercises: current[day].exercises.filter((_, itemIndex) => itemIndex !== index) },
+      })),
+      edit: (day, index, field, value) => setWorkoutData((current) => {
+        const exercises = [...current[day].exercises];
+        exercises[index] = { ...exercises[index], [field]: value };
+        return { ...current, [day]: { ...current[day], exercises } };
+      }),
+      addDay: (day) => setWorkoutData((current) => (current[day] ? current : {
+        ...current,
+        [day]: { title: `Treino ${day}`, focus: 'Geral', exercises: [] },
+      })),
+      removeDay: (day) => setWorkoutData((current) => Object.fromEntries(
+        Object.entries(current).filter(([key]) => key !== day),
+      )),
+    },
+  }), [
+    activeDay,
+    abandonSession,
+    acknowledgeRecovery,
+    beginSession,
+    bodyHistory,
+    closeRestTimer,
+    fetchCloudData,
+    finishWorkout,
+    pauseSession,
+    reopenHistoryEntry,
+    restoreAfterFailedFinish,
+    resumeSession,
+    setSessionNote,
+    setWorkoutData,
+    syncPendingChanges,
+    syncPendingWorkoutPlan,
+    toggleSetComplete,
+    toggleWorkoutTimer,
+    updateSetData,
+    userId,
+    session.workoutName,
+  ]);
 
   return {
-    state: { activeDay, sessionNote, selectedDate, weightInput, waistInput, view, workoutData, progress, history, bodyHistory, timerState, workoutTimer, userId },
-    setters: { setActiveDay, setSessionNote, setSelectedDate, setWeightInput, setWaistInput, setView, setWorkoutData },
+    state: {
+      activeDay,
+      sessionNote,
+      selectedDate,
+      weightInput,
+      waistInput,
+      view,
+      workoutData,
+      activeWorkout,
+      bossEncounter: activeBossEncounter,
+      progress,
+      history: visibleHistory,
+      bodyHistory,
+      timerState,
+      workoutTimer,
+      session,
+      syncStatus,
+      hasPendingChanges,
+      isHydrated,
+      userId,
+    },
+    setters: {
+      setActiveDay,
+      setSessionNote,
+      setSelectedDate,
+      setWeightInput,
+      setWaistInput,
+      setView,
+      setWorkoutData,
+    },
     actions,
-    stats: { 
-      latest: bodyHistory[0] || { weight: '--', waist: '--' }, 
-      streak, 
+    stats: {
+      latest: bodyHistory[0] || { weight: '--', waist: '--' },
+      streak,
       lastSessionStats,
       level: globalRPG.level,
       xp: globalRPG.xp,
       title: globalRPG.title,
       progress: globalRPG.nextLevelProgress,
-      xpRemaining: globalRPG.xpRemaining 
-    }
+      xpRemaining: globalRPG.xpRemaining,
+    },
   };
 };

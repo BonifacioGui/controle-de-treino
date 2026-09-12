@@ -1,22 +1,13 @@
 import { calculateSessionVolume } from './gameLogic';
-
-// --- CONSTANTES DE BALANCEAMENTO DO JOGO ---
-const STAT_XP_MULTIPLIER = 0.05;
-const STAT_LEVEL_DIVISOR = 100;
-
-// --- 1. ATRIBUTOS ---
-const EXERCISE_STATS = {
-  'supino reto': 'STR', 'supino inclinado': 'STR', 'desenvolvimento': 'STR',
-  'agachamento hack': 'STR', 'leg press': 'STR', 'remada baixa': 'STR',
-  'levantamento terra': 'STR', 'crossover': 'DEX', 'crucifixo inverso': 'DEX',
-  'stiff': 'DEX', 'afundo': 'DEX', 'serrote': 'DEX', 'face pull': 'DEX',
-  'remada curvada': 'DEX', 'cadeira extensora': 'VIT', 'mesa flexora': 'VIT',
-  'cadeira abdutora': 'VIT', 'panturrilha': 'VIT', 'prancha': 'VIT',
-  'vacuum': 'VIT', 'abdominal infra': 'VIT', 'caminhada': 'VIT', 'esteira': 'VIT',
-  'elevação lateral': 'CHA', 'tríceps francês': 'CHA', 'tríceps corda': 'CHA',
-  'tríceps testa': 'CHA', 'tríceps pulley': 'CHA', 'rosca direta': 'CHA',
-  'rosca martelo': 'CHA', 'rosca alternada': 'CHA', 'rosca 45º': 'CHA', 'elevação pélvica': 'CHA'
-};
+import { daysBetweenLocalDates, getLocalDateKey } from './dateUtils';
+import { calculateSessionXp, OVERLOAD_XP_MULTIPLIER, VOLUME_XP_RATE } from './xpModel';
+import { calculateSetCanonicalVolume } from './loadModel';
+import { isOverloadStatus } from './overloadModel';
+import {
+  getExerciseAttribute,
+  getRpgLevelFromXp,
+  getRpgLevelProgress,
+} from './rpgProgressionModel';
 
 // --- 2. MISSÕES DIÁRIAS ---
 export const DAILY_QUESTS_POOL = [
@@ -25,11 +16,11 @@ export const DAILY_QUESTS_POOL = [
   { id: 'vol_pro', title: 'Hércules', desc: 'Mova 25.000kg totais.', reward: 800, minLevel: 25, maxLevel: 999, check: (s) => calculateSessionVolume(s) >= 25000 },
   { id: 'reps_100', title: 'Centenário', desc: 'Faça 100+ repetições.', reward: 150, minLevel: 1, maxLevel: 999, check: (s) => calculateTotalReps(s) >= 100 },
   { id: 'reps_200', title: 'Maratonista', desc: 'Faça 200+ repetições.', reward: 400, minLevel: 15, maxLevel: 999, check: (s) => calculateTotalReps(s) >= 200 },
-  { id: 'focus_chest', title: 'Peito de Aço', desc: '8+ séries de empurrar.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.done && /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + (e.sets.length || 0), 0) >= 8 },
-  { id: 'focus_legs', title: 'Não pule o Leg Day', desc: 'Treino de Pernas.', reward: 500, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.done && /agachamento|leg|extensora|flexora/i.test(e.name)) },
-  { id: 'focus_arms', title: 'Esmaga que Cresce', desc: '4+ exercícios de braço.', reward: 250, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.done && /rosca|tríceps|triceps/i.test(e.name)).length >= 4 },
-  { id: 'focus_abs', title: 'Tanque de Guerra', desc: 'Exercícios de Core.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.done && /prancha|abdominal|vacuum/i.test(e.name)) },
-  { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.length > 0 && s.exercises.every(ex => ex.done === true) },
+  { id: 'focus_chest', title: 'Peito de Aço', desc: '8+ séries de empurrar.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => /supino|crucifixo|crossover|desenvolvimento/i.test(e.name)).reduce((acc, e) => acc + e.sets.filter(set => set.completed).length, 0) >= 8 },
+  { id: 'focus_legs', title: 'Não pule o Leg Day', desc: 'Treino de pernas registrado.', reward: 500, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.sets.some(set => set.completed) && /agachamento|leg|extensora|flexora/i.test(e.name)) },
+  { id: 'focus_arms', title: 'Esmaga que Cresce', desc: '4+ exercícios de braço.', reward: 250, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.filter(e => e.sets.some(set => set.completed) && /rosca|tríceps|triceps/i.test(e.name)).length >= 4 },
+  { id: 'focus_abs', title: 'Tanque de Guerra', desc: 'Exercícios de core registrados.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.some(e => e.sets.some(set => set.completed) && /prancha|abdominal|vacuum/i.test(e.name)) },
+  { id: 'meta_clean', title: 'Perfeccionista', desc: 'Complete tudo hoje.', reward: 600, minLevel: 1, maxLevel: 999, check: (s) => s.exercises.length > 0 && !s.partial && s.exercises.every(ex => ex.skipped || ex.sets.every(set => set.completed)) },
   { id: 'meta_insane', title: 'God Mode', desc: '20ton + 150 Reps.', reward: 1500, minLevel: 30, maxLevel: 999, check: (s) => calculateSessionVolume(s) >= 20000 && calculateTotalReps(s) >= 150 },
   { id: 'time_early', title: 'Clube das 5', desc: 'Treine antes das 12h.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() < 12 },
   { id: 'time_night', title: 'Morcego', desc: 'Treine após as 19h.', reward: 300, minLevel: 1, maxLevel: 999, check: (s) => calculateSessionVolume(s) > 0 && new Date().getHours() >= 19 }
@@ -80,29 +71,29 @@ const calculateTotalReps = (session) => {
 
 // 🎯 FÓRMULA MESTRA
 export const getLevelFromXp = (xp) => {
-  return Math.floor(Math.sqrt(xp / STAT_LEVEL_DIVISOR)) + 1;
+  return getRpgLevelFromXp(xp);
 };
 
 export const calculateStats = (history) => {
   const stats = {
     STR: { xp: 0, level: 1, label: "FORÇA" },
-    DEX: { xp: 0, level: 1, label: "TÉCNICA" },
-    VIT: { xp: 0, level: 1, label: "RESISTÊNCIA" },
-    CHA: { xp: 0, level: 1, label: "ESTÉTICA" }
+    DEX: { xp: 0, level: 1, label: "DESTREZA" },
+    VIT: { xp: 0, level: 1, label: "VITALIDADE" },
+    CHA: { xp: 0, level: 1, label: "CARISMA" }
   };
   
   if (!history || !Array.isArray(history)) {
-    stats.level = 1; stats.xp = 0; stats.title = "Recruta"; stats.nextLevelProgress = 0;
+    stats.level = 1; stats.xp = 0; stats.title = "Recruta"; stats.nextLevelProgress = 0; stats.xpRemaining = 100;
     return stats;
   }
   
   let totalXp = 0;
 
   history.forEach(session => {
-    // 🔥 1. ADICIONA O BÔNUS DE MISSÃO (XP LIVRE)
-    // Se a sessão tiver bonus_xp salvo (como o das missões), joga pro total!
-    const bonusDaSessao = parseInt(session.bonus_xp) || 0;
-    totalXp += bonusDaSessao;
+    totalXp += calculateSessionXp(session);
+    const overloadMultiplier = isOverloadStatus(session.overloadStatus ?? session.overload_status)
+      ? OVERLOAD_XP_MULTIPLIER
+      : 1;
 
     if (!session.exercises) return;
     session.exercises.forEach(ex => {
@@ -110,18 +101,13 @@ export const calculateStats = (history) => {
       
       const vol = ex.sets.reduce((acc, s) => {
         if (!s.completed) return acc; 
-        const w = parseFloat(s.weight);
-        const r = parseFloat(s.reps);
-        if (isNaN(w) || isNaN(r)) return acc;
-        return acc + (w * r);
+        return acc + calculateSetCanonicalVolume(s, ex);
       }, 0);
       
-      const normalizedName = ex.name.trim().toLowerCase();
-      const statType = EXERCISE_STATS[normalizedName] || 'STR';
+      const statType = getExerciseAttribute(ex.name);
       
-      const gainedXp = (vol * STAT_XP_MULTIPLIER);
+      const gainedXp = vol * VOLUME_XP_RATE * overloadMultiplier;
       stats[statType].xp += gainedXp;
-      totalXp += gainedXp; // 🔥 2. ADICIONA O XP DE TREINO (VOLUME)
     });
   });
   
@@ -150,29 +136,18 @@ export const calculateStats = (history) => {
 
   // 3. Matemática da Barra de Progresso (Fórmula Exponencial)
   // XP necessário para o nível atual e para o próximo
-  const currentLevelThreshold = Math.pow(stats.level - 1, 2) * STAT_LEVEL_DIVISOR;
-  const nextLevelThreshold = Math.pow(stats.level, 2) * STAT_LEVEL_DIVISOR;
-  
-  // XP que o usuário já acumulou DENTRO do nível atual
-  const xpInCurrentLevel = stats.xp - currentLevelThreshold;
-  const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
-
-  // Cálculo da porcentagem (0 a 100)
-  const progressPercent = (xpInCurrentLevel / xpRequiredForNextLevel) * 100;
-  
-  stats.nextLevelProgress = Math.min(100, Math.max(0, progressPercent));
-  
-  // XP restante (arredondado para o display)
-  stats.xpRemaining = Math.ceil(nextLevelThreshold - stats.xp);
+  const levelProgress = getRpgLevelProgress(stats.xp);
+  stats.nextLevelProgress = levelProgress.progress;
+  stats.xpRemaining = levelProgress.xpRemaining;
   
   return stats;
 };
 
 // --- 4. ESTILO DA OFENSIVA ---
 export const getFlameStyle = (streak) => {
-    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500 animate-pulse" };
-    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500 animate-pulse" };
-    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500 animate-pulse" };
+    if (streak >= 30) return { color: "text-cyan-500", shadow: "shadow-[0_0_20px_rgba(34,211,238,0.4)] border-cyan-500/50 bg-cyan-500/10", iconClass: "fill-cyan-500" };
+    if (streak >= 7) return { color: "text-red-500", shadow: "shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-500/50 bg-red-500/10", iconClass: "fill-red-500" };
+    if (streak > 0) return { color: "text-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)] border-orange-500/50 bg-orange-500/10", iconClass: "fill-orange-500" };
     return { color: "text-muted", shadow: "border-border bg-card/50", iconClass: "text-muted" };
 };
 
@@ -180,54 +155,19 @@ export const getFlameStyle = (streak) => {
 export const calculateStreak = (history) => {
   if (!Array.isArray(history) || history.length === 0) return 0;
 
-  // 1. Extrai as datas de forma segura (lidando com formatos variados do banco)
-  const validDates = history.reduce((acc, h) => {
-    if (!h) return acc;
-    const rawDate = h.date || h.workout_date;
-    if (typeof rawDate === 'string' && rawDate.trim() !== '') {
-      let year, month, day;
-      if (rawDate.includes('/')) {
-        [day, month, year] = rawDate.split('/');
-      } else {
-        const datePart = rawDate.split('T')[0];
-        [year, month, day] = datePart.split('-');
-      }
-      acc.push(new Date(year, month - 1, day).getTime());
-    }
-    return acc;
-  }, []);
-
-  if (validDates.length === 0) return 0;
-
-  // 2. Remove datas duplicadas e ordena da mais recente para a mais antiga
-  const uniqueDates = [...new Set(validDates)].sort((a, b) => b - a);
-
-  // 3. Define "Hoje" à meia-noite (padronizando o relógio)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTime = today.getTime();
-
-  const msInDay = 1000 * 60 * 60 * 24;
-  
-  // 🔥 REGRA DE NEGÓCIO: Janela de descanso de até 3 dias.
+  const uniqueDates = [...new Set(history.map((entry) => entry?.dateKey).filter(Boolean))]
+    .sort((left, right) => right.localeCompare(left));
+  if (uniqueDates.length === 0) return 0;
   const toleranceDays = 3; 
-
-  // Se o último treino registrado foi há MAIS de 3 dias de HOJE, a ofensiva zerou.
-  if ((todayTime - uniqueDates[0]) / msInDay > toleranceDays) {
+  if (daysBetweenLocalDates(uniqueDates[0], getLocalDateKey()) > toleranceDays) {
     return 0;
   }
-
-  // Se chegou aqui, a ofensiva está ativa. Vamos calcular o tamanho da corrente.
   let currentStreak = 1;
-
   for (let i = 0; i < uniqueDates.length - 1; i++) {
-    const diffInDays = (uniqueDates[i] - uniqueDates[i + 1]) / msInDay;
-
-    // Se o espaço entre os treinos for aceitável (até 3 dias), a corrente cresce
+    const diffInDays = daysBetweenLocalDates(uniqueDates[i + 1], uniqueDates[i]);
     if (diffInDays <= toleranceDays) {
       currentStreak++;
     } else {
-      // Se tiver um buraco maior que 3 dias, a contagem da corrente para aqui
       break;
     }
   }

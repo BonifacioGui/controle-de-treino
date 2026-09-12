@@ -1,305 +1,356 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Ghost, Target, Zap, Sword, Circle, Trophy, RefreshCcw, Flame, Settings2 } from 'lucide-react';
-// 🔥 Trazemos de volta a inteligência do seu isSameExercise
-import { calculateTrue1RM, isSameExercise } from '../../utils/workoutUtils';
+import { createPortal } from 'react-dom';
+import {
+  Check,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  Copy,
+  RefreshCcw,
+  Settings2,
+  SkipForward,
+  Trophy,
+  X,
+} from 'lucide-react';
+import { parseDecimalInput, parsePositiveInteger } from '../../utils/numberUtils';
+import {
+  calculateCompletedVolume,
+  getActiveSessionSets,
+  getExerciseMode,
+  getExpectedSetCount,
+  isExerciseCompleted,
+  MAX_SETS_PER_EXERCISE,
+  normalizeSessionSetCountInput,
+} from '../../utils/sessionModel';
+import {
+  getLoadModeOption,
+  getSetLoadMode,
+  isCanonicalLoadMode,
+  LOAD_MODES,
+} from '../../utils/loadModel';
+import { getMaxCompletedLoad } from '../../utils/progressionUtils';
+import { getExercisePerformance } from '../../utils/performanceModel';
+import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
+import ExerciseSearchModal from './ExerciseSearchModal';
+
+const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) => {
+  const parsed = parseDecimalInput(value);
+  const invalid = Boolean(value && (parsed === null || parsed < 0));
+  return (
+    <label className="min-w-0 flex-1">
+      <span className="sr-only">{label}</span>
+      <input
+        type="text"
+        inputMode={inputMode}
+        aria-label={label}
+        aria-invalid={invalid}
+        placeholder={placeholder}
+        value={value || ''}
+        onChange={onChange}
+        className={`exercise-input h-12 w-full rounded-xl border bg-input px-2 text-center text-base font-black text-main outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 ${
+          invalid ? 'border-danger' : 'border-border focus:border-primary'
+        }`}
+      />
+    </label>
+  );
+};
 
 const ExerciseCard = ({
-  ex, id, progress, history, toggleCheck, updateSetData, updateSessionSets, toggleSetComplete, shakingRow,
-  onSwap
+  ex,
+  id,
+  index,
+  progress,
+  history,
+  isCurrent,
+  updateSetData,
+  updateSessionSets,
+  toggleSetComplete,
+  skipExercise,
+  onSwap,
 }) => {
-  const isDone = progress[id]?.done;
-  const isTimeBased = ex.sets.toLowerCase().includes('min') || ex.sets.toLowerCase().includes('seg') || ex.sets.toLowerCase().includes('s') || !ex.sets.includes('x');
-  const currentSetCount = isTimeBased ? 1 : (parseInt(progress[id]?.actualSets) || parseInt(ex.sets.split('x')[0]) || 0);
+  const exerciseProgress = progress[id] || {};
+  const displayName = exerciseProgress.swappedName || ex.name;
+  const mode = getExerciseMode(ex);
+  const loadMode = getSetLoadMode({}, ex);
+  const loadModeOption = getLoadModeOption(loadMode);
+  const expectedSets = getExpectedSetCount(ex, exerciseProgress.actualSets);
+  const activeSets = getActiveSessionSets(ex, exerciseProgress);
+  const completedSets = activeSets.filter((set) => set.completed).length;
+  const isDone = isExerciseCompleted(ex, exerciseProgress);
+  const [manualExpanded, setManualExpanded] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
+  const [showSwapSearch, setShowSwapSearch] = useState(false);
+  const [swapChoice, setSwapChoice] = useState(displayName);
+  const [swapWarning, setSwapWarning] = useState('');
+  const [confirmSkip, setConfirmSkip] = useState(false);
+  const [validationSet, setValidationSet] = useState(null);
+  const expanded = manualExpanded ?? (isCurrent && !isDone);
 
-  const isTutorial = ex.sets === "-x-" || ex.sets === "-";
-  const displayName = progress[id]?.swappedName || ex.name;
+  const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
+  const { lastExercise, lastSummary, pr, prRecord } = performance;
+  const loadPr = prRecord?.canonicalLoad || 0;
+  const currentMaxLoad = getMaxCompletedLoad([{
+    ...ex,
+    name: displayName,
+    loadMode,
+    sets: activeSets,
+  }], displayName, loadMode);
+  const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
+  const volume = calculateCompletedVolume(activeSets, { ...ex, loadMode });
+  const hasCompletedSets = hasCompletedExerciseSets(exerciseProgress);
 
-  const hasRPE = (progress[id]?.sets || []).some(s => s.rpe && s.rpe.trim() !== "");
-  const [showAdvanced, setShowAdvanced] = useState(hasRPE);
-
-  // 🔥 EXTRATOR DE PESO: Resolve o bug da vírgula (12,5 -> 12.5) e evita o veneno do NaN
-  const getValidWeight = (val) => {
-    if (!val || String(val).trim() === '') return 0;
-    const parsed = parseFloat(String(val).replace(',', '.'));
-    return isNaN(parsed) ? 0 : parsed;
+  const usePreviousValues = () => {
+    const previousSets = (lastExercise?.sets || []).filter((set) => set.completed === true);
+    if (previousSets.length === 0) return;
+    Array.from({ length: expectedSets }).forEach((_, setIndex) => {
+      const previous = previousSets[setIndex] || previousSets[previousSets.length - 1];
+      if (!previous) return;
+      ['weight', 'reps', 'duration', 'distance', 'rpe'].forEach((field) => {
+        if (previous[field] !== undefined && previous[field] !== '') {
+          updateSetData(id, setIndex, field, previous[field]);
+        }
+      });
+    });
   };
 
-  // 🔥 MOTOR DE DATAS: Resolve o bug da ordem temporal (ex: 09/01 sendo lido como 1 de Setembro)
-  const parseDateBlindado = (dateStr) => {
-    if (!dateStr) return 0;
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split(' ')[0].split('/'); 
-      if (parts.length === 3) {
-        // Formato brasileiro: DD/MM/YYYY
-        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-      }
+  const applySwap = (scope) => {
+    if (!swapChoice || swapChoice === displayName) {
+      setShowSwap(false);
+      return;
     }
-    const time = new Date(dateStr).getTime();
-    return isNaN(time) ? 0 : time;
+    if (hasCompletedSets) {
+      setSwapWarning('Conclua este exercício com o nome atual. A troca é bloqueada após a primeira série para não misturar históricos diferentes.');
+      return;
+    }
+    onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    setSwapWarning('');
+    setShowSwap(false);
   };
 
-  // 1. Puxa o histórico ignorando apenas o que foi explicitamente desmarcado (done: false).
-  // Se for undefined (treinos antigos), ele passa para não perder seus recordes!
-  const exerciseHistory = (history || [])
-    .flatMap(s => s.exercises.map(e => ({...e, date: s.date})))
-    .filter(e => e.done !== false && isSameExercise(displayName, e.name));
-
-  // 2. Calcula o PR blindado
-  const exercisePR = exerciseHistory.reduce((max, e) => {
-      // Pega apenas as cargas de séries que realmente tiveram peso E repetições preenchidos
-      const validWeights = e.sets
-        ?.filter(s => s.reps && String(s.reps).trim() !== "" && s.weight)
-        .map(s => getValidWeight(s.weight))
-        .filter(w => w > 0) || [];
-        
-      const sessionMax = validWeights.length > 0 ? Math.max(...validWeights) : 0;
-      return Math.max(max, sessionMax);
-  }, 0);
-  
-  // 3. A Última Carga segue a mesma lógica blindada e com o sort de data corrigido
-  const lastWorkoutEntry = [...exerciseHistory]
-      .sort((a, b) => parseDateBlindado(b.date) - parseDateBlindado(a.date))
-      .find(entry => entry.sets && entry.sets.some(s => getValidWeight(s.weight) > 0));
-  
-  const lastWeight = lastWorkoutEntry ? Math.max(...(lastWorkoutEntry.sets?.map(s => getValidWeight(s.weight)) || [0])) : 0;
-  const isBreakingPR = (progress[id]?.sets || []).some(s => getValidWeight(s.weight) > exercisePR && exercisePR > 0);
-
-  const handleSwap = () => {
-    if (!ex.alternatives || ex.alternatives.length === 0) return;
-    const allOptions = [ex.name, ...ex.alternatives];
-    const currentIndex = allOptions.indexOf(displayName);
-    const nextIndex = (currentIndex + 1) % allOptions.length;
-    onSwap(id, allOptions[nextIndex]);
+  const isSetValid = (set) => {
+    if (mode === 'duration') return (parseDecimalInput(set.duration) ?? 0) > 0;
+    if (mode === 'distance') return (parseDecimalInput(set.distance) ?? 0) > 0;
+    if (mode === 'bodyweight' || mode === 'reps') return parsePositiveInteger(set.reps) !== null;
+    const weight = parseDecimalInput(set.weight);
+    return weight !== null && weight >= 0 && parsePositiveInteger(set.reps) !== null;
   };
 
-  // THEME COLORS PARA O OVERLAY
-  const overlayTheme = isDone && isBreakingPR
-    ? {
-        bg: 'bg-[rgba(15,10,0,0.9)] backdrop-blur-md', 
-        border: 'border-y-2 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5),inset_0_0_15px_rgba(250,204,21,0.2)]',
-        text: 'text-yellow-400',
-        glow: 'drop-shadow-[0_0_12px_rgba(250,204,21,1)] drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]',
-        overlayText: '✦ NOVO PR BATIDO ✦'
-      }
-    : isDone && !isBreakingPR
-    ? {
-        bg: 'bg-[rgba(0,10,15,0.9)] backdrop-blur-md', 
-        border: 'border-y-2 border-[#00f3ff] shadow-[0_0_30px_rgba(0,243,255,0.4),inset_0_0_15px_rgba(0,243,255,0.2)]',
-        text: 'text-[#00f3ff]',
-        glow: 'drop-shadow-[0_0_10px_rgba(0,243,255,1)] drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]',
-        overlayText: 'CONCLUÍDO'
-      }
-    : null;
-
-  const cardBorderClasses = isDone
-    ? (isBreakingPR ? 'border-2 border-yellow-400 bg-gradient-to-br from-yellow-500/10 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.35)] opacity-95 scale-[0.98]' : 'border-2 border-[#00f3ff] bg-gradient-to-br from-[#00f3ff]/10 to-transparent shadow-[0_0_20px_rgba(0,243,255,0.3)] opacity-95 scale-[0.98]')
-    : (isBreakingPR ? 'bg-card border-l-4 border-l-yellow-400 border-y border-y-yellow-400/20 border-r border-r-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:-translate-y-0.5' : 'bg-card border-l-4 border-l-[#00f3ff]/70 border-y border-y-border/50 border-r border-r-border/50 hover:border-l-[#00f3ff] hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(0,243,255,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,243,255,0.3)]');
+  const renderFields = (set, setIndex) => {
+    if (mode === 'duration') {
+      return <Field label={`Tempo da série ${setIndex + 1}, em segundos`} placeholder="SEG" value={set.duration} onChange={(event) => updateSetData(id, setIndex, 'duration', event.target.value)} />;
+    }
+    if (mode === 'distance') {
+      return <Field label={`Distância da série ${setIndex + 1}, em quilômetros`} placeholder="KM" value={set.distance} onChange={(event) => updateSetData(id, setIndex, 'distance', event.target.value)} />;
+    }
+    if (mode === 'bodyweight' || mode === 'reps') {
+      return <Field label={`Repetições da série ${setIndex + 1}`} placeholder="REPS" inputMode="numeric" value={set.reps} onChange={(event) => updateSetData(id, setIndex, 'reps', event.target.value)} />;
+    }
+    const loadPlaceholder = loadMode === LOAD_MODES.perSide
+      ? 'LADO'
+      : loadMode === LOAD_MODES.perHand
+        ? 'HALTER'
+        : loadMode === LOAD_MODES.assisted
+          ? 'ASSIST.'
+          : 'KG';
+    return (
+      <>
+        <Field label={`${loadModeOption.label} da série ${setIndex + 1}, em quilos`} placeholder={loadPlaceholder} value={set.weight} onChange={(event) => updateSetData(id, setIndex, 'weight', event.target.value)} />
+        <Field label={`Repetições da série ${setIndex + 1}`} placeholder="REPS" inputMode="numeric" value={set.reps} onChange={(event) => updateSetData(id, setIndex, 'reps', event.target.value)} />
+      </>
+    );
+  };
 
   return (
-    <div className={`p-4 rounded-xl transition-all duration-500 relative ${cardBorderClasses}`}>
-      
-      {/* HEADER DO CARD */}
-      <div className="flex justify-between items-start mb-5 relative z-30">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <h3 className={`font-black text-lg leading-tight flex items-center gap-2 drop-shadow-md ${isBreakingPR ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : isDone ? 'text-[#00f3ff]' : 'text-main dark:text-white'}`}>
-              {displayName}
-              {isBreakingPR && !isDone && (
-                <div className="flex items-center gap-1 bg-yellow-500/20 border border-yellow-400 px-2 py-0.5 rounded-md animate-pulse shadow-[0_0_15px_rgba(250,204,21,0.4)]">
-                  <Trophy size={14} className="text-yellow-400 fill-yellow-400/50" />
-                  <span className="text-[10px] font-black text-yellow-400 uppercase tracking-tighter">NEW PR</span>
-                </div>
-              )}
-            </h3>
+    <article className={`exercise-card rounded-2xl border bg-card transition ${isDone ? 'exercise-card--complete border-success/50' : isCurrent ? 'exercise-card--current border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.12)]' : 'border-border'}`}>
+      <button
+        type="button"
+        onClick={() => setManualExpanded(!expanded)}
+        aria-expanded={expanded}
+        className="flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="exercise-index inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-border px-1 text-xs font-black">{String(index + 1).padStart(2, '0')}</span>
+            {isDone && <Check size={18} className="shrink-0 text-success" aria-hidden="true" />}
+            <h3 className="truncate text-base font-black text-main">{displayName}</h3>
+            {currentLoadPr && (
+              <span className="exercise-pr-badge inline-flex items-center gap-1 rounded-md border border-gold/50 bg-gold/10 px-2 py-1 text-xs font-black text-gold">
+                <Trophy size={12} /> PR de carga
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs font-semibold text-muted">
+            {exerciseProgress.skipped ? 'Exercício pulado' : `${completedSets}/${expectedSets} séries`}
+            {volume > 0 ? ` • ${Math.round(volume).toLocaleString('pt-BR')} kg` : ''}
+          </p>
+        </div>
+        {expanded ? <ChevronUp size={22} className="shrink-0 text-primary" /> : <ChevronDown size={22} className="shrink-0 text-muted" />}
+      </button>
 
-            {ex.alternatives && ex.alternatives.length > 0 && !isDone && !isTutorial && (
-              <button 
-                onClick={handleSwap}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/50 text-[11px] font-black text-yellow-500 hover:bg-yellow-500 hover:text-black shadow-[0_0_10px_rgba(250,204,21,0.2)] transition-all active:scale-95 z-50 relative"
-                title={`Substituir por: ${ex.alternatives.join(', ')}`}
-              >
-                <RefreshCcw size={12} strokeWidth={3} />
-                TROCAR
+      {expanded && (
+        <div className="space-y-4 border-t border-border px-3 pb-4 pt-3 sm:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              {lastSummary ? (
+                <p className="text-xs leading-relaxed text-muted"><span className="font-bold text-main">Última sessão:</span> {lastSummary}</p>
+              ) : (
+                <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
+              )}
+              {pr && (
+                <p className="mt-1 inline-flex flex-wrap items-center gap-x-1 text-xs font-semibold text-gold">
+                  <Trophy aria-hidden="true" size={13} className="shrink-0" />
+                  <span>PR: {pr.primary}{pr.secondary ? <span className="ml-1 font-normal text-gold">• {pr.secondary}</span> : null}</span>
+                </p>
+              )}
+            </div>
+            {lastExercise && (
+              <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
+                <Copy size={15} /> Usar anteriores
               </button>
             )}
           </div>
-          
-          <div className="flex gap-2 mt-2 flex-wrap items-center">
-            {exercisePR > 0 && (
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-gradient-to-r from-yellow-400 to-amber-500 border border-amber-600 text-[10px] font-black font-mono text-black shadow-[0_0_10px_rgba(250,204,21,0.4)]">
-                <Trophy size={12} className="fill-black/50 stroke-black" />
-                <span className="tracking-widest">PR: {exercisePR}KG</span>
-              </div>
-            )}
-            {lastWeight > 0 && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#ff00ff]/10 border border-[#ff00ff]/30 text-[11px] font-mono text-[#ff00ff] drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]">
-                <Ghost size={12} />
-                <span>ÚLTIMA: {lastWeight}kg</span>
-              </div>
-            )}
+
+          {ex.note && <p className="rounded-xl bg-input px-3 py-2 text-sm leading-relaxed text-muted">{ex.note}</p>}
+
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-xs font-bold text-muted">
+              Séries
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={2}
+                aria-label={`Quantidade de séries, de 1 a ${MAX_SETS_PER_EXERCISE}`}
+                title={`Entre 1 e ${MAX_SETS_PER_EXERCISE} séries`}
+                className="h-11 w-14 rounded-xl border border-border bg-input text-center text-base font-black text-main focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                value={exerciseProgress.actualSets ?? expectedSets}
+                onChange={(event) => updateSessionSets(id, normalizeSessionSetCountInput(event.target.value))}
+                onBlur={(event) => {
+                  if (normalizeSessionSetCountInput(event.target.value) === '') {
+                    updateSessionSets(id, String(expectedSets));
+                  }
+                }}
+              />
+            </label>
+            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-primary">
+              <Settings2 size={16} /> {showAdvanced ? 'Ocultar detalhes' : 'RPE e opções'}
+            </button>
           </div>
-          <p className="text-xs text-muted font-bold uppercase mt-2.5 tracking-wide">{ex.note}</p>
-        </div>
 
-        {!isTutorial && (
-          <button 
-            onClick={() => toggleCheck(id)} 
-            className={`ml-3 p-3 sm:p-4 rounded-xl transition-all border-2 relative overflow-hidden active:scale-90 shadow-lg ${
-              isDone 
-                ? 'border-[#00f3ff] text-[#00f3ff] bg-[#00f3ff]/10 shadow-[0_0_20px_rgba(0,243,255,0.6)]' 
-                : 'border-border text-muted hover:text-[#00f3ff] hover:border-[#00f3ff] hover:shadow-[0_0_15px_rgba(0,243,255,0.4)] bg-card hover:bg-[#00f3ff]/5'
-            }`}
-          >
-            <CheckCircle2 size={28} className={isDone ? "drop-shadow-[0_0_8px_rgba(0,243,255,0.8)]" : ""} />
-          </button>
-        )}
-      </div>
-      
-      {/* SEÇÃO DE INPUTS */}
-      {!isTutorial && (
-        <div className="relative z-10 w-full overflow-hidden rounded-lg">
-          
-          {overlayTheme && (
-            <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center rounded-lg overflow-hidden">
-              <div className="absolute inset-0 bg-[var(--bg-card)] opacity-85 backdrop-blur-[3px] transition-opacity duration-500"></div>
+          <div className="space-y-2">
+            {Array.from({ length: expectedSets }).map((_, setIndex) => {
+              const set = exerciseProgress.sets?.[setIndex] || {};
+              const rpe = parseDecimalInput(set.rpe);
+              const valid = set.completed || isSetValid(set);
+              const rpeLabel = rpe === null ? null : rpe >= 10 ? 'máximo' : rpe >= 9 ? 'muito alto' : rpe >= 8 ? 'alto' : rpe >= 7 ? 'moderado' : 'leve';
+              return (
+                <div key={setIndex} className={`exercise-set-row rounded-xl border p-2 ${set.completed ? 'is-complete border-success/40 bg-success/5' : 'border-border bg-input/30'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 shrink-0 text-center text-sm font-black text-muted">{setIndex + 1}</span>
+                    <div className="flex min-w-0 flex-1 gap-2">{renderFields(set, setIndex)}</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!valid) {
+                          setValidationSet(setIndex);
+                          return;
+                        }
+                        setValidationSet(null);
+                        toggleSetComplete(id, setIndex, ex.restSeconds ?? 90);
+                      }}
+                      aria-label={set.completed ? `Reabrir série ${setIndex + 1}` : `Concluir série ${setIndex + 1}`}
+                      className={`touch-target flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition active:scale-95 ${set.completed ? 'border-success bg-success text-on-success' : 'border-primary/50 text-primary hover:bg-primary/10'}`}
+                    >
+                      {set.completed ? <Check size={24} /> : <Circle size={22} />}
+                    </button>
+                  </div>
+                  {validationSet === setIndex && !valid && <p role="alert" className="mt-2 pl-8 text-xs font-bold text-danger">Preencha valores válidos antes de concluir a série.</p>}
+                  {showAdvanced && (
+                    <div className="mt-2 flex items-center gap-2 pl-8">
+                      <Field label={`RPE da série ${setIndex + 1}`} placeholder="RPE" inputMode="decimal" value={set.rpe} onChange={(event) => updateSetData(id, setIndex, 'rpe', event.target.value)} />
+                      <span className="min-w-20 text-xs text-muted">{rpeLabel ? `RPE ${rpe} — ${rpeLabel}` : 'Opcional'}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-              <div className={`relative w-[150%] py-3 sm:py-4 transform -rotate-6 flex items-center justify-center animate-in zoom-in duration-300 ${overlayTheme.bg} ${overlayTheme.border}`}>
-                {isBreakingPR && (
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.15)_1px,transparent_1px)] bg-[size:100%_4px] opacity-60"></div>
+          {showAdvanced && (
+            <div className="space-y-3 border-t border-border pt-3">
+              <p className="rounded-xl bg-input px-3 py-2 text-xs text-muted">
+                <span className="font-bold text-main">Carga:</span> {loadModeOption.label}.
+                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
+                {loadMode === LOAD_MODES.assisted && ' Não entra em PR ou dano de Boss.'}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={() => { setSwapChoice(displayName); setSwapWarning(''); setShowSwap(true); }} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-warning/50 px-3 text-xs font-bold text-warning hover:bg-warning/10">
+                  <RefreshCcw size={16} /> Substituir exercício
+                </button>
+                {!confirmSkip ? (
+                  <button type="button" onClick={() => setConfirmSkip(true)} className="touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-main">
+                    <SkipForward size={16} /> {exerciseProgress.skipped ? 'Retomar exercício' : 'Pular exercício'}
+                  </button>
+                ) : (
+                  <div className="flex flex-1 gap-2">
+                    <button type="button" onClick={() => setConfirmSkip(false)} className="touch-target flex-1 rounded-xl border border-border text-xs font-bold">Cancelar</button>
+                    <button type="button" onClick={() => { skipExercise(id, !exerciseProgress.skipped); setConfirmSkip(false); }} className="touch-target flex-1 rounded-xl bg-warning text-xs font-black text-on-warning">Confirmar</button>
+                  </div>
                 )}
-                <span className={`relative font-black text-[16px] min-[400px]:text-[18px] sm:text-3xl tracking-widest sm:tracking-[0.35em] uppercase whitespace-nowrap ${overlayTheme.text} ${overlayTheme.glow}`}>
-                  {overlayTheme.overlayText}
-                </span>
               </div>
             </div>
           )}
-
-          <div className={`space-y-3.5 transition-opacity duration-500 ${isDone ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-            
-            <div className="flex items-center justify-between bg-input p-2.5 rounded-lg border border-border h-14 shadow-inner">
-              <div className={`flex items-center bg-card dark:bg-[#050505] border rounded-md px-2.5 h-10 transition-all ${isBreakingPR && !isDone ? 'border-yellow-400/50 shadow-[inset_0_0_8px_rgba(250,204,21,0.05)]' : 'border-[#00f3ff]/30 shadow-[inset_0_0_8px_rgba(0,243,255,0.05)]'}`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest mr-2 ${isBreakingPR && !isDone ? 'text-yellow-400/70' : 'text-[#00f3ff]/70'}`}>{isTimeBased ? 'TEMPO' : 'SÉRIES'}</span>
-                <div className={`w-[2px] h-4 skew-x-[-15deg] mr-2 ${isBreakingPR && !isDone ? 'bg-yellow-400/40' : 'bg-[#00f3ff]/40'}`}></div>
-                <input
-                  type="text"
-                  inputMode={isTimeBased ? "text" : "numeric"}
-                  className={`font-mono font-black outline-none w-12 text-center text-lg bg-transparent drop-shadow-[0_0_5px_currentColor] ${isBreakingPR && !isDone ? 'text-yellow-400 placeholder:text-yellow-400/30' : 'text-[#00f3ff] placeholder:text-[#00f3ff]/30'}`}
-                  value={progress[id]?.actualSets || (isTimeBased ? ex.sets : "")}
-                  onChange={(e) => updateSessionSets(id, e.target.value)}
-                />
-              </div>
-              
-              {!isTimeBased && (
-                <button 
-                  onClick={() => setShowAdvanced(!showAdvanced)} 
-                  className={`flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-2 rounded-md transition-colors border ${
-                    showAdvanced 
-                      ? 'bg-[#ff00ff]/10 text-[#ff00ff] border-[#ff00ff]/50 shadow-[0_0_10px_rgba(255,0,255,0.3)]' 
-                      : 'bg-card text-muted border-border hover:text-[#00f3ff] hover:border-[#00f3ff]'
-                  }`}
-                >
-                  <Settings2 size={12} />
-                  {showAdvanced ? 'Ocultar RPE' : 'RPE / 1RM'}
-                </button>
-              )}
-            </div>
-            
-            {!isTimeBased && (
-              <div className="grid gap-2.5">
-                {Array.from({ length: currentSetCount }).map((_, setIdx) => {
-                  const isSetDone = progress[id]?.sets?.[setIdx]?.completed;
-                  const uniqueSetKey = `${id}-${setIdx}`;
-                  const setWeight = progress[id]?.sets?.[setIdx]?.weight;
-                  const setReps = progress[id]?.sets?.[setIdx]?.reps;
-                  const setRPE = progress[id]?.sets?.[setIdx]?.rpe;
-                  
-                  const rpeNum = parseFloat(setRPE);
-                  const isCritical = rpeNum >= 9;
-                  const isHypertrophy = rpeNum >= 7 && rpeNum < 9;
-                  
-                  const isThisSetPR = getValidWeight(setWeight) > exercisePR && exercisePR > 0;
-
-                  return (
-                  <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-lg transition-all h-14 ${shakingRow === uniqueSetKey ? 'translate-x-2 bg-red-900/20 border border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]' : ''} ${isSetDone ? 'bg-[#00f3ff]/5 border border-[#00f3ff]/30' : 'bg-transparent border border-transparent'}`}>
-                    
-                    <button onClick={() => toggleSetComplete(id, setIdx)} className={`h-10 w-10 shrink-0 flex items-center justify-center rounded-full border-2 transition-all active:scale-90 ${
-                      isThisSetPR && isSetDone && !isDone
-                        ? 'bg-yellow-400 text-black border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]'
-                        : isSetDone 
-                          ? 'bg-[#00f3ff] text-black border-[#00f3ff] shadow-[0_0_15px_rgba(0,243,255,0.5)]' 
-                          : 'bg-input border-border text-muted hover:border-[#ff00ff] hover:text-[#ff00ff] hover:shadow-[0_0_10px_rgba(255,0,255,0.3)]'
-                    }`}>
-                        {isSetDone ? <Sword size={20} /> : <Circle size={20} />}
-                    </button>
-                    
-                    <span className={`text-sm font-black w-5 shrink-0 text-center ${isThisSetPR && !isDone ? 'text-yellow-400/80' : 'text-muted'}`}>{setIdx + 1}º</span>
-                    
-                    <div className="flex-1 flex gap-2 items-center">
-                        <input type="text" inputMode="decimal" placeholder="KG" value={setWeight || ""} onChange={(e) => updateSetData(id, setIdx, 'weight', e.target.value)}
-                          className={`w-full bg-input border rounded-lg p-1.5 font-black text-lg text-center h-10 outline-none placeholder:text-muted/50 transition-all ${
-                            isThisSetPR 
-                              ? 'border-yellow-400 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)] focus:border-yellow-300' 
-                              : 'border-border text-main dark:text-white focus:border-[#00f3ff] focus:shadow-[0_0_10px_rgba(0,243,255,0.3)]'
-                          }`}
-                        />
-                        
-                        <input type="text" inputMode="numeric" placeholder="REPS" value={setReps || ""} onChange={(e) => updateSetData(id, setIdx, 'reps', e.target.value)}
-                          className={`w-full bg-input border rounded-lg p-1.5 font-black text-lg text-center h-10 outline-none placeholder:text-muted/50 transition-all ${
-                            isThisSetPR
-                              ? 'border-yellow-400/50 text-main dark:text-white focus:border-yellow-400 focus:shadow-[0_0_10px_rgba(250,204,21,0.3)]'
-                              : 'border-border text-main dark:text-white focus:border-[#ff00ff] focus:shadow-[0_0_10px_rgba(255,0,255,0.3)]'
-                          }`}
-                        />
-                        
-                        {showAdvanced && (
-                          <>
-                            <div className="relative w-12 shrink-0 animate-in fade-in zoom-in duration-200">
-                              <input 
-                                type="text" 
-                                inputMode="numeric" 
-                                maxLength="2" 
-                                placeholder="RPE" 
-                                value={setRPE || ""} 
-                                onChange={(e) => updateSetData(id, setIdx, 'rpe', e.target.value)}
-                                className={`w-full border rounded p-1.5 font-black text-xs text-center h-10 transition-all outline-none 
-                                  ${isCritical 
-                                    ? 'bg-red-500/10 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]' 
-                                    : isHypertrophy 
-                                      ? 'bg-orange-500/10 border-orange-500 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.4)]' 
-                                      : isThisSetPR
-                                        ? 'bg-yellow-500/5 border-yellow-400/50 text-muted focus:text-white'
-                                        : 'bg-card border-border focus:border-[#00f3ff] text-muted focus:text-white focus:shadow-[0_0_8px_rgba(0,243,255,0.3)]'
-                                  }
-                                `} 
-                              />
-                              <span className={`absolute -top-2 left-1/2 -translate-x-1/2 text-[5px] font-black uppercase bg-card px-1 whitespace-nowrap rounded-sm transition-colors
-                                ${isCritical ? 'text-red-500' : isHypertrophy ? 'text-orange-500' : isThisSetPR ? 'text-yellow-400' : 'text-muted'}
-                              `}>
-                                {isCritical ? 'CRÍTICO' : isThisSetPR ? 'PR' : 'ESFORÇO'}
-                              </span>
-                              {isCritical && <Flame size={8} className="absolute -top-2 -right-1 text-red-500 animate-pulse drop-shadow-[0_0_5px_rgba(239,68,68,1)]" />}
-                            </div>
-                            
-                            {(() => {
-                              const true1RM = calculateTrue1RM(setWeight, setReps, setRPE);
-                              if (true1RM) return (
-                                <div className="flex flex-col items-center min-w-[25px] animate-in fade-in duration-200">
-                                  <span className="text-[5px] text-muted font-black uppercase">{setRPE ? 'TRUE 1RM' : '1RM'}</span>
-                                  <span className={`text-[9px] font-black font-mono ${isThisSetPR ? 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]' : setRPE ? 'text-[#ff00ff] drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]' : 'text-muted'}`}>{true1RM}</span>
-                                </div>
-                              );
-                            })()}
-                          </>
-                        )}
-                    </div>
-                  </div>
-                )})}
-              </div>
-            )}
-          </div>
         </div>
       )}
-    </div>
+
+      {showSwap && createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby={`swap-title-${index}`} className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/80 p-3 sm:items-center">
+          <div className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-warning/50 bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 id={`swap-title-${index}`} className="text-base font-black text-main">Substituir exercício</h3>
+              <button type="button" onClick={() => setShowSwap(false)} aria-label="Fechar seletor" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
+            </div>
+            <div className="space-y-2">
+              {[...new Set([ex.name, ...(ex.alternatives || []).filter(Boolean)])].map((option) => {
+                const selected = swapChoice === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setSwapChoice(option)}
+                    className={`flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl border px-3 text-left text-sm text-main transition-colors ${selected ? 'border-warning bg-warning/10' : 'border-border hover:border-warning/50'}`}
+                  >
+                    <span aria-hidden="true" className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? 'border-warning bg-warning shadow-[inset_0_0_0_3px_var(--color-card)]' : 'border-muted'}`} />
+                    {option}
+                  </button>
+                );
+              })}
+              {(ex.alternatives || []).filter(Boolean).length === 0 && <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">Nenhuma alternativa foi definida para este exercício.</p>}
+              <button type="button" onClick={() => setShowSwapSearch(true)} className="touch-target w-full rounded-xl border border-primary/50 bg-primary/5 px-3 text-sm font-black text-primary">Buscar outro exercício</button>
+            </div>
+            {swapWarning && <p role="alert" className="mt-4 flex gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm text-main"><AlertTriangle className="shrink-0 text-warning" size={18} /> {swapWarning}</p>}
+            <p className="mt-5 text-sm text-muted">Onde deseja aplicar esta troca?</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => applySwap('session')} className="touch-target rounded-xl border border-primary px-3 text-sm font-black text-primary">Somente nesta sessão</button>
+              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-on-warning">Adicionar como alternativa</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {showSwapSearch && createPortal(
+        <ExerciseSearchModal
+          onSelect={(exercise) => setSwapChoice(exercise)}
+          onClose={() => setShowSwapSearch(false)}
+        />,
+        document.body,
+      )}
+    </article>
   );
 };
 

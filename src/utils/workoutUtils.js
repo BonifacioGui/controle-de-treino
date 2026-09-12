@@ -1,5 +1,7 @@
 // src/utils/workoutUtils.js
 import { getCanonicalName } from './exerciseParser';
+import { normalizeLocalDateKey, parseLocalDateKey } from './dateUtils';
+import { parseDecimalInput } from './numberUtils';
 // --- FORMATADORES DE TEXTO E NÚMEROS ---
 
 export const cleanString = (str) => {
@@ -8,9 +10,7 @@ export const cleanString = (str) => {
 };
 
 export const safeParseFloat = (val) => {
-  if (!val) return 0;
-  if (typeof val === 'number') return val;
-  return parseFloat(String(val).replace(',', '.')) || 0;
+  return parseDecimalInput(val) ?? 0;
 };
 
 // --- CALCULADORAS DE PERFORMANCE ---
@@ -57,9 +57,8 @@ export const formatTime = (totalSeconds) => {
 };
 
 export const parseDateTimestamp = (dateString) => {
-  if (!dateString) return new Date().getTime();
-  const parsed = new Date(dateString).getTime();
-  return isNaN(parsed) ? new Date().getTime() : parsed;
+  const date = parseLocalDateKey(normalizeLocalDateKey(dateString));
+  return date?.getTime() ?? 0;
 };
 
 // Calcula o 1RM Ajustado pelo RPE (Reps in Reserve)
@@ -88,8 +87,5 @@ export const calculateTrue1RM = (weight, reps, rpe) => {
 
 // Adicione isso ao seu workoutUtils.js
 export const parseBrazilianDate = (dateStr) => {
-  if (!dateStr) return 0;
-  const [day, month, year] = dateStr.split('/');
-  // Retorna o timestamp (milissegundos) para comparação numérica direta
-  return new Date(year, month - 1, day).getTime();
+  return parseDateTimestamp(dateStr);
 };
