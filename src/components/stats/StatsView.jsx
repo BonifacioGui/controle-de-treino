@@ -33,7 +33,7 @@ const Section = ({ title, children, h = "h-48" }) => (
   </section>
 );
 
-const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen }) => {
+const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen, gender }) => {
   const [selectedExercise, setSelectedExercise] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
@@ -212,7 +212,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen 
       </Section>
       
       {/* HEATMAP DO CORPO (Seu componente original) */}
-      <MuscleHeatmap history={history} />
+      <MuscleHeatmap history={history} profileGender={gender} />
       
       {/* MÓDULOS EXTRAÍDOS (Nossa arquitetura limpa em ação) */}
       <BiometryChart data={biometry} />

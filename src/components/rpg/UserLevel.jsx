@@ -48,7 +48,7 @@ const UserLevel = ({ stats }) => {
               Status de Patente
             </span>
           </div>
-          <h2 className="text-2xl font-black text-main dark:text-white uppercase leading-none dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
+          <h2 className="font-rank text-main dark:text-white uppercase dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
             {stats.title || 'Recruta'}
           </h2>
         </div>

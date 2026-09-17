@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  AlertTriangle,
   Cloud,
   CloudOff,
   Flame,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useWorkout } from '../hooks/useWorkout';
 import logoSolo from '../assets/logo-solo.svg';
-import { supabase } from '../services/supabaseClient';
+import { supabase, supabaseConfigurationError } from '../services/supabaseClient';
 import CyberNav from '../components/shared/CyberNav';
 import SidebarMenu from '../components/shared/SidebarMenu';
 import LoadingScreen from '../components/shared/LoadingScreen';
@@ -37,6 +38,7 @@ import {
 } from '../utils/storage';
 import { SESSION_STATUS } from '../utils/sessionModel';
 import { REST_TIMER_STATUS } from '../utils/restTimerModel';
+import { getAuthCallbackNotice, getCleanAuthCallbackUrl, withTimeout } from '../utils/authFlow';
 
 const HistoryView = lazy(() => import('../components/dashboard/HistoryView'));
 const ProfileView = lazy(() => import('../components/profile/ProfileView'));
@@ -51,6 +53,21 @@ const ViewFallback = () => (
   </div>
 );
 
+const AuthRecoveryScreen = ({ message, onRetry }) => (
+  <main className="flex min-h-screen items-center justify-center bg-page p-4 font-sans text-main">
+    <section role="alert" className="w-full max-w-md rounded-3xl border border-warning/50 bg-card p-6 text-center shadow-2xl">
+      <img src={logoSolo} alt="SOLO" className="mx-auto h-12 w-auto" />
+      <AlertTriangle aria-hidden="true" className="mx-auto mt-6 text-warning" size={34} />
+      <h1 className="mt-4 font-cyber text-lg font-black uppercase tracking-wider">Falha ao iniciar a sessão</h1>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{message}</p>
+      <button type="button" onClick={onRetry} className="touch-target mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-black uppercase text-on-primary">
+        <RefreshCw aria-hidden="true" size={18} /> Tentar novamente
+      </button>
+      <p className="mt-4 text-xs leading-relaxed text-muted">Se o aviso continuar, confira a conexão e a configuração pública do Supabase.</p>
+    </section>
+  </main>
+);
+
 const SYNC_COPY = {
   synced: { label: 'Sincronizado', Icon: Cloud, className: 'text-success' },
   syncing: { label: 'Sincronizando...', Icon: RefreshCw, className: 'text-primary' },
@@ -63,6 +80,11 @@ const normalizeTheme = (value) => value === 'light' ? 'light' : 'dark';
 const WorkoutApp = () => {
   const [authSession, setAuthSession] = useState(null);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [authRetryKey, setAuthRetryKey] = useState(0);
+  const [authNotice, setAuthNotice] = useState(() => (
+    typeof window === 'undefined' ? null : getAuthCallbackNotice(window.location.href)
+  ));
   const userId = authSession?.user?.id || null;
   const initialSettings = useMemo(() => readStoredJSON(STORAGE_KEYS.settings, {}), []);
   const [theme, setTheme] = useState(() => normalizeTheme(initialSettings.theme));
@@ -125,16 +147,56 @@ const WorkoutApp = () => {
   const SyncIcon = syncCopy.Icon;
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthSession(session);
-      setIsSessionLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthSession(session);
-      setIsSessionLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+    let active = true;
+    let subscription;
+    let authStateReceived = false;
+
+    const fail = (error) => {
+      if (!active) return;
+      const message = error?.message === 'AUTH_SESSION_TIMEOUT'
+        ? 'A conexão demorou demais ao verificar sua sessão. Nada foi apagado; você pode tentar novamente.'
+        : error?.message || 'Não foi possível verificar sua sessão agora.';
+      setAuthError(message);
+      setAuthSession(null);
+    };
+
+    const initializeAuth = async () => {
+      setIsSessionLoading(true);
+      setAuthError('');
+      try {
+        if (supabaseConfigurationError) throw new Error(supabaseConfigurationError);
+
+        const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!active) return;
+          authStateReceived = true;
+          setAuthSession(session);
+          setAuthError('');
+          setIsSessionLoading(false);
+        });
+        subscription = authListener.data.subscription;
+
+        const { data, error } = await withTimeout(supabase.auth.getSession());
+        if (error) throw error;
+        if (active) setAuthSession(data?.session || null);
+      } catch (error) {
+        if (!authStateReceived) fail(error);
+      } finally {
+        if (active) setIsSessionLoading(false);
+      }
+    };
+
+    initializeAuth();
+    return () => {
+      active = false;
+      subscription?.unsubscribe();
+    };
+  }, [authRetryKey]);
+
+  useEffect(() => {
+    if (isSessionLoading || !authNotice || typeof window === 'undefined') return;
+    const cleanUrl = getCleanAuthCallbackUrl(window.location.href);
+    window.history.replaceState(window.history.state, '', cleanUrl);
+  }, [authNotice, isSessionLoading]);
 
   useEffect(() => {
     if (!userId || !state.isHydrated) return;
@@ -208,7 +270,8 @@ const WorkoutApp = () => {
   };
 
   if (isSessionLoading) return <LoadingScreen logo={logoSolo} />;
-  if (!authSession) return <AuthLayout />;
+  if (authError) return <AuthRecoveryScreen message={authError} onRetry={() => setAuthRetryKey((value) => value + 1)} />;
+  if (!authSession) return <AuthLayout authNotice={authNotice} />;
   if (!state.isHydrated) return <LoadingScreen logo={logoSolo} />;
 
   return (
@@ -241,6 +304,13 @@ const WorkoutApp = () => {
           </button>
         </div>
       </header>
+
+      {authNotice && (
+        <div role={authNotice.type === 'error' ? 'alert' : 'status'} className={`relative z-20 mx-4 mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${authNotice.type === 'error' ? 'border-danger/50 bg-danger/10 text-danger' : 'border-success/50 bg-success/10 text-success'}`}>
+          <span className="min-w-0 flex-1 font-bold">{authNotice.message}</span>
+          <button type="button" onClick={() => setAuthNotice(null)} aria-label="Fechar aviso" className="touch-target -m-2 flex shrink-0 items-center justify-center rounded-lg"><X size={18} /></button>
+        </div>
+      )}
 
       {state.view === 'workout' && state.workoutData && (
         <WorkoutSelector
@@ -292,7 +362,7 @@ const WorkoutApp = () => {
             <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay} addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} />
           )}
           {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} reopenEntry={actions.reopenHistoryEntry} setView={setters.setView} />}
-          {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} />}
+          {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} gender={authSession.user?.user_metadata?.gender} />}
           {state.view === 'profile' && <ProfileView key={userId} userId={userId} userMetadata={authSession.user?.user_metadata} setView={setters.setView} stats={stats} history={state.history} quests={readUserStoredJSON(userId, STORAGE_KEYS.quests, [])} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} />}
         </Suspense>
       </div>

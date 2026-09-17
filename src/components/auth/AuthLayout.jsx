@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import LoginForm from './LoginForm';
 import SignUpWizard from './SignUpWizard';
 
-const AuthLayout = () => {
+const AuthLayout = ({ authNotice = null }) => {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
@@ -19,7 +19,7 @@ const AuthLayout = () => {
       <div className="auth-panel w-full max-w-[420px] bg-card border-2 border-border p-6 sm:p-8 rounded-3xl relative z-10 transition-all duration-500">
         
         {isLogin ? (
-          <LoginForm onSwitch={() => setIsLogin(false)} />
+          <LoginForm onSwitch={() => setIsLogin(false)} authNotice={authNotice} />
         ) : (
           <SignUpWizard onSwitch={() => setIsLogin(true)} />
         )}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
 
 /* O tema é uma preferência do SOLO, independente do tema do sistema operacional. */
@@ -10,8 +10,8 @@
 
 @theme {
 
-  --font-sans:  'Inter', system-ui, sans-serif;
-  --font-cyber: 'Orbitron', sans-serif;
+  --font-sans:  'Orbitron', 'Arial Narrow', system-ui, sans-serif;
+  --font-cyber: 'Orbitron', 'Arial Narrow', system-ui, sans-serif;
   --font-mono:  'Share Tech Mono', monospace;
 
   --color-page:      var(--bg-page);
@@ -356,8 +356,8 @@
 
   body {
     min-height: 100%;
-    font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 500;
+    font-family: 'Orbitron', 'Arial Narrow', system-ui, sans-serif;
+    font-weight: 600;
     overflow-x: hidden;
     color: var(--text-main);
     background-color: var(--bg-page);
@@ -568,7 +568,7 @@
     0 0 20px rgba(0,255,255,.3),
     0 10px 30px rgba(0,0,0,.4);
   overflow: hidden;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Orbitron', 'Arial Narrow', system-ui, sans-serif;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -859,6 +859,17 @@
   letter-spacing: .3rem;
   margin-bottom: 48px;
   text-transform: uppercase;
+  font-family: 'Orbitron', 'Arial Narrow', system-ui, sans-serif;
+}
+
+.font-rank {
+  max-width: min(17rem, 72vw);
+  font-family: 'Orbitron', 'Arial Narrow', system-ui, sans-serif;
+  font-size: clamp(1.05rem, 5.5vw, 1.5rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 
 .splash-status {

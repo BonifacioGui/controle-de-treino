@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, User, Camera, Crosshair, Fingerprint } from 'lucide-react';
+import { Settings, User, Camera, Crosshair, Fingerprint, Shield, Target } from 'lucide-react';
 import UserLevel from '../rpg/UserLevel';
 
 const ProfileHeader = ({ 
@@ -9,7 +9,10 @@ const ProfileHeader = ({
   setIsEditing, 
   goalProgress, 
   isGoalMet, 
-  displayClass,
+  classLabel,
+  classDescription,
+  goalLabels,
+  focusLabel,
   stats
 }) => {
   return (
@@ -69,24 +72,33 @@ const ProfileHeader = ({
             <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-secondary pointer-events-none"></div>
           </div>
 
-          <div className="min-w-0 flex-1 pr-8 min-[380px]:pr-10">
+          <div className="min-w-0 flex-1 pr-12 min-[380px]:pr-14">
             <div className="flex items-center gap-1.5 mb-1 opacity-70">
               <Fingerprint size={10} className="text-primary" />
               <span className="text-[8px] font-mono font-black text-primary uppercase tracking-[0.3em]">ID Confirmada</span>
             </div>
             
-            <h2 className="break-normal font-cyber text-base font-black uppercase leading-tight tracking-tighter text-main drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] min-[360px]:text-xl min-[390px]:text-2xl sm:text-3xl dark:text-white dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
+            <h2 className="line-clamp-2 break-all font-cyber text-base font-black uppercase leading-tight tracking-[-0.04em] text-main drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] min-[360px]:text-lg min-[390px]:text-xl sm:text-2xl dark:text-white dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
-            
-            {/* Badge da Classe RPG */}
-            <div className="inline-flex items-center mt-2 bg-secondary/10 border border-secondary/40 px-2 py-0.5 shadow-[0_0_10px_rgba(var(--secondary),0.1)]" style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}>
-              <span className="text-secondary text-[10px] font-black uppercase tracking-widest drop-shadow-[0_0_5px_rgba(var(--secondary),0.5)]">
-                {displayClass}
-              </span>
-            </div>
           </div>
         </div>
+
+        <dl className="relative z-10 grid gap-2 border-t border-primary/10 pt-4 text-xs sm:grid-cols-3">
+          <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-secondary"><Shield size={12} /> Classe</dt>
+            <dd className="mt-1 break-words font-black uppercase text-main">{classLabel}</dd>
+            <dd className="mt-1 text-[10px] leading-relaxed text-muted">{classDescription} Apenas visual.</dd>
+          </div>
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary"><Target size={12} /> Objetivos</dt>
+            <dd className="mt-1 leading-relaxed text-main">{goalLabels.join(' e ')}</dd>
+          </div>
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary"><Crosshair size={12} /> Foco atual</dt>
+            <dd className="mt-1 leading-relaxed text-main">{focusLabel}</dd>
+          </div>
+        </dl>
 
         {/* Barra de Operação (Metas) */}
         {userMetadata?.target_weight && (
@@ -96,23 +108,27 @@ const ProfileHeader = ({
                 <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary"} />
                 OBJETIVO: {userMetadata.target_weight}KG
               </span>
-              <span className={`text-xs font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>
-                {goalProgress}%
+              <span className={`text-[9px] font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>
+                {goalProgress !== null ? `${goalProgress}%` : 'AGUARDANDO PESO'}
               </span>
             </div>
-            
-            <div className="w-full bg-input rounded-sm h-1.5 overflow-hidden border border-primary/20">
-              <div 
-                className={`h-full transition-all duration-1000 relative ${
-                  isGoalMet 
-                    ? 'bg-gradient-to-r from-success/50 to-success shadow-[0_0_15px_rgba(var(--success),0.8)]' 
-                    : 'bg-gradient-to-r from-primary/50 via-primary to-secondary shadow-[0_0_10px_rgba(var(--primary),0.6)]'
-                }`} 
-                style={{ width: `${goalProgress}%` }}
-              >
-                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/50 blur-[2px]"></div>
+
+            {goalProgress !== null ? (
+              <div className="w-full bg-input rounded-sm h-1.5 overflow-hidden border border-primary/20">
+                <div
+                  className={`h-full transition-all duration-1000 relative ${
+                    isGoalMet
+                      ? 'bg-gradient-to-r from-success/50 to-success shadow-[0_0_15px_rgba(var(--success),0.8)]'
+                      : 'bg-gradient-to-r from-primary/50 via-primary to-secondary shadow-[0_0_10px_rgba(var(--primary),0.6)]'
+                  }`}
+                  style={{ width: `${goalProgress}%` }}
+                >
+                  <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/50 blur-[2px]"></div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-[10px] leading-relaxed text-muted">Registre uma medição para calcular o progresso até o peso alvo.</p>
+            )}
           </div>
         )}
       </div>

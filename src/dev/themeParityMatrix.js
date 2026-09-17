@@ -1,5 +1,6 @@
 export const UI_PREVIEW_SCREENS = Object.freeze([
   'login',
+  'confirmation',
   'pre',
   'active',
   'rest',
@@ -22,6 +23,10 @@ export const THEME_PARITY_MATRIX = Object.freeze([
   { feature: 'RestTimer', previews: ['rest'] },
   { feature: 'PR', previews: ['pre', 'active', 'complete'] },
   { feature: 'Atributos e XP', previews: ['profile'] },
+  { feature: 'Perfil e objetivos', previews: ['profile'] },
+  { feature: 'Scanner biométrico', previews: ['stats'] },
+  { feature: 'Guia de exercício', previews: ['pre', 'active'] },
+  { feature: 'Confirmação de e-mail', previews: ['confirmation'] },
   { feature: 'Level Up', previews: ['level'] },
   { feature: 'charts', previews: ['stats'] },
   { feature: 'modais', previews: ['complete', 'level'] },

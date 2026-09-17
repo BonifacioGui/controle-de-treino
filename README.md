@@ -28,7 +28,11 @@ Crie um arquivo `.env.local` com as variáveis usadas em `src/services/supabaseC
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-publica
+# Opcional no desenvolvimento; obrigatória no deploy para um redirect explícito.
+VITE_PUBLIC_APP_URL=http://localhost:5173/controle-de-treino/
 ```
+
+A URL de confirmação de e-mail é centralizada em `src/config/appConfig.js`. A configuração manual necessária no painel do Supabase está em [`docs/SUPABASE_AUTH.md`](docs/SUPABASE_AUTH.md).
 
 ## Qualidade
 
@@ -55,6 +59,8 @@ O cliente mantém fallback para o esquema anterior, mas os novos snapshots e a d
 As garantias do cliente e as políticas RLS que precisam existir no projeto estão
 documentadas em [`docs/SUPABASE_SECURITY.md`](docs/SUPABASE_SECURITY.md). O
 repositório não substitui automaticamente as políticas já configuradas no painel.
+
+Objetivos, classe e sexo ficam nos metadados autenticados do usuário. O cliente grava o novo campo `goals` (até dois itens) e mantém `goal` como objetivo primário para compatibilidade com contas antigas; essa evolução não exige SQL.
 
 ## Tecnologias
 

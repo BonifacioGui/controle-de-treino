@@ -12,6 +12,10 @@ Toda funcionalidade visual nova ou alterada deve ser validada em **DARK** e **LI
 | PR | `complete` |
 | Level Up | `level` |
 | Charts | `stats` |
+| Perfil, objetivos e patente | `profile` |
+| Scanner biométrico | `stats` |
+| Guia de exercício | `pre`, `active` |
+| Confirmação de e-mail | `confirmation` |
 | Modais | `complete`, `level` |
 | States | `login`, `active`, `rest`, `complete` |
 | Inputs | `login`, `active`, `manage`, `importer` |

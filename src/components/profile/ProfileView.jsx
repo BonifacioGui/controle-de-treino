@@ -12,6 +12,15 @@ import {
   formatBiometricValue,
 } from '../../utils/biometricsModel';
 import { readUserStoredText, STORAGE_KEYS, writeUserStoredText } from '../../utils/storage';
+import {
+  getClassDefinition,
+  getClassLabel,
+  getGoalLabels,
+  getProfileFocus,
+  getUserGoalIds,
+  normalizeGender,
+  toCompatibleProfileGoals,
+} from '../../utils/profileMetadata';
 
 // Importando o exército de componentes que criamos:
 import ProfileHeader from './ProfileHeader';
@@ -30,7 +39,13 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
   const [isEditing, setIsEditing] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false); 
   const [editForm, setEditForm] = useState({
-    username: userMetadata?.username || '', birthdate: userMetadata?.birthdate || '', height: userMetadata?.height || '', goal: userMetadata?.goal || 'hypertrophy', target_weight: userMetadata?.target_weight || '' 
+    username: userMetadata?.username || '',
+    birthdate: userMetadata?.birthdate || '',
+    height: userMetadata?.height || '',
+    goals: getUserGoalIds(userMetadata),
+    gender: normalizeGender(userMetadata?.gender),
+    class: userMetadata?.class || 'warrior',
+    target_weight: userMetadata?.target_weight || '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -107,7 +122,15 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
     return { age: cAge, imc: cImc, rcq: cRcq, currentWeight: wToUse || '--', goalProgress: prog, isGoalMet: gMet };
   }, [userMetadata, stats, latestBio]);
 
-  const displayClass = { hypertrophy: 'Titã (Força Bruta)', weight_loss: 'Sombra (Definição)', endurance: 'Nômade (Resistência)' }[userMetadata?.goal] || 'Ciborgue';
+  const profileIdentity = useMemo(() => {
+    const classDefinition = getClassDefinition(userMetadata?.class);
+    return {
+      classLabel: getClassLabel(classDefinition.id, userMetadata?.gender),
+      classDescription: classDefinition.description,
+      goalLabels: getGoalLabels(userMetadata),
+      focusLabel: getProfileFocus(userMetadata),
+    };
+  }, [userMetadata]);
 
   const donutData = useMemo(() => {
     const w = parseDecimalInput(latestBio?.weight);
@@ -187,7 +210,9 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         username: editForm.username, 
         birthdate: editForm.birthdate, 
         height: editForm.height ? parseFloat(editForm.height) : null, 
-        goal: editForm.goal, 
+        ...toCompatibleProfileGoals(editForm.goals),
+        gender: editForm.gender,
+        class: editForm.class,
         target_weight: editForm.target_weight ? parseFloat(editForm.target_weight) : null
       };
 
@@ -245,7 +270,10 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
       <ProfileHeader 
         userMetadata={userMetadata} avatarUrl={avatarUrl} handleImageUpload={handleImageUpload} 
         setIsEditing={setIsEditing} goalProgress={goalProgress} isGoalMet={isGoalMet} 
-        displayClass={displayClass}
+        classLabel={profileIdentity.classLabel}
+        classDescription={profileIdentity.classDescription}
+        goalLabels={profileIdentity.goalLabels}
+        focusLabel={profileIdentity.focusLabel}
         stats={levelStats}
       />
 

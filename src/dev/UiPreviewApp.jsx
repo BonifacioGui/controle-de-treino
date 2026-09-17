@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import logoSolo from '../assets/logo-solo.svg';
 import AuthLayout from '../components/auth/AuthLayout';
+import EmailConfirmationPanel from '../components/auth/EmailConfirmationPanel';
 import CyberNav from '../components/shared/CyberNav';
 import WorkoutView from '../components/workout/WorkoutView';
 import WorkoutComplete from '../components/export/WorkoutComplete';
@@ -177,6 +178,15 @@ const UiPreviewApp = () => {
   }, [experienceMode, theme]);
 
   if (screen === 'login') return <AuthLayout />;
+  if (screen === 'confirmation') {
+    return (
+      <div className="auth-layout flex min-h-screen items-center justify-center bg-page p-4 font-sans text-main">
+        <div className="auth-panel w-full max-w-[420px] rounded-3xl border-2 border-border bg-card p-6 sm:p-8">
+          <EmailConfirmationPanel email="preview@solo.app" onBack={noop} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="solo-shell relative min-h-screen overflow-x-hidden bg-page pb-28 font-sans text-main cyber-grid">
@@ -186,8 +196,8 @@ const UiPreviewApp = () => {
       </header>
       <div className="relative z-10 mx-auto min-h-[50vh] max-w-5xl px-4">
         {screen === 'history' && <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={noop} updateEntry={noop} reopenEntry={noop} setView={noop} />}
-        {screen === 'stats' && <StatsView history={history} bodyHistory={bodyHistory} workoutData={workouts} setView={noop} setIsModalOpen={noop} />}
-        {screen === 'profile' && <ProfileView userId="dev-preview" userMetadata={{ username: 'Operador SOLO', height: '178', target_weight: '76', goal: 'hypertrophy' }} stats={{ streak: 4 }} history={history} bodyHistory={bodyHistory} deleteEntry={noop} />}
+        {screen === 'stats' && <StatsView history={history} bodyHistory={bodyHistory} workoutData={workouts} setView={noop} setIsModalOpen={noop} gender="female" />}
+        {screen === 'profile' && <ProfileView userId="dev-preview" userMetadata={{ username: 'OPERADORA_SPECTRAL_2049', height: '178', target_weight: '76', goals: ['weight_loss', 'strength'], goal: 'weight_loss', gender: 'female', class: 'assassin' }} stats={{ streak: 4, title: 'OPERADOR EM TREINAMENTO', level: 12, xp: 18420, progress: 62, xpRemaining: 1180 }} history={history} bodyHistory={bodyHistory} deleteEntry={noop} />}
         {screen === 'manage' && <ManageView activeDay="A" setActiveDay={noop} addDay={noop} removeDay={noop} workoutData={workouts} addExercise={noop} removeExercise={noop} editExerciseBase={noop} setView={noop} addFromCatalog={noop} />}
         {screen === 'importer' && <Importer setWorkoutData={noop} setView={noop} setActiveDay={noop} existingWorkoutData={workouts} />}
         {!['history', 'stats', 'profile', 'manage', 'importer', 'level'].includes(screen) && (

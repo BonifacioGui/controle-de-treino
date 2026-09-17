@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, Scale, Ruler, Calendar as CalendarIcon, Mail, Loader2, ArrowLeft } from 'lucide-react';
+import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, Scale, Ruler, Calendar as CalendarIcon, Loader2, ArrowLeft, Dumbbell } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar'; 
+import EmailConfirmationPanel from './EmailConfirmationPanel';
+import { getEmailConfirmationRedirectUrl } from '../../config/appConfig';
+import {
+  MAX_PROFILE_GOALS,
+  PROFILE_CLASSES,
+  PROFILE_GOALS,
+  toCompatibleProfileGoals,
+  toggleGoalSelection,
+} from '../../utils/profileMetadata';
 
 const STEPS = { CREDENTIALS: 1, BIOMETRICS: 2, GOAL: 3, CLASS: 4 };
 const TOTAL_STEPS = Object.keys(STEPS).length;
@@ -11,22 +20,12 @@ const GENDER_OPTIONS = [
   { id: 'female', label: 'Feminino' }
 ];
 
-const GOAL_OPTIONS = [
-  { id: 'hypertrophy', label: 'Ganho de Massa', Icon: ShieldCheck, desc: 'Foco em construir músculo e força bruta' },
-  { id: 'weight_loss', label: 'Queima de Gordura', Icon: Zap, desc: 'Foco em déficit calórico e definição' },
-  { id: 'endurance', label: 'Condicionamento', Icon: Target, desc: 'Foco em resistência e fôlego' }
-];
-
-const RPG_CLASSES = [
-  { id: 'warrior', male: 'Mercenário', female: 'Mercenária', icon: '⚔️', desc: 'Combate tático e versatilidade' },
-  { id: 'assassin', male: 'Infiltrador', female: 'Sombra', icon: '🗡️', desc: 'Agilidade e letalidade' },
-  { id: 'mage', male: 'Mago Street', female: 'Bruxa Street', icon: '🔮', desc: 'Manipula código como magia' },
-  { id: 'paladin', male: 'Ciborgue', female: 'Ciborgue', icon: '🛡️', desc: 'Implantes pesados e blindagem' },
-  { id: 'barbarian', male: 'Titã', female: 'Titã', icon: '🦍', desc: 'Força bruta imparável' },
-  { id: 'ranger', male: 'Nômade', female: 'Nômade', icon: '🏹', desc: 'Resistência no deserto de asfalto' },
-  { id: 'monk', male: 'Biohacker', female: 'Biohacker', icon: '🧬', desc: 'Modificação e controle corporal' },
-  { id: 'necromancer', male: 'Ceifador', female: 'Ceifadora', icon: '💀', desc: 'Ressurgir após a falha' }
-];
+const GOAL_ICONS = {
+  hypertrophy: ShieldCheck,
+  weight_loss: Zap,
+  strength: Dumbbell,
+  endurance: Target,
+};
 
 const PASSWORD_RULES = [
   { label: '8+ caracteres', test: (p) => p.length >= 8 },
@@ -35,7 +34,7 @@ const PASSWORD_RULES = [
   { label: 'Letra Maiúscula', test: (p) => /[A-Z]/.test(p) },
 ];
 
-const INITIAL_METADATA = { username: '', birthdate: '', gender: '', height: '', weight: '', goal: GOAL_OPTIONS[0].id, class: RPG_CLASSES[0].id };
+const INITIAL_METADATA = { username: '', birthdate: '', gender: '', height: '', weight: '', goals: [PROFILE_GOALS[0].id], class: PROFILE_CLASSES[0].id };
 const formatNumberInput = (value) => value.replace(/[^0-9.]/g, '');
 
 const SignUpWizard = ({ onSwitch }) => {
@@ -56,6 +55,7 @@ const SignUpWizard = ({ onSwitch }) => {
   const isPasswordValid = PASSWORD_RULES.every(rule => rule.test(password));
   const passwordsMatch = password === confirmPassword && password.length > 0;
   const isStep2Valid = metadata.username && metadata.birthdate && metadata.gender && metadata.height && metadata.weight;
+  const isGoalStepValid = metadata.goals.length > 0 && metadata.goals.length <= MAX_PROFILE_GOALS;
 
   const displayDate = metadata.birthdate ? metadata.birthdate.split('-').reverse().join('/') : 'Selecione';
 
@@ -66,10 +66,11 @@ const SignUpWizard = ({ onSwitch }) => {
       const { data, error } = await supabase.auth.signUp({
         email, password,
         options: {
+          emailRedirectTo: getEmailConfirmationRedirectUrl(),
           data: {
             username: metadata.username, birthdate: metadata.birthdate, gender: metadata.gender,
             height: parseFloat(metadata.height), starting_weight: parseFloat(metadata.weight), 
-            goal: metadata.goal, class: metadata.class, level: 1, xp: 0, joined_at: new Date().toISOString()
+            ...toCompatibleProfileGoals(metadata.goals), class: metadata.class, level: 1, xp: 0, joined_at: new Date().toISOString()
           }
         }
       });
@@ -88,22 +89,7 @@ const SignUpWizard = ({ onSwitch }) => {
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   if (isSignedUp) {
-    return (
-      <div className="text-center space-y-6 animate-in zoom-in duration-300">
-        <div className="inline-flex p-5 rounded-full bg-primary/10 text-primary mb-2 border border-primary/30 shadow-[0_0_30px_rgba(0,243,255,0.2)]">
-          <Mail size={48} />
-        </div>
-        <h2 className="font-sans font-black text-2xl tracking-[0.1em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent uppercase">
-          Cadastro Concluído
-        </h2>
-        <p className="text-muted text-sm leading-relaxed px-2">
-          Enviamos um link de verificação para <br/><span className="text-primary font-bold">{email}</span>.
-        </p>
-        <button onClick={onSwitch} className="w-full bg-input border border-border text-muted hover:text-primary font-black p-4 rounded-xl hover:border-primary transition-all mt-4 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]">
-          RETORNAR AO LOGIN
-        </button>
-      </div>
-    );
+    return <EmailConfirmationPanel email={email} onBack={onSwitch} />;
   }
 
   return (
@@ -172,7 +158,7 @@ const SignUpWizard = ({ onSwitch }) => {
         <div className="space-y-4 animate-in slide-in-from-right duration-300 relative">
           <div className="group">
             <label className="text-[10px] font-black uppercase text-muted mb-1.5 block">Codinome</label>
-            <div className="flex items-center w-full bg-input border-2 border-border rounded-xl focus-within:border-primary px-4 py-3.5"><User className="text-muted mr-3" size={18}/><input type="text" className="flex-1 bg-transparent outline-none uppercase font-black w-full text-sm" placeholder="CYPHER_01" value={metadata.username} onChange={(e) => setMetadata({...metadata, username: e.target.value})} /></div>
+            <div className="flex items-center w-full bg-input border-2 border-border rounded-xl focus-within:border-primary px-4 py-3.5"><User className="text-muted mr-3" size={18}/><input type="text" maxLength={24} className="flex-1 bg-transparent outline-none uppercase font-black w-full text-sm" placeholder="CYPHER_01" value={metadata.username} onChange={(e) => setMetadata({...metadata, username: e.target.value})} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
@@ -196,17 +182,26 @@ const SignUpWizard = ({ onSwitch }) => {
       {step === STEPS.GOAL && (
         <div className="space-y-5 animate-in slide-in-from-right duration-300">
           <div>
-            <label className="text-[11px] font-black uppercase text-primary mb-4 block text-center tracking-[0.2em]">Defina sua Missão</label>
-            <div className="grid grid-cols-1 gap-3">
-              {GOAL_OPTIONS.map(opt => (
-                <button key={opt.id} onClick={() => setMetadata({...metadata, goal: opt.id})} className={`p-4 rounded-xl border-2 flex flex-col items-start transition-all ${metadata.goal === opt.id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted'}`}>
-                  <div className="flex items-center justify-between w-full"><span className="font-black uppercase text-sm flex gap-3"><opt.Icon size={20}/> {opt.label}</span>{metadata.goal === opt.id && <Check size={18}/>}</div>
-                  <span className="text-[10px] mt-2 ml-8 opacity-70">{opt.desc}</span>
-                </button>
-              ))}
+            <div className="mb-4 text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Defina seus objetivos</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted">Escolha um ou dois objetivos. <strong className="text-main">{metadata.goals.length}/{MAX_PROFILE_GOALS} selecionados</strong></p>
             </div>
+            <div className="grid grid-cols-1 gap-3">
+              {PROFILE_GOALS.map((opt) => {
+                const Icon = GOAL_ICONS[opt.id];
+                const selected = metadata.goals.includes(opt.id);
+                const selectedIndex = metadata.goals.indexOf(opt.id);
+                const unavailable = !selected && metadata.goals.length >= MAX_PROFILE_GOALS;
+                return (
+                <button type="button" key={opt.id} aria-pressed={selected} disabled={unavailable} onClick={() => setMetadata({...metadata, goals: toggleGoalSelection(metadata.goals, opt.id)})} className={`flex min-h-20 flex-col items-start rounded-xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-40 ${selected ? 'border-primary bg-primary/10 text-primary shadow-[0_0_14px_rgba(var(--primary),0.12)]' : 'border-border text-muted'}`}>
+                  <span className="flex w-full items-center justify-between gap-3"><span className="flex items-center gap-3 text-sm font-black uppercase"><Icon aria-hidden="true" size={20}/> {opt.label}</span>{selected && <span className="flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[9px] font-black uppercase text-on-primary"><Check aria-hidden="true" size={12}/>{selectedIndex === 0 ? 'Foco' : '2º'}</span>}</span>
+                  <span className="ml-8 mt-2 text-xs leading-relaxed opacity-80">{opt.description}</span>
+                </button>
+              );})}
+            </div>
+            <p className="mt-3 text-center text-[10px] leading-relaxed text-muted">O primeiro objetivo selecionado define o foco atual. Você pode mudar essa ordem no perfil.</p>
           </div>
-          <div className="flex gap-2 mt-6"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button onClick={nextStep} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl uppercase text-sm">Escolher Classe</button></div>
+          <div className="flex gap-2 mt-6"><button type="button" onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button type="button" disabled={!isGoalStepValid} onClick={nextStep} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl uppercase text-sm disabled:opacity-40">Escolher Classe</button></div>
         </div>
       )}
 
@@ -214,11 +209,13 @@ const SignUpWizard = ({ onSwitch }) => {
         <div className="space-y-4 animate-in slide-in-from-right duration-300">
           <div>
             <label className="text-[11px] font-black uppercase text-primary mb-4 block text-center tracking-[0.2em]">Selecione sua Classe</label>
+            <p className="mb-4 rounded-xl border border-border bg-input/60 p-3 text-center text-xs leading-relaxed text-muted"><strong className="text-main">Classe é um arquétipo visual.</strong> Ela não altera treino, exercícios, missões, atributos, recompensas ou XP.</p>
             <div className="grid grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-hide py-1">
-              {RPG_CLASSES.map(cls => (
+              {PROFILE_CLASSES.map(cls => (
                 <button key={cls.id} onClick={() => setMetadata({...metadata, class: cls.id})} className={`p-4 rounded-xl border-2 flex flex-col items-center transition-all ${metadata.class === cls.id ? 'border-primary bg-primary/10 text-primary scale-[1.03]' : 'border-border text-muted'}`}>
                   <span className={`text-4xl mb-2 ${metadata.class === cls.id ? '' : 'grayscale'}`}>{cls.icon}</span>
                   <span className="font-black uppercase text-[10px]">{metadata.gender === 'female' ? cls.female : cls.male}</span>
+                  <span className="mt-2 text-center text-[10px] leading-relaxed opacity-70">{cls.description}</span>
                 </button>
               ))}
             </div>

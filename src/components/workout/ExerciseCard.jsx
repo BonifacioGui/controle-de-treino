@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  CircleHelp,
   Copy,
   RefreshCcw,
   Settings2,
@@ -32,6 +33,7 @@ import {
 import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
 import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
+import ExerciseGuide from './ExerciseGuide';
 import ExerciseSearchModal from './ExerciseSearchModal';
 
 const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) => {
@@ -86,6 +88,7 @@ const ExerciseCard = ({
   const [swapWarning, setSwapWarning] = useState('');
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [validationSet, setValidationSet] = useState(null);
+  const [showGuide, setShowGuide] = useState(false);
   const expanded = manualExpanded ?? (isCurrent && !isDone);
 
   const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
@@ -205,11 +208,20 @@ const ExerciseCard = ({
                 </p>
               )}
             </div>
-            {lastExercise && (
-              <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
-                <Copy size={15} /> Usar anteriores
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGuide(true)}
+                className="touch-target inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-primary/5 px-3 text-xs font-bold text-primary hover:bg-primary/10"
+              >
+                <CircleHelp size={15} /> Como fazer
               </button>
-            )}
+              {lastExercise && (
+                <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
+                  <Copy size={15} /> Usar anteriores
+                </button>
+              )}
+            </div>
           </div>
 
           {ex.note && <p className="rounded-xl bg-input px-3 py-2 text-sm leading-relaxed text-muted">{ex.note}</p>}
@@ -349,6 +361,10 @@ const ExerciseCard = ({
           onClose={() => setShowSwapSearch(false)}
         />,
         document.body,
+      )}
+
+      {showGuide && (
+        <ExerciseGuide exerciseName={displayName} onClose={() => setShowGuide(false)} />
       )}
     </article>
   );

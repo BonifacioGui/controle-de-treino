@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import { LogIn, Eye, EyeOff, Loader2, X, User, Lock } from 'lucide-react';
+import { CheckCircle2, LogIn, Eye, EyeOff, Loader2, X, User, Lock } from 'lucide-react';
 import logoSolo from '../../assets/logo-solo.svg';
+import EmailConfirmationPanel from './EmailConfirmationPanel';
 
-const LoginForm = ({ onSwitch }) => {
+const LoginForm = ({ onSwitch, authNotice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState('');
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault(); 
@@ -16,21 +18,37 @@ const LoginForm = ({ onSwitch }) => {
     setLoading(true);
     setErrorMsg('');
     
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      // Tradução rápida de erros comuns para manter a imersão
-      const msg = error.message === 'Invalid login credentials' 
-        ? 'Credenciais de acesso inválidas.' 
-        : error.message;
-      setErrorMsg(msg);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (/email.*not.*confirmed/i.test(error.message || '')) {
+          setPendingConfirmationEmail(email);
+          return;
+        }
+        const msg = error.message === 'Invalid login credentials'
+          ? 'Credenciais de acesso inválidas.'
+          : error.message;
+        setErrorMsg(msg);
+      }
+    } catch {
+      setErrorMsg('Não foi possível acessar o Supabase. Verifique sua conexão e tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
+
+  if (pendingConfirmationEmail) {
+    return <EmailConfirmationPanel email={pendingConfirmationEmail} onBack={() => setPendingConfirmationEmail('')} />;
+  }
 
   return (
     <form onSubmit={handleLogin} className="space-y-6 animate-in slide-in-from-left duration-300">
+      {authNotice && (
+        <div role={authNotice.type === 'error' ? 'alert' : 'status'} className={`flex items-start justify-center gap-2 rounded-xl border p-3 text-center text-xs font-black ${authNotice.type === 'error' ? 'border-danger/50 bg-danger/10 text-danger' : 'border-success/50 bg-success/10 text-success'}`}>
+          {authNotice.type === 'success' ? <CheckCircle2 aria-hidden="true" size={17} className="shrink-0" /> : <X aria-hidden="true" size={17} className="shrink-0" />}
+          <span className="leading-relaxed">{authNotice.message}</span>
+        </div>
+      )}
       
       {errorMsg && (
         <div className="border border-danger/50 bg-danger/10 text-danger p-3 rounded-xl mb-6 text-xs font-black uppercase text-center flex items-center justify-center gap-2 animate-in fade-in shadow-sm">

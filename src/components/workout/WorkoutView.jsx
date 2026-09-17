@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CheckCircle2,
+  CircleHelp,
   CloudOff,
   Dumbbell,
   Loader2,
@@ -13,6 +14,7 @@ import {
 import WorkoutHeader from './WorkoutHeader';
 import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
+import ExerciseGuide from './ExerciseGuide';
 import WorkoutQuestSummary from './WorkoutQuestSummary';
 import { daysBetweenLocalDates, formatLocalDate } from '../../utils/dateUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
@@ -45,6 +47,7 @@ const WorkoutView = ({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [finishConfirmation, setFinishConfirmation] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [guideExercise, setGuideExercise] = useState(null);
   const currentWorkout = activeWorkout || workoutData[activeDay];
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(workoutTimer.status);
@@ -233,6 +236,14 @@ const WorkoutView = ({
                     </div>
                     {exercise.note && <p className="mt-2 text-xs text-muted">{exercise.note}</p>}
                     {exercise.alternatives?.length > 0 && <p className="mt-2 text-xs text-muted">Alternativas: {exercise.alternatives.join(', ')}</p>}
+                    <button
+                      type="button"
+                      onClick={() => setGuideExercise(exercise.name)}
+                      aria-label={`Ver como fazer ${exercise.name}`}
+                      className="touch-target mt-3 inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <CircleHelp size={15} aria-hidden="true" /> Como fazer
+                    </button>
                   </li>
                 );
               })}
@@ -256,6 +267,10 @@ const WorkoutView = ({
           </div>
         )}
       </main>
+
+      {guideExercise && (
+        <ExerciseGuide exerciseName={guideExercise} onClose={() => setGuideExercise(null)} />
+      )}
 
       {finishConfirmation && createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="finish-partial-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4">
