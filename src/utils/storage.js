@@ -15,6 +15,7 @@ export const STORAGE_KEYS = Object.freeze({
   bossIntroSeen: 'solo:boss-intro-seen',
   pendingShareCard: 'solo:pending-share-card',
   avatar: 'solo:avatar',
+  notifications: 'solo:notifications',
   migrationVersion: 'solo:migration-version',
 });
 
@@ -46,6 +47,7 @@ const JSON_STORAGE_NAMES = new Set([
   'questData',
   'pendingShareCard',
   'bossIntroSeen',
+  'notifications',
 ]);
 
 export const getUserStorageKey = (userId, key) => {
@@ -226,6 +228,7 @@ export const getSoloBackup = (userId, storage = localStorage, exportedAt = new D
     restTimer: readUserStoredJSON(userId, STORAGE_KEYS.restTimer, null, storage),
     quests: readUserStoredJSON(userId, STORAGE_KEYS.quests, [], storage),
     questData: readUserStoredJSON(userId, STORAGE_KEYS.questData, {}, storage),
+    notifications: readUserStoredJSON(userId, STORAGE_KEYS.notifications, {}, storage),
     settings: readStoredJSON(STORAGE_KEYS.settings, {}, storage),
   },
 });

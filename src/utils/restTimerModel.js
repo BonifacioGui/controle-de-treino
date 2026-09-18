@@ -33,7 +33,17 @@ export const createRestTimerState = (duration = 90, now = Date.now()) => {
 };
 
 export const restoreRestTimerState = (state, now = Date.now()) => {
-  if (!state?.active || Number(state.endTime) <= now) return getIdleRestTimerState();
+  if (!state?.active) return getIdleRestTimerState();
+  if (Number(state.endTime) <= now) {
+    return {
+      ...state,
+      active: false,
+      status: REST_TIMER_STATUS.finished,
+      timerId: state.timerId || `rest-restored-${Number(state.endTime)}`,
+      finishedAt: Number(state.endTime) || now,
+      endTime: null,
+    };
+  }
   return {
     ...state,
     active: true,

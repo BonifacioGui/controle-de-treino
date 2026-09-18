@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, User, Camera, Crosshair, Fingerprint, Shield, Target } from 'lucide-react';
+import { CircleHelp, Settings, User, Camera, Crosshair, Fingerprint, Shield, Target } from 'lucide-react';
 import UserLevel from '../rpg/UserLevel';
 
 const ProfileHeader = ({ 
@@ -13,7 +13,8 @@ const ProfileHeader = ({
   classDescription,
   goalLabels,
   focusLabel,
-  stats
+  stats,
+  onExplainClass,
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
@@ -88,7 +89,8 @@ const ProfileHeader = ({
           <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-3">
             <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-secondary"><Shield size={12} /> Classe</dt>
             <dd className="mt-1 break-words font-black uppercase text-main">{classLabel}</dd>
-            <dd className="mt-1 text-[10px] leading-relaxed text-muted">{classDescription} Apenas visual.</dd>
+            <dd className="mt-1 text-[10px] leading-relaxed text-muted">{classDescription}</dd>
+            <button type="button" onClick={onExplainClass} className="touch-target mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-[10px] font-black uppercase text-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"><CircleHelp size={14} /> Entenda sua classe</button>
           </div>
           <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
             <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary"><Target size={12} /> Objetivos</dt>

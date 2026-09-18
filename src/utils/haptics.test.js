@@ -70,10 +70,11 @@ describe('feedback háptico', () => {
     expect(getHapticCapability({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)', vibrate: vi.fn() })).toMatchObject({ platform: 'desktop', supported: true });
   });
 
-  it('explica limitações sem alegar que a vibração física foi confirmada', () => {
+  it('explica limitações e usa a mensagem pedida no teste', () => {
     expect(getHapticCapabilityMessage({ platform: 'ios', supported: false })).toContain('não liberam vibração');
     expect(getHapticCapabilityMessage({ platform: 'desktop', supported: true })).toContain('não confirma');
-    expect(getHapticTestMessage({ platform: 'android', supported: true, triggered: true, reason: 'accepted' })).toContain('não consegue confirmar');
+    expect(getHapticTestMessage({ platform: 'android', supported: true, triggered: true, reason: 'accepted' })).toContain('Vibração funcionando');
+    expect(getHapticTestMessage({ platform: 'ios', supported: false })).toContain('não permite vibração pelo aplicativo');
   });
 
   it('decide entrega por preferência, visibilidade e ativação, nessa ordem', () => {

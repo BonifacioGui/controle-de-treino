@@ -39,9 +39,9 @@ describe('temporizador de descanso', () => {
     });
   });
 
-  it('não reabre nem refaz o alerta de um timer expirado após reload', () => {
+  it('restaura como concluído um timer expirado durante reload ou suspensão', () => {
     const active = createRestTimerState(30, 1_000);
-    expect(restoreRestTimerState(active, 31_000)).toMatchObject({ active: false, status: 'idle' });
+    expect(restoreRestTimerState(active, 31_000)).toMatchObject({ active: false, status: 'finished', finishedAt: 31_000, timerId: active.timerId });
     expect(restoreRestTimerState(active, 30_000)).toMatchObject({ active: true, status: 'active', timerId: active.timerId });
   });
 });

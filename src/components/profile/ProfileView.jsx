@@ -4,7 +4,6 @@ import { AlertTriangle } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { calculateStats } from '../../utils/rpgSystem';
 import { getLocalDateKey, normalizeLocalDateKey } from '../../utils/dateUtils';
-import { calculateDisciplineLevel, calculateFocusLevel } from '../../utils/rpgProgressionModel';
 import { parseDecimalInput } from '../../utils/numberUtils';
 import {
   calculateBmi,
@@ -13,8 +12,7 @@ import {
 } from '../../utils/biometricsModel';
 import { readUserStoredText, STORAGE_KEYS, writeUserStoredText } from '../../utils/storage';
 import {
-  getClassDefinition,
-  getClassLabel,
+  getClassDetails,
   getGoalLabels,
   getProfileFocus,
   getUserGoalIds,
@@ -26,8 +24,8 @@ import {
 import ProfileHeader from './ProfileHeader';
 import BiometricsDashboard from './BiometricsDashboard';
 import BodyScanner from './BodyScanner';
-import TacticalRadar from '../stats/TacticalRadar';
 import ProfileSettingsModal from './ProfileSettingsModal';
+import ClassDetailsDialog from './ClassDetailsDialog';
 import CharacterSheet from '../rpg/CharacterSheet'; 
 import BadgeList from '../rpg/BadgeList';
 import QuestBoard from '../rpg/QuestBoard';
@@ -60,6 +58,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
   const [itemToDelete, setItemToDelete] = useState(null);
   const [, setIsUploadingAvatar] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [showClassDetails, setShowClassDetails] = useState(false);
 
 
   const sortedBody = [...bodyHistory].sort((a, b) => normalizeLocalDateKey(b.date).localeCompare(normalizeLocalDateKey(a.date)));
@@ -85,22 +84,6 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
     ...stats,
   }), [rpgData, stats]);
 
-  const dynamicDiscipline = useMemo(() => calculateDisciplineLevel(history), [history]);
-
-  const radarData = useMemo(() => {
-    const focusLevel = calculateFocusLevel(stats?.streak);
-    return [
-      { subject: 'FOR', metricKey: 'STR', A: rpgData?.STR?.level || rpgData?.FOR?.level || 1 },
-      { subject: 'DES', metricKey: 'DEX', A: rpgData?.DEX?.level || rpgData?.DES?.level || 1 },
-      { subject: 'VIT', metricKey: 'VIT', A: rpgData?.VIT?.level || 1 },
-      { subject: 'CAR', metricKey: 'CHA', A: rpgData?.CHA?.level || rpgData?.CAR?.level || 1 },
-      { subject: 'FOCO', metricKey: 'FOCUS', A: focusLevel },
-      { subject: 'DISCIPLINA', metricKey: 'DISCIPLINE', A: dynamicDiscipline }
-    ];
-  }, [rpgData, stats?.streak, dynamicDiscipline]);
-
-  const maxStat = Math.max(10, ...radarData.map(d => d.A));
-
   const { age, imc, rcq, currentWeight, goalProgress, isGoalMet } = useMemo(() => {
     const sm = userMetadata || {};
     let cAge = '--';
@@ -123,10 +106,11 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
   }, [userMetadata, stats, latestBio]);
 
   const profileIdentity = useMemo(() => {
-    const classDefinition = getClassDefinition(userMetadata?.class);
+    const classDetails = getClassDetails(userMetadata);
     return {
-      classLabel: getClassLabel(classDefinition.id, userMetadata?.gender),
-      classDescription: classDefinition.description,
+      classDetails,
+      classLabel: classDetails.label,
+      classDescription: classDetails.description,
       goalLabels: getGoalLabels(userMetadata),
       focusLabel: getProfileFocus(userMetadata),
     };
@@ -275,6 +259,7 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         goalLabels={profileIdentity.goalLabels}
         focusLabel={profileIdentity.focusLabel}
         stats={levelStats}
+        onExplainClass={() => setShowClassDetails(true)}
       />
 
       {feedback && <div role="alert" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-warning/10 p-4 text-sm text-muted"><AlertTriangle className="shrink-0 text-warning" size={19} /><div className="flex-1">{feedback}</div><button type="button" onClick={() => setFeedback('')} aria-label="Fechar aviso" className="font-black text-main">×</button></div>}
@@ -295,8 +280,6 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         handleEditBio={handleEditBio} requestDelete={requestDelete}
       />
 
-      <TacticalRadar radarData={radarData} maxStat={maxStat} />
-
       <CharacterSheet history={history} stats={stats} rpgData={rpgData} />
       <BadgeList history={history} stats={stats} rpgData={rpgData} />
       <QuestBoard userId={userId} />
@@ -305,6 +288,14 @@ const ProfileView = ({ userId, userMetadata, stats, history, bodyHistory = [], d
         isEditing={isEditing} setIsEditing={setIsEditing} editForm={editForm} setEditForm={setEditForm} 
         showCalendar={showCalendar} setShowCalendar={setShowCalendar} handleSaveProfile={handleSaveProfile} isSaving={isSaving} 
       />
+
+      {showClassDetails && (
+        <ClassDetailsDialog
+          classDetails={profileIdentity.classDetails}
+          onClose={() => setShowClassDetails(false)}
+          onEdit={() => { setShowClassDetails(false); setIsEditing(true); }}
+        />
+      )}
 
       {itemToDelete && createPortal(
         <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4">

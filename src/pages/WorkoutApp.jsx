@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'rea
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  Bell,
   Cloud,
   CloudOff,
   Flame,
@@ -18,6 +19,7 @@ import logoSolo from '../assets/logo-solo.svg';
 import { supabase, supabaseConfigurationError } from '../services/supabaseClient';
 import CyberNav from '../components/shared/CyberNav';
 import SidebarMenu from '../components/shared/SidebarMenu';
+import NotificationCenter from '../components/shared/NotificationCenter';
 import LoadingScreen from '../components/shared/LoadingScreen';
 import AuthLayout from '../components/auth/AuthLayout';
 import WorkoutView from '../components/workout/WorkoutView';
@@ -39,6 +41,14 @@ import {
 import { SESSION_STATUS } from '../utils/sessionModel';
 import { REST_TIMER_STATUS } from '../utils/restTimerModel';
 import { getAuthCallbackNotice, getCleanAuthCallbackUrl, withTimeout } from '../utils/authFlow';
+import { useNotificationCenter } from '../hooks/useNotificationCenter';
+import { getHapticCapability, HAPTIC_PLATFORMS, isHapticRetryFresh } from '../utils/haptics';
+import {
+  getRestAlertCapabilities,
+  playRestCompletionSound,
+  REST_SOUND_TYPES,
+  showRestSystemNotification,
+} from '../utils/restAlerts';
 
 const HistoryView = lazy(() => import('../components/dashboard/HistoryView'));
 const ProfileView = lazy(() => import('../components/profile/ProfileView'));
@@ -90,16 +100,32 @@ const WorkoutApp = () => {
   const [theme, setTheme] = useState(() => normalizeTheme(initialSettings.theme));
   const [experienceMode, setExperienceMode] = useState(() => initialSettings.experienceMode || 'balanced');
   const [hapticFeedback, setHapticFeedback] = useState(() => (
-    initialSettings.hapticFeedback ?? initialSettings.restVibration ?? true
+    (() => {
+      const capability = getHapticCapability();
+      const preference = initialSettings.hapticFeedback ?? initialSettings.restVibration ?? true;
+      return capability.supported && capability.platform !== HAPTIC_PLATFORMS.ios && preference;
+    })()
   ));
+  const [restSoundEnabled, setRestSoundEnabled] = useState(() => (
+    getRestAlertCapabilities().soundSupported && (initialSettings.restSoundEnabled ?? true)
+  ));
+  const [restNotificationEnabled, setRestNotificationEnabled] = useState(() => (
+    getRestAlertCapabilities().notificationPermission === 'granted'
+      && (initialSettings.restNotificationEnabled ?? false)
+  ));
+  const [restSoundVolume, setRestSoundVolume] = useState(() => Math.min(1, Math.max(0.1, Number(initialSettings.restSoundVolume) || 0.6)));
+  const [restSoundType, setRestSoundType] = useState(() => Object.values(REST_SOUND_TYPES).includes(initialSettings.restSoundType) ? initialSettings.restSoundType : REST_SOUND_TYPES.double);
   const { state, setters, actions, stats } = useWorkout(userId, { hapticFeedback });
+  const notificationCenter = useNotificationCenter(userId, { workoutData: state.workoutData, history: state.history });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showBadgeAlert, setShowBadgeAlert] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [restAlert, setRestAlert] = useState(null);
   const announcedRestTimersRef = useRef(new Set());
+  const deliveredRestFeedbackRef = useRef(new Set());
   const [warningModal, setWarningModal] = useState({ isOpen: false, day: null, days: null, dateKey: null, userId: null });
   const [pendingReport, setPendingReport] = useState(null);
   const [reportUserId, setReportUserId] = useState(null);
@@ -118,6 +144,7 @@ const WorkoutApp = () => {
     if (!state.isHydrated
       || state.timerState?.status !== REST_TIMER_STATUS.finished
       || !timerId
+      || !isHapticRetryFresh({ timerId, finishedAt: state.timerState?.finishedAt })
       || announcedRestTimersRef.current.has(alertKey)) return undefined;
 
     const showRestAlert = () => {
@@ -129,7 +156,21 @@ const WorkoutApp = () => {
     showRestAlert();
     document.addEventListener('visibilitychange', showRestAlert);
     return () => document.removeEventListener('visibilitychange', showRestAlert);
-  }, [state.isHydrated, state.timerState?.status, state.timerState?.timerId, userId]);
+  }, [state.isHydrated, state.timerState?.finishedAt, state.timerState?.status, state.timerState?.timerId, userId]);
+
+  useEffect(() => {
+    const timerId = state.timerState?.timerId;
+    const feedbackKey = userId && timerId ? `${userId}:${timerId}` : null;
+    if (!state.isHydrated
+      || state.timerState?.status !== REST_TIMER_STATUS.finished
+      || !feedbackKey
+      || !isHapticRetryFresh({ timerId, finishedAt: state.timerState?.finishedAt })
+      || deliveredRestFeedbackRef.current.has(feedbackKey)) return;
+
+    deliveredRestFeedbackRef.current.add(feedbackKey);
+    void playRestCompletionSound({ enabled: restSoundEnabled, volume: restSoundVolume, type: restSoundType });
+    void showRestSystemNotification({ enabled: restNotificationEnabled, timerId });
+  }, [restNotificationEnabled, restSoundEnabled, restSoundType, restSoundVolume, state.isHydrated, state.timerState?.finishedAt, state.timerState?.status, state.timerState?.timerId, userId]);
 
   useEffect(() => {
     if (!restAlert) return undefined;
@@ -142,7 +183,7 @@ const WorkoutApp = () => {
     && state.timerState?.timerId === restAlert.timerId
     ? restAlert
     : null;
-  const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen;
+  const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen || isNotificationCenterOpen;
   const syncCopy = SYNC_COPY[state.syncStatus] || SYNC_COPY.error;
   const SyncIcon = syncCopy.Icon;
 
@@ -222,8 +263,21 @@ const WorkoutApp = () => {
       experienceMode,
       hapticFeedback,
       restVibration: hapticFeedback,
+      restSoundEnabled,
+      restNotificationEnabled,
+      restSoundVolume,
+      restSoundType,
     });
-  }, [experienceMode, hapticFeedback, theme]);
+  }, [experienceMode, hapticFeedback, restNotificationEnabled, restSoundEnabled, restSoundType, restSoundVolume, theme]);
+
+  const handleNotificationAction = (item) => {
+    notificationCenter.markRead(item.id);
+    if (item.action?.workoutDay && state.workoutData?.[item.action.workoutDay]) {
+      setters.setActiveDay(item.action.workoutDay);
+    }
+    if (item.action?.view) setters.setView(item.action.view);
+    setIsNotificationCenterOpen(false);
+  };
 
   const workoutStatuses = useMemo(() => Object.fromEntries(
     Object.keys(state.workoutData || {}).map((day) => {
@@ -298,6 +352,10 @@ const WorkoutApp = () => {
             className={`hidden min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold sm:flex ${syncCopy.className}`}
           >
             <SyncIcon size={17} className={state.syncStatus === 'syncing' ? 'animate-spin' : ''} /> {syncCopy.label}
+          </button>
+          <button type="button" onClick={() => setIsNotificationCenterOpen(true)} aria-label={`Abrir notificações${notificationCenter.unreadCount > 0 ? `, ${notificationCenter.unreadCount} não lidas` : ''}`} className="touch-target relative flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary">
+            <Bell size={21} />
+            {notificationCenter.unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(var(--secondary),0.65)]">{Math.min(99, notificationCenter.unreadCount)}</span>}
           </button>
           <button type="button" onClick={() => setIsMenuOpen(true)} aria-label="Abrir menu" className="touch-target flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted hover:text-primary">
             <Menu size={24} />
@@ -427,7 +485,21 @@ const WorkoutApp = () => {
         </Suspense>
       )}
 
-      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} hapticFeedback={hapticFeedback} setHapticFeedback={setHapticFeedback} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
+      <NotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        items={notificationCenter.items}
+        unreadCount={notificationCenter.unreadCount}
+        preferences={notificationCenter.preferences}
+        onMarkRead={notificationCenter.markRead}
+        onMarkAllRead={notificationCenter.markAllRead}
+        onDismiss={notificationCenter.dismiss}
+        onCategoryChange={notificationCenter.setCategoryEnabled}
+        onPause={notificationCenter.pauseForDays}
+        onAction={handleNotificationAction}
+      />
+
+      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} hapticFeedback={hapticFeedback} setHapticFeedback={setHapticFeedback} restSoundEnabled={restSoundEnabled} setRestSoundEnabled={setRestSoundEnabled} restNotificationEnabled={restNotificationEnabled} setRestNotificationEnabled={setRestNotificationEnabled} restSoundVolume={restSoundVolume} setRestSoundVolume={setRestSoundVolume} restSoundType={restSoundType} setRestSoundType={setRestSoundType} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />
 
       {state.timerState?.active && state.timerState.endTime && (
         <RestTimer endTime={state.timerState.endTime} onAdjust={actions.adjustRestTimer} onSkip={actions.closeTimer} />

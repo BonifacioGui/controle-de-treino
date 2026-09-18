@@ -41,11 +41,17 @@ const detectHapticPlatform = (navigatorObject) => {
 
 export const getHapticCapability = (
   navigatorObject = typeof navigator === 'undefined' ? null : navigator,
-) => ({
-  platform: detectHapticPlatform(navigatorObject),
-  supported: Boolean(navigatorObject && typeof navigatorObject.vibrate === 'function'),
-  hasBeenActive: navigatorObject?.userActivation?.hasBeenActive ?? null,
-});
+  { secureContext = typeof globalThis.isSecureContext === 'boolean' ? globalThis.isSecureContext : true } = {},
+) => {
+  const apiAvailable = Boolean(navigatorObject && typeof navigatorObject.vibrate === 'function');
+  return {
+    platform: detectHapticPlatform(navigatorObject),
+    apiAvailable,
+    secureContext,
+    supported: apiAvailable && secureContext,
+    hasBeenActive: navigatorObject?.userActivation?.hasBeenActive ?? null,
+  };
+};
 
 export const getHapticDelivery = ({
   enabled = true,
@@ -100,6 +106,7 @@ export const triggerHaptic = (
 
   if (!enabled) return createHapticResult(capability, { reason: 'disabled' });
   if (pattern === undefined) return createHapticResult(capability, { reason: 'unknown-type' });
+  if (!capability.secureContext) return createHapticResult(capability, { reason: 'insecure' });
   if (!capability.supported) return createHapticResult(capability, { reason: 'unsupported' });
   if (documentObject?.visibilityState && documentObject.visibilityState !== 'visible') {
     return createHapticResult(capability, { reason: 'hidden', retryable: true });
@@ -119,7 +126,8 @@ export const triggerHaptic = (
   }
 };
 
-export const getHapticCapabilityMessage = ({ platform, supported }) => {
+export const getHapticCapabilityMessage = ({ platform, supported, secureContext = true }) => {
+  if (!secureContext) return 'A vibração exige HTTPS ou localhost. Este endereço não é considerado seguro pelo navegador.';
   if (platform === HAPTIC_PLATFORMS.ios) {
     return 'iPhone e iPad não liberam vibração para sites ou apps instalados da Web. O aviso visual do descanso continua disponível.';
   }
@@ -138,14 +146,14 @@ export const getHapticCapabilityMessage = ({ platform, supported }) => {
 
 export const getHapticTestMessage = (result) => {
   if (!result?.supported || result.platform === HAPTIC_PLATFORMS.ios) {
-    return getHapticCapabilityMessage(result || {});
+    return `Este navegador ou dispositivo não permite vibração pelo aplicativo. ${getHapticCapabilityMessage(result || {})}`;
   }
-  if (result.reason === 'hidden') return 'Mantenha o app visível e teste novamente.';
-  if (result.reason === 'activation-required') return 'Toque novamente para liberar o teste de vibração.';
-  if (result.reason === 'rejected') return 'O navegador recusou o pedido. Confira a vibração do aparelho e tente novamente.';
-  if (result.reason === 'error') return 'O navegador encontrou um erro ao pedir a vibração.';
+  if (result.reason === 'hidden') return 'Este navegador ou dispositivo não permite vibração pelo aplicativo enquanto ele está oculto. Mantenha o app visível e teste novamente.';
+  if (result.reason === 'activation-required') return 'Este navegador ou dispositivo não permite vibração pelo aplicativo antes de uma interação. Toque novamente para liberar o teste.';
+  if (result.reason === 'rejected') return 'Este navegador ou dispositivo não permite vibração pelo aplicativo agora. Confira a vibração do aparelho e tente novamente.';
+  if (result.reason === 'error') return 'Este navegador ou dispositivo não permite vibração pelo aplicativo. O navegador encontrou um erro ao fazer o pedido.';
   if (result.triggered) {
-    return 'Pedido aceito pelo navegador. A Web não consegue confirmar a vibração física; se não sentiu, confira o aparelho e os modos Silencioso ou Não Perturbe.';
+    return 'Vibração funcionando. O navegador aceitou o padrão; se não sentiu, confira o aparelho e os modos Silencioso ou Não Perturbe.';
   }
   return getHapticCapabilityMessage(result);
 };

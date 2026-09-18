@@ -13,7 +13,11 @@ import ProfileView from '../components/profile/ProfileView';
 import ManageView from '../components/admin/ManageView';
 import Importer from '../components/admin/Importer';
 import LevelUpModal from '../components/rpg/LevelUpModal';
+import NotificationCenter from '../components/shared/NotificationCenter';
+import SidebarMenu from '../components/shared/SidebarMenu';
+import ClassDetailsDialog from '../components/profile/ClassDetailsDialog';
 import { SESSION_STATUS } from '../utils/sessionModel';
+import { getClassDetails } from '../utils/profileMetadata';
 import { UI_PREVIEW_SCREENS } from './themeParityMatrix';
 
 const dateKey = '2026-08-26';
@@ -134,6 +138,16 @@ const bodyHistory = [
 ];
 
 const noop = () => {};
+const previewNotification = {
+  id: 'preview-muscle-gap',
+  dedupeKey: 'muscle-gap:active-plan',
+  category: 'muscle-gaps',
+  title: 'Atenção ao treino de costas',
+  message: 'Nenhuma série para costas foi registrada nos últimos 9 dias. Sua ficha prevê cerca de 1 estímulo por semana.',
+  createdAt: '2026-08-26T12:00:00.000Z',
+  read: false,
+  action: { label: 'Abrir treino', view: 'workout', workoutDay: 'B' },
+};
 const actions = {
   startSession: noop,
   toggleWorkoutTimer: noop,
@@ -253,6 +267,9 @@ const UiPreviewApp = () => {
       )}
       {screen === 'rest' && <RestTimer endTime={restEndTime} onAdjust={noop} onSkip={noop} />}
       {screen === 'level' && <LevelUpModal level={12} onClose={noop} />}
+      {screen === 'notifications' && <NotificationCenter isOpen onClose={noop} items={[previewNotification]} unreadCount={1} preferences={{ muscleGaps: true, pauseUntil: null }} onMarkRead={noop} onMarkAllRead={noop} onDismiss={noop} onCategoryChange={noop} onPause={noop} onAction={noop} />}
+      {screen === 'settings' && <SidebarMenu isOpen onClose={noop} theme={theme} setTheme={noop} experienceMode="balanced" setExperienceMode={noop} hapticFeedback={false} setHapticFeedback={noop} restSoundEnabled restNotificationEnabled={false} restSoundVolume={0.6} restSoundType="double" setRestSoundEnabled={noop} setRestNotificationEnabled={noop} setRestSoundVolume={noop} setRestSoundType={noop} setView={noop} hasPendingChanges={false} syncStatus="synced" onSync={noop} userId="preview-user" />}
+      {screen === 'class-info' && <ClassDetailsDialog classDetails={getClassDetails({ class: 'barbarian', gender: 'male', goals: ['strength', 'hypertrophy'] })} onClose={noop} onEdit={noop} />}
     </div>
   );
 };

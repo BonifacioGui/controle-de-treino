@@ -13,6 +13,9 @@ Toda funcionalidade visual nova ou alterada deve ser validada em **DARK** e **LI
 | Level Up | `level` |
 | Charts | `stats` |
 | Perfil, objetivos e patente | `profile` |
+| Explicação das classes | `class-info` |
+| Central de notificações | `notifications` |
+| Configurações dos alertas | `settings` |
 | Scanner biométrico | `stats` |
 | Guia de exercício | `pre`, `active` |
 | Confirmação de e-mail | `confirmation` |

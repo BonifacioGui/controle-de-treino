@@ -7,6 +7,7 @@ import { getEmailConfirmationRedirectUrl } from '../../config/appConfig';
 import {
   MAX_PROFILE_GOALS,
   PROFILE_CLASSES,
+  PROFILE_CLASS_EFFECT_SUMMARY,
   PROFILE_GOALS,
   toCompatibleProfileGoals,
   toggleGoalSelection,
@@ -209,7 +210,7 @@ const SignUpWizard = ({ onSwitch }) => {
         <div className="space-y-4 animate-in slide-in-from-right duration-300">
           <div>
             <label className="text-[11px] font-black uppercase text-primary mb-4 block text-center tracking-[0.2em]">Selecione sua Classe</label>
-            <p className="mb-4 rounded-xl border border-border bg-input/60 p-3 text-center text-xs leading-relaxed text-muted"><strong className="text-main">Classe é um arquétipo visual.</strong> Ela não altera treino, exercícios, missões, atributos, recompensas ou XP.</p>
+            <p className="mb-4 rounded-xl border border-border bg-input/60 p-3 text-center text-xs leading-relaxed text-muted">{PROFILE_CLASS_EFFECT_SUMMARY}</p>
             <div className="grid grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-hide py-1">
               {PROFILE_CLASSES.map(cls => (
                 <button key={cls.id} onClick={() => setMetadata({...metadata, class: cls.id})} className={`p-4 rounded-xl border-2 flex flex-col items-center transition-all ${metadata.class === cls.id ? 'border-primary bg-primary/10 text-primary scale-[1.03]' : 'border-border text-muted'}`}>

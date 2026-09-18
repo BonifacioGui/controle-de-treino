@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Cloud,
   CloudOff,
+  BellRing,
   ClipboardList,
   DownloadCloud,
   FileUp,
@@ -12,6 +13,7 @@ import {
   Sun,
   User,
   Vibrate,
+  Volume2,
   X,
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
@@ -25,6 +27,12 @@ import {
   HAPTIC_TYPES,
   triggerHaptic,
 } from '../../utils/haptics';
+import {
+  getRestAlertCapabilities,
+  playRestCompletionSound,
+  requestRestNotificationPermission,
+  REST_SOUND_TYPES,
+} from '../../utils/restAlerts';
 
 const EXPERIENCE_OPTIONS = [
   {
@@ -53,6 +61,14 @@ const SidebarMenu = ({
   setExperienceMode,
   hapticFeedback,
   setHapticFeedback,
+  restSoundEnabled,
+  setRestSoundEnabled,
+  restNotificationEnabled,
+  setRestNotificationEnabled,
+  restSoundVolume,
+  setRestSoundVolume,
+  restSoundType,
+  setRestSoundType,
   setView,
   hasPendingChanges,
   syncStatus,
@@ -61,7 +77,10 @@ const SidebarMenu = ({
 }) => {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [hapticStatus, setHapticStatus] = useState('');
+  const [soundStatus, setSoundStatus] = useState('');
+  const [notificationStatus, setNotificationStatus] = useState('');
   const hapticCapability = getHapticCapability();
+  const alertCapabilities = getRestAlertCapabilities();
 
   const handleClose = () => {
     setConfirmLogout(false);
@@ -92,8 +111,26 @@ const SidebarMenu = ({
   };
 
   const testHaptic = () => {
-    const result = triggerHaptic(HAPTIC_TYPES.setComplete);
+    const result = triggerHaptic(HAPTIC_TYPES.restComplete);
     setHapticStatus(getHapticTestMessage(result));
+  };
+
+  const testSound = async () => {
+    const result = await playRestCompletionSound({ enabled: true, volume: restSoundVolume, type: restSoundType });
+    setSoundStatus(result.played ? 'Som funcionando.' : 'O navegador bloqueou ou não oferece áudio para este aplicativo.');
+  };
+
+  const toggleRestNotifications = async (enabled) => {
+    if (!enabled) {
+      setRestNotificationEnabled(false);
+      setNotificationStatus('Notificações de descanso desativadas.');
+      return;
+    }
+    const result = await requestRestNotificationPermission();
+    setRestNotificationEnabled(result.enabled);
+    setNotificationStatus(result.enabled
+      ? 'Notificações de descanso permitidas.'
+      : 'O navegador não permitiu notificações. Você pode revisar a permissão nas configurações do site.');
   };
 
   if (!isOpen) return null;
@@ -132,12 +169,40 @@ const SidebarMenu = ({
           <div className="rounded-xl border border-border bg-input p-3">
             <label className="touch-target flex cursor-pointer items-center justify-between text-sm font-bold text-main">
               <span className="flex items-center gap-2"><Vibrate size={18} className="text-primary" /> Vibração</span>
-              <input type="checkbox" checked={hapticFeedback} onChange={(event) => setHapticFeedback(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400" />
+              <input type="checkbox" checked={hapticCapability.supported && hapticCapability.platform !== HAPTIC_PLATFORMS.ios && hapticFeedback} disabled={!hapticCapability.supported || hapticCapability.platform === HAPTIC_PLATFORMS.ios} onChange={(event) => setHapticFeedback(event.target.checked)} className="h-5 w-5 appearance-auto rounded border-border accent-cyan-400 disabled:opacity-40" />
             </label>
             <p className="mt-1 text-xs leading-relaxed text-muted">Pulso ao concluir série e alerta distinto no fim do descanso. O aviso visual de descanso fica ativo mesmo sem vibração.</p>
             <p className="mt-2 rounded-lg border border-border bg-card/60 p-2 text-xs leading-relaxed text-muted">{getHapticCapabilityMessage(hapticCapability)}</p>
             <button type="button" onClick={testHaptic} disabled={!hapticCapability.supported || hapticCapability.platform === HAPTIC_PLATFORMS.ios} className="mt-3 min-h-11 w-full rounded-lg border border-primary/40 text-xs font-black text-primary disabled:cursor-not-allowed disabled:opacity-50">Testar vibração</button>
             {hapticStatus && <p role="status" className="mt-2 text-xs text-muted">{hapticStatus}</p>}
+          </div>
+          <div className="rounded-xl border border-border bg-input p-3">
+            <label className="touch-target flex cursor-pointer items-center justify-between text-sm font-bold text-main">
+              <span className="flex items-center gap-2"><Volume2 size={18} className="text-primary" /> Som do descanso</span>
+              <input type="checkbox" checked={restSoundEnabled && alertCapabilities.soundSupported} disabled={!alertCapabilities.soundSupported} onChange={(event) => setRestSoundEnabled(event.target.checked)} className="h-5 w-5 appearance-auto accent-cyan-400 disabled:opacity-40" />
+            </label>
+            <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+              <label className="text-xs font-bold text-muted">Tipo de aviso
+                <select value={restSoundType} onChange={(event) => setRestSoundType(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-border bg-card px-2 text-xs text-main">
+                  <option value={REST_SOUND_TYPES.double}>Dois toques</option>
+                  <option value={REST_SOUND_TYPES.chime}>Acorde</option>
+                  <option value={REST_SOUND_TYPES.single}>Toque único</option>
+                </select>
+              </label>
+              <button type="button" onClick={testSound} disabled={!alertCapabilities.soundSupported} className="mt-5 min-h-10 rounded-lg border border-primary/40 px-3 text-xs font-black text-primary disabled:opacity-40">Testar</button>
+            </div>
+            <label className="mt-3 block text-xs font-bold text-muted">Volume: {Math.round(restSoundVolume * 100)}%
+              <input type="range" min="0.1" max="1" step="0.1" value={restSoundVolume} onChange={(event) => setRestSoundVolume(Number(event.target.value))} className="mt-2 w-full accent-cyan-400" />
+            </label>
+            {soundStatus && <p role="status" className="mt-2 text-xs text-muted">{soundStatus}</p>}
+          </div>
+          <div className="rounded-xl border border-border bg-input p-3">
+            <label className="touch-target flex cursor-pointer items-center justify-between text-sm font-bold text-main">
+              <span className="flex items-center gap-2"><BellRing size={18} className="text-primary" /> Aviso em segundo plano</span>
+              <input type="checkbox" checked={restNotificationEnabled && alertCapabilities.notificationPermission === 'granted'} disabled={!alertCapabilities.notificationSupported || alertCapabilities.notificationPermission === 'denied'} onChange={(event) => toggleRestNotifications(event.target.checked)} className="h-5 w-5 appearance-auto accent-cyan-400 disabled:opacity-40" />
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Usa a notificação do sistema quando o descanso termina com o app em segundo plano. Não é push e não envia dados a servidores.</p>
+            {notificationStatus && <p role="status" className="mt-2 text-xs text-muted">{notificationStatus}</p>}
           </div>
         </div>
 

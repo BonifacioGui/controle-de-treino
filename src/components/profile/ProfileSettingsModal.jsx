@@ -4,8 +4,10 @@ import { Settings, X, Ruler, Calendar, Target, Save } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar';
 import {
   MAX_PROFILE_GOALS,
+  PROFILE_CLASS_EFFECT_SUMMARY,
   PROFILE_CLASSES,
   PROFILE_GOALS,
+  getClassDefinition,
   getClassLabel,
   toggleGoalSelection,
 } from '../../utils/profileMetadata';
@@ -170,7 +172,7 @@ const ProfileSettingsModal = ({
           </div>
 
           <p className="rounded-xl border border-border bg-input/60 p-3 text-[11px] leading-relaxed text-muted">
-            <strong className="text-main">A classe é um arquétipo visual.</strong> Ela não altera treino, missões, atributos, recompensas ou XP.
+            <strong className="text-main">{getClassLabel(editForm.class, editForm.gender)} — {getClassDefinition(editForm.class).theme}.</strong> {getClassDefinition(editForm.class).description} {PROFILE_CLASS_EFFECT_SUMMARY}
           </p>
 
           <button 

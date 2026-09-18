@@ -8,7 +8,7 @@ import {
   buildThemeParityCases,
 } from './themeParityMatrix';
 
-const REQUIRED_FEATURES = ['Boss', 'ExerciseCard', 'RestTimer', 'PR', 'Atributos e XP', 'Perfil e objetivos', 'Scanner biométrico', 'Guia de exercício', 'Confirmação de e-mail', 'Level Up', 'charts', 'modais', 'states', 'inputs'];
+const REQUIRED_FEATURES = ['Boss', 'ExerciseCard', 'RestTimer', 'PR', 'Atributos e XP', 'Perfil e objetivos', 'Explicação das classes', 'Central de notificações', 'Scanner biométrico', 'Guia de exercício', 'Confirmação de e-mail', 'Level Up', 'charts', 'modais', 'states', 'inputs'];
 
 describe('contrato de paridade visual entre temas', () => {
   it('mantém todos os componentes críticos na matriz', () => {

@@ -7,10 +7,12 @@ Aplicativo de treino com acompanhamento de séries, cargas, descanso, histórico
 - criação e importação de rotinas;
 - registro de séries, repetições, carga e tempo de treino;
 - modos explícitos de carga (total, por lado, por halter, máquina, peso corporal, assistido, duração e distância);
-- temporizador de descanso com alerta e vibração;
+- temporizador de descanso por horário final, com alerta visual, vibração, som e notificação de sistema compatível;
 - histórico, recordes pessoais e gráficos de evolução;
 - perfil biométrico e metas corporais;
 - missões, conquistas, XP, níveis e sequência de treinos;
+- central interna de notificações que compara a ficha ativa com séries realmente registradas;
+- classes visuais explicadas sem alterar XP, atributos ou progressão;
 - cartão compartilhável ao concluir uma sessão;
 - modo claro/escuro persistente e suporte offline via PWA.
 

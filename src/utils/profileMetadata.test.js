@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getClassLabel,
+  getClassDetails,
   getGoalLabels,
   getProfileFocus,
   getUserGoalIds,
@@ -36,5 +37,24 @@ describe('metadata compatível de perfil', () => {
     expect(getClassLabel(metadata.class, metadata.gender)).toBe('Sombra');
     expect(getGoalLabels(metadata)).toEqual(['Perder gordura', 'Ganhar massa muscular']);
     expect(getProfileFocus(metadata)).toBe('Definição corporal');
+  });
+
+  it('explica a classe sem inventar efeitos de progressão', () => {
+    const details = getClassDetails({ class: 'barbarian', gender: 'male', goals: ['strength'] });
+    expect(details).toMatchObject({
+      label: 'Titã',
+      canChange: true,
+      effects: {
+        workouts: false,
+        quests: false,
+        attributes: false,
+        xp: false,
+        rewards: false,
+        progression: false,
+        profileAppearance: true,
+      },
+    });
+    expect(details.assignmentReason).toContain('escolhida manualmente');
+    expect(details.goalRelationship).toContain('não concede bônus');
   });
 });
