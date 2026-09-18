@@ -5,7 +5,7 @@ export const HAPTIC_TYPES = Object.freeze({
 
 export const HAPTIC_PATTERNS = Object.freeze({
   [HAPTIC_TYPES.setComplete]: 100,
-  [HAPTIC_TYPES.restComplete]: [200, 90, 200],
+  [HAPTIC_TYPES.restComplete]: [200, 100, 200],
 });
 
 export const HAPTIC_RETRY_WINDOW_MS = 30_000;

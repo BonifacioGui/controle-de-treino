@@ -20,7 +20,7 @@ describe('feedback háptico', () => {
     const navigatorObject = { vibrate, userActivation: { hasBeenActive: true } };
     triggerHaptic(HAPTIC_TYPES.setComplete, { navigatorObject, documentObject: visibleDocument });
     triggerHaptic(HAPTIC_TYPES.restComplete, { navigatorObject, documentObject: visibleDocument });
-    expect(vibrate.mock.calls).toEqual([[100], [[200, 90, 200]]]);
+    expect(vibrate.mock.calls).toEqual([[100], [[200, 100, 200]]]);
   });
 
   it('não vibra quando desabilitado, sem suporte ou com tipo desconhecido', () => {
