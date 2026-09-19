@@ -44,10 +44,7 @@ const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, o
             <Icon aria-hidden="true" size={16} className="sm:h-5 sm:w-5" />
           </span>
           <span className="flex min-w-0 flex-col">
-            <span className="mb-0.5 text-[11px] font-black uppercase leading-none tracking-widest text-main sm:text-xs dark:text-zinc-300">
-              {info.short}
-            </span>
-            <span className="text-[10px] font-bold uppercase leading-tight text-muted sm:text-xs">
+            <span className="text-[11px] font-black uppercase leading-tight tracking-widest text-main sm:text-xs dark:text-zinc-300">
               {info.name}
             </span>
           </span>

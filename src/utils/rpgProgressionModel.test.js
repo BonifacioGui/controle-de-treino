@@ -6,6 +6,7 @@ import {
   getAttributeKeyFromSubject,
   getRpgLevelFromXp,
   getRpgLevelProgress,
+  RPG_ATTRIBUTE_LABELS,
   RPG_ATTRIBUTE_INFO,
   RPG_XP_INFO,
 } from './rpgProgressionModel';
@@ -60,6 +61,17 @@ describe('modelo explicável de progressão RPG', () => {
     });
     expect(RPG_XP_INFO.howToEarn).toContain('missões');
     expect(RPG_XP_INFO.calculation).toContain('5%');
+  });
+
+  it('centraliza os nomes públicos sem alterar as chaves internas', () => {
+    expect(RPG_ATTRIBUTE_LABELS).toEqual({
+      STR: 'Força',
+      DEX: 'Técnica',
+      VIT: 'Resistência',
+      CHA: 'Estética',
+    });
+    expect(Object.keys(RPG_ATTRIBUTE_LABELS)).toEqual(['STR', 'DEX', 'VIT', 'CHA']);
+    expect(RPG_ATTRIBUTE_INFO.DEX.name).toBe('Técnica');
   });
 
   it.each([

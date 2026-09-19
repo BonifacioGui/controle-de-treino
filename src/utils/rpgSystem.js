@@ -5,6 +5,7 @@ import { calculateSetCanonicalVolume } from './loadModel';
 import { isOverloadStatus } from './overloadModel';
 import {
   getExerciseAttribute,
+  RPG_ATTRIBUTE_LABELS,
   getRpgLevelFromXp,
   getRpgLevelProgress,
 } from './rpgProgressionModel';
@@ -76,10 +77,10 @@ export const getLevelFromXp = (xp) => {
 
 export const calculateStats = (history) => {
   const stats = {
-    STR: { xp: 0, level: 1, label: "FORÇA" },
-    DEX: { xp: 0, level: 1, label: "DESTREZA" },
-    VIT: { xp: 0, level: 1, label: "VITALIDADE" },
-    CHA: { xp: 0, level: 1, label: "CARISMA" }
+    STR: { xp: 0, level: 1, label: RPG_ATTRIBUTE_LABELS.STR.toLocaleUpperCase('pt-BR') },
+    DEX: { xp: 0, level: 1, label: RPG_ATTRIBUTE_LABELS.DEX.toLocaleUpperCase('pt-BR') },
+    VIT: { xp: 0, level: 1, label: RPG_ATTRIBUTE_LABELS.VIT.toLocaleUpperCase('pt-BR') },
+    CHA: { xp: 0, level: 1, label: RPG_ATTRIBUTE_LABELS.CHA.toLocaleUpperCase('pt-BR') }
   };
   
   if (!history || !Array.isArray(history)) {

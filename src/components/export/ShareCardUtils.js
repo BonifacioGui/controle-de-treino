@@ -1,15 +1,8 @@
 import { getRpgLevelProgress } from '../../utils/rpgProgressionModel';
 
-export const SHARE_CARD_VARIANTS = Object.freeze({
-  solo: 'solo',
-  performance: 'performance',
-});
-
-export function normalizeShareCardVariant(value) {
-  if (value === 'data') return SHARE_CARD_VARIANTS.performance;
-  if (value === 'rpg') return SHARE_CARD_VARIANTS.solo;
-  return Object.values(SHARE_CARD_VARIANTS).includes(value) ? value : SHARE_CARD_VARIANTS.solo;
-}
+export const SHARE_CARD_MAX_METRICS = 3;
+export const SHARE_CARD_METRIC_KEYS = Object.freeze(['duration', 'xp', 'streak', 'sets', 'density']);
+export const SHARE_CARD_HIGHLIGHT_KEYS = Object.freeze(['auto', 'level', 'badge', 'pr', 'boss', 'none']);
 
 export function parseMetricNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -110,76 +103,93 @@ export function getShareCardLevelProgress(totalXp) {
 }
 
 export function resolveShareCardHighlight({
+  selection = 'auto',
   levelUp = false,
   levelProgress = null,
   newBadges = [],
   prs = 0,
   bossEncounter = null,
-  fields = {},
 } = {}) {
-  if (levelUp && levelProgress && fields.xp !== false) {
-    return { type: 'level', eyebrow: 'Level up', title: `Nível ${levelProgress.level}` };
-  }
   const badge = Array.isArray(newBadges) ? newBadges[0] : null;
-  if (badge) {
-    return { type: 'badge', eyebrow: 'Conquista desbloqueada', title: badge.title || String(badge) };
-  }
   const prCount = Math.max(0, Number(prs) || 0);
-  if (prCount > 0 && fields.prs !== false) {
-    return {
+  const highlights = {
+    level: levelUp && levelProgress
+      ? { type: 'level', eyebrow: 'Level up', title: `Nível ${levelProgress.level}` }
+      : null,
+    badge: badge
+      ? { type: 'badge', eyebrow: 'Conquista desbloqueada', title: badge.title || String(badge) }
+      : null,
+    pr: prCount > 0 ? {
       type: 'pr',
       eyebrow: prCount === 1 ? 'Novo recorde' : `${prCount} novos recordes`,
       title: prCount === 1 ? 'Nova marca registrada' : 'Sessão histórica',
-    };
-  }
-  if (bossEncounter?.defeated === true && fields.boss !== false) {
-    return { type: 'boss', eyebrow: 'Boss derrotado', title: bossEncounter.bossName || 'Alvo neutralizado' };
-  }
-  return null;
+    } : null,
+    boss: bossEncounter?.defeated === true
+      ? { type: 'boss', eyebrow: 'Boss derrotado', title: bossEncounter.bossName || 'Alvo neutralizado' }
+      : null,
+  };
+
+  if (selection === 'none') return null;
+  if (selection !== 'auto') return highlights[selection] || null;
+  return highlights.level || highlights.badge || highlights.pr || highlights.boss || null;
 }
 
-export const SHARE_CARD_FIELD_KEYS = Object.freeze([
-  'volume',
-  'duration',
-  'xp',
-  'streak',
-  'prs',
-  'boss',
-]);
+export function getAvailableShareCardHighlights({
+  levelUp = false,
+  levelProgress = null,
+  newBadges = [],
+  prs = 0,
+  bossEncounter = null,
+} = {}) {
+  return SHARE_CARD_HIGHLIGHT_KEYS.filter((key) => (
+    key === 'auto'
+    || key === 'none'
+    || resolveShareCardHighlight({ selection: key, levelUp, levelProgress, newBadges, prs, bossEncounter })
+  ));
+}
 
-export function createShareCardFieldSelection({
+export function createShareCardMetricSelection({
   selection = {},
-  hasVolume = true,
   hasDuration = true,
   hasXp = true,
   hasStreak = true,
-  hasPr = false,
-  hasBoss = false,
+  hasSets = false,
+  hasDensity = false,
 } = {}) {
-  const isSelected = (key) => selection[key] !== false;
+  const availability = { duration: hasDuration, xp: hasXp, streak: hasStreak, sets: hasSets, density: hasDensity };
+  const hasExplicitSelection = Object.keys(selection || {}).some((key) => SHARE_CARD_METRIC_KEYS.includes(key));
+  const defaultSelection = { duration: true, xp: true, streak: true };
+  let selectedCount = 0;
+
+  return SHARE_CARD_METRIC_KEYS.reduce((result, key) => {
+    const requested = hasExplicitSelection ? selection[key] === true : defaultSelection[key] === true;
+    const selected = Boolean(availability[key] && requested && selectedCount < SHARE_CARD_MAX_METRICS);
+    if (selected) selectedCount += 1;
+    result[key] = selected;
+    return result;
+  }, {});
+}
+
+export function getSelectedShareCardMetricKeys(selection = {}) {
+  return SHARE_CARD_METRIC_KEYS.filter((key) => selection[key] === true).slice(0, SHARE_CARD_MAX_METRICS);
+}
+
+export function toggleShareCardMetric(selection, metric, availability = {}) {
+  const normalized = createShareCardMetricSelection({ selection, ...availability });
+  if (!SHARE_CARD_METRIC_KEYS.includes(metric)) return { selection: normalized, limitReached: false };
+  if (normalized[metric]) {
+    return {
+      selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: false }, ...availability }),
+      limitReached: false,
+    };
+  }
+  if (getSelectedShareCardMetricKeys(normalized).length >= SHARE_CARD_MAX_METRICS) {
+    return { selection: normalized, limitReached: true };
+  }
   return {
-    volume: hasVolume && isSelected('volume'),
-    duration: hasDuration && isSelected('duration'),
-    xp: hasXp && isSelected('xp'),
-    streak: hasStreak && isSelected('streak'),
-    prs: hasPr && isSelected('prs'),
-    boss: hasBoss && isSelected('boss'),
+    selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: true }, ...availability }),
+    limitReached: false,
   };
-}
-
-export function toggleShareCardField(selection, field, availability = {}) {
-  if (!SHARE_CARD_FIELD_KEYS.includes(field)) return selection;
-  const normalized = createShareCardFieldSelection({ selection, ...availability });
-  return createShareCardFieldSelection({
-    selection: { ...normalized, [field]: !normalized[field] },
-    ...availability,
-  });
-}
-
-export function getShareCardGridClass(itemCount) {
-  if (itemCount <= 1) return 'grid-cols-1';
-  if (itemCount === 2) return 'grid-cols-2';
-  return 'grid-cols-3';
 }
 
 export async function waitForShareCardImages(node) {

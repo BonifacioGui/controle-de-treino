@@ -6,17 +6,24 @@ export const RPG_LEVEL_DIVISOR = 100;
 const volumePercent = Math.round(VOLUME_XP_RATE * 100);
 const overloadPercent = Math.round((OVERLOAD_XP_MULTIPLIER - 1) * 100);
 
+export const RPG_ATTRIBUTE_LABELS = Object.freeze({
+  STR: 'Força',
+  DEX: 'Técnica',
+  VIT: 'Resistência',
+  CHA: 'Estética',
+});
+
 export const RPG_ATTRIBUTE_INFO = Object.freeze({
   STR: Object.freeze({
     short: 'FOR',
-    name: 'Força',
+    name: RPG_ATTRIBUTE_LABELS.STR,
     summary: 'Carga e potência nos movimentos básicos.',
     howToEarn: 'Confirme séries com carga em supinos, desenvolvimentos, leg press, remadas baixas e levantamentos terra. Exercícios sem uma categoria específica também entram aqui.',
     calculation: `XP = volume confirmado × ${volumePercent}%. Quando a sessão inteira é classificada como sobrecarga, o ganho recebe +${overloadPercent}%. Missões contam somente no XP total.`,
   }),
   DEX: Object.freeze({
     short: 'DES',
-    name: 'Destreza',
+    name: RPG_ATTRIBUTE_LABELS.DEX,
     summary: 'Técnica e controle em movimentos de precisão.',
     howToEarn: 'Confirme séries com carga em crossover, crucifixo inverso ou invertido, stiff, afundos, serrote, face pull e remada curvada.',
     calculation: `XP = volume confirmado × ${volumePercent}%. Quando a sessão inteira é classificada como sobrecarga, o ganho recebe +${overloadPercent}%. Missões contam somente no XP total.`,
@@ -24,16 +31,16 @@ export const RPG_ATTRIBUTE_INFO = Object.freeze({
   }),
   VIT: Object.freeze({
     short: 'VIT',
-    name: 'Vitalidade',
-    summary: 'Capacidade de sustentar o trabalho de pernas, core e cardio.',
+    name: RPG_ATTRIBUTE_LABELS.VIT,
+    summary: 'Resistência para sustentar o trabalho de pernas, core e cardio.',
     howToEarn: 'Confirme séries com carga em extensora, flexora, abdutora e panturrilha. Core e cardio entram em VIT, mas atividades sem volume de carga ainda não somam XP de atributo.',
     calculation: `XP = volume confirmado × ${volumePercent}%. Quando a sessão inteira é classificada como sobrecarga, o ganho recebe +${overloadPercent}%. Missões contam somente no XP total.`,
     pattern: /\b(extensora|flexora|abdutora|adutora|panturrilha|gemeos|prancha|vacuum|abdominal|giro russo|russian twist|cardio|caminhada|esteira|bicicleta|spinning|eliptico|escada|pular corda|remo seco|corrida)\b/,
   }),
   CHA: Object.freeze({
     short: 'CAR',
-    name: 'Carisma',
-    summary: 'Progressão dos movimentos de acabamento muscular.',
+    name: RPG_ATTRIBUTE_LABELS.CHA,
+    summary: 'Desenvolvimento estético nos movimentos de acabamento muscular.',
     howToEarn: 'Confirme séries com carga em elevação lateral, tríceps, roscas e elevação pélvica.',
     calculation: `XP = volume confirmado × ${volumePercent}%. Quando a sessão inteira é classificada como sobrecarga, o ganho recebe +${overloadPercent}%. Missões contam somente no XP total.`,
     pattern: /\b(elevacao lateral|elevacao frontal|elevacao pelvica|encolhimento|triceps|rosca)\b/,

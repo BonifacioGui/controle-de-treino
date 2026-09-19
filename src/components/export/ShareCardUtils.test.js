@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   calcDensity,
-  createShareCardFieldSelection,
+  createShareCardMetricSelection,
   formatShareDuration,
+  getAvailableShareCardHighlights,
+  getSelectedShareCardMetricKeys,
   getShareCardLevelProgress,
-  getShareCardGridClass,
-  normalizeShareCardVariant,
   parseDurationSeconds,
   resolveShareCardHighlight,
-  toggleShareCardField,
+  toggleShareCardMetric,
 } from './ShareCardUtils';
 import { getRpgLevelProgress } from '../../utils/rpgProgressionModel';
 
-describe('controles de dados do Share Card', () => {
+describe('personalização do Share Card oficial', () => {
   it('calcula densidade corretamente com duração textual ou em relógio', () => {
     expect(calcDensity('6.420 kg', '48 min')).toBe('133.8');
     expect(calcDensity('6.420 kg', '48:00')).toBe('133.8');
@@ -29,40 +29,36 @@ describe('controles de dados do Share Card', () => {
     expect(formatShareDuration(4320)).toBe('1H 12MIN');
   });
 
-  it('habilita por padrão todos os dados disponíveis', () => {
-    expect(createShareCardFieldSelection({ hasPr: true, hasBoss: true })).toEqual({
-      volume: true,
+  it('seleciona duração, XP e sequência por padrão sem tratar volume como opção', () => {
+    expect(createShareCardMetricSelection({ hasSets: true, hasDensity: true })).toEqual({
       duration: true,
       xp: true,
       streak: true,
-      prs: true,
-      boss: true,
+      sets: false,
+      density: false,
     });
   });
 
-  it('não exibe blocos vazios de PR ou Boss quando os dados não existem', () => {
-    expect(createShareCardFieldSelection({ hasPr: false, hasBoss: false })).toEqual(
-      expect.objectContaining({ prs: false, boss: false }),
-    );
-  });
-
-  it('preserva escolhas de privacidade e alterna apenas campos conhecidos', () => {
-    const selected = createShareCardFieldSelection({
-      selection: { volume: false, xp: false },
-      hasPr: true,
-      hasBoss: true,
+  it('omite métricas indisponíveis sem inventar valores', () => {
+    expect(createShareCardMetricSelection({ hasXp: false, hasStreak: false, hasSets: true })).toEqual({
+      duration: true,
+      xp: false,
+      streak: false,
+      sets: false,
+      density: false,
     });
-
-    expect(selected.volume).toBe(false);
-    expect(selected.xp).toBe(false);
-    expect(toggleShareCardField(selected, 'duration', { hasPr: true, hasBoss: true }).duration).toBe(false);
-    expect(toggleShareCardField(selected, 'unknown', { hasPr: true, hasBoss: true })).toBe(selected);
   });
 
-  it('omite campos indisponíveis em vez de criar fallbacks', () => {
-    expect(createShareCardFieldSelection({ hasXp: false, hasStreak: false })).toEqual(
-      expect.objectContaining({ xp: false, streak: false }),
-    );
+  it('limita a seleção a três métricas e informa a tentativa da quarta', () => {
+    const selected = createShareCardMetricSelection({ hasSets: true, hasDensity: true });
+    const blocked = toggleShareCardMetric(selected, 'sets', { hasSets: true, hasDensity: true });
+    expect(blocked.limitReached).toBe(true);
+    expect(getSelectedShareCardMetricKeys(blocked.selection)).toHaveLength(3);
+
+    const withoutStreak = toggleShareCardMetric(selected, 'streak', { hasSets: true, hasDensity: true }).selection;
+    const withSets = toggleShareCardMetric(withoutStreak, 'sets', { hasSets: true, hasDensity: true });
+    expect(withSets.limitReached).toBe(false);
+    expect(withSets.selection).toMatchObject({ streak: false, sets: true });
   });
 
   it('usa exatamente a progressão oficial do RPG', () => {
@@ -70,23 +66,17 @@ describe('controles de dados do Share Card', () => {
     expect(getShareCardLevelProgress(null)).toBeNull();
   });
 
-  it('normaliza nomes antigos e prioriza um único destaque especial', () => {
-    expect(normalizeShareCardVariant('rpg')).toBe('solo');
-    expect(normalizeShareCardVariant('data')).toBe('performance');
-    expect(resolveShareCardHighlight({
+  it('prioriza um único destaque automático e respeita a escolha manual', () => {
+    const context = {
       levelUp: true,
       levelProgress: getRpgLevelProgress(13_894),
       newBadges: [{ title: 'Máquina quente' }],
       prs: 2,
       bossEncounter: { defeated: true, bossName: 'Titã' },
-      fields: {},
-    })).toMatchObject({ type: 'level', title: 'Nível 12' });
-  });
-
-  it('fornece grades estáveis inclusive quando todos os indicadores são ocultados', () => {
-    expect(getShareCardGridClass(0)).toBe('grid-cols-1');
-    expect(getShareCardGridClass(1)).toBe('grid-cols-1');
-    expect(getShareCardGridClass(2)).toBe('grid-cols-2');
-    expect(getShareCardGridClass(5)).toBe('grid-cols-3');
+    };
+    expect(resolveShareCardHighlight(context)).toMatchObject({ type: 'level', title: 'Nível 12' });
+    expect(resolveShareCardHighlight({ ...context, selection: 'pr' })).toMatchObject({ type: 'pr' });
+    expect(resolveShareCardHighlight({ ...context, selection: 'none' })).toBeNull();
+    expect(getAvailableShareCardHighlights(context)).toEqual(['auto', 'level', 'badge', 'pr', 'boss', 'none']);
   });
 });

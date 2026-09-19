@@ -14,6 +14,7 @@ import {
   Download,
   Loader2,
   Pencil,
+  Settings2,
   Share2,
   Swords,
   Trash2,
@@ -28,7 +29,9 @@ import { formatEnteredLoad } from '../../utils/loadModel';
 import { OVERLOAD_STATUS } from '../../utils/overloadModel';
 import ShareCardControls from '../export/ShareCardControls';
 import {
-  createShareCardFieldSelection,
+  calcDensity,
+  createShareCardMetricSelection,
+  getShareCardLevelProgress,
   parseDurationSeconds,
   parseMetricNumber,
   waitForShareCardImages,
@@ -417,12 +420,11 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
       newBadges: session.newBadges || session.reportSnapshot?.newBadges || [],
     };
     const availability = {
-      hasVolume: stats.volume !== null,
       hasDuration: stats.duration !== null,
       hasXp: shareContext.xp !== null,
       hasStreak: shareContext.streak !== null,
-      hasPr: Number(stats.prs) > 0,
-      hasBoss: session.bossEncounter?.defeated === true,
+      hasSets: Number(stats.sets) > 0,
+      hasDensity: calcDensity(stats.volume, stats.duration) !== null,
     };
     cardReturnFocusRef.current = document.activeElement;
     setCardPreviewUrl(null);
@@ -433,9 +435,10 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
       shareContext,
       availability,
       preferredAction,
-      variant: 'solo',
       selfieUrl: null,
-      fieldSelection: createShareCardFieldSelection(availability),
+      customizerOpen: false,
+      metricSelection: createShareCardMetricSelection(availability),
+      highlightSelection: 'auto',
     });
   };
 
@@ -528,25 +531,14 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
             <header className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <p className="font-cyber text-xs font-black uppercase tracking-[0.18em] text-primary">Share Card</p>
-                <h2 id="history-share-title" className="mt-1 text-xl font-black text-main">Escolha o que compartilhar</h2>
-                <p className="mt-1 text-sm text-muted">A prévia é atualizada com suas escolhas.</p>
+                <h2 id="history-share-title" className="mt-1 text-xl font-black text-main">Seu Share Card está pronto</h2>
+                <p className="mt-1 text-sm text-muted">Personalize se quiser antes de compartilhar.</p>
               </div>
               <button ref={cardCloseButtonRef} type="button" onClick={closeCardComposer} aria-label="Fechar Share Card" className="touch-target flex shrink-0 items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
             </header>
 
             <div className="space-y-3">
-              <div className="flex rounded-xl border border-border bg-input p-1">
-                <button type="button" aria-pressed={cardDraft.variant === 'solo'} onClick={() => updateCardDraft({ variant: 'solo' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'solo' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>SOLO</button>
-                <button type="button" aria-pressed={cardDraft.variant === 'performance'} onClick={() => updateCardDraft({ variant: 'performance' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'performance' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>PERFORMANCE</button>
-              </div>
-
-              <ShareCardControls
-                value={cardDraft.fieldSelection}
-                onChange={(fieldSelection) => updateCardDraft({ fieldSelection })}
-                {...cardDraft.availability}
-              />
-
-              <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-xl border border-primary/40 bg-black">
+              <div className="relative mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-2xl border border-primary/40 bg-black shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
                 {isCardGenerating && <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60"><Loader2 className="animate-spin text-primary" aria-label="Atualizando prévia" /></div>}
                 {cardPreviewUrl && <img src={cardPreviewUrl} alt="Prévia do card do treino" className="h-full w-full object-contain" />}
               </div>
@@ -557,6 +549,29 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
                   <input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleHistorySelfie} />
                 </label>
                 {cardDraft.selfieUrl && <button type="button" onClick={() => updateCardDraft({ selfieUrl: null })} className="touch-target rounded-xl border border-border px-3 text-sm font-bold text-muted">Remover selfie</button>}
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-border">
+                <button type="button" onClick={() => setCardDraft((current) => current ? { ...current, customizerOpen: !current.customizerOpen } : current)} aria-expanded={cardDraft.customizerOpen} className="touch-target flex w-full items-center gap-2 px-4 text-left text-sm font-black text-main">
+                  <Settings2 aria-hidden="true" size={17} className="text-primary" />
+                  <span className="flex-1">Personalizar card</span>
+                  <ChevronDown aria-hidden="true" size={18} className={`text-muted transition-transform ${cardDraft.customizerOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {cardDraft.customizerOpen && <div className="border-t border-border px-3 py-3">
+                  <ShareCardControls
+                    metricSelection={cardDraft.metricSelection}
+                    onMetricChange={(metricSelection) => updateCardDraft({ metricSelection })}
+                    highlightSelection={cardDraft.highlightSelection}
+                    onHighlightChange={(highlightSelection) => updateCardDraft({ highlightSelection })}
+                    levelUp={cardDraft.shareContext.levelUp}
+                    levelProgress={getShareCardLevelProgress(cardDraft.shareContext.totalXp)}
+                    newBadges={cardDraft.shareContext.newBadges}
+                    prs={draftStats.prs}
+                    bossEncounter={cardDraft.session.bossEncounter || null}
+                    embedded
+                    {...cardDraft.availability}
+                  />
+                </div>}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -579,7 +594,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
 
       {cardDraft && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.shareContext.streak} xp={cardDraft.shareContext.xp} totalXp={cardDraft.shareContext.totalXp} variant={cardDraft.variant} selfieUrl={cardDraft.selfieUrl} fieldSelection={cardDraft.fieldSelection} sessionDate={cardDraft.session.dateKey} levelUp={cardDraft.shareContext.levelUp} newBadges={cardDraft.shareContext.newBadges} />
+          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.shareContext.streak} xp={cardDraft.shareContext.xp} totalXp={cardDraft.shareContext.totalXp} selfieUrl={cardDraft.selfieUrl} metricSelection={cardDraft.metricSelection} highlightSelection={cardDraft.highlightSelection} sessionDate={cardDraft.session.dateKey} levelUp={cardDraft.shareContext.levelUp} newBadges={cardDraft.shareContext.newBadges} />
         </Suspense>
       )}
 

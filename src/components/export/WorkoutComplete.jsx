@@ -17,8 +17,10 @@ import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
 import ShareCardControls from './ShareCardControls';
 import {
-  createShareCardFieldSelection,
+  calcDensity,
+  createShareCardMetricSelection,
   formatShareDuration,
+  getShareCardLevelProgress,
   parseDurationSeconds,
   parseMetricNumber,
   waitForShareCardImages,
@@ -65,7 +67,6 @@ const WorkoutComplete = ({
   const [isGenerating, setIsGenerating] = useState(true);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [cardVariant, setCardVariant] = useState('solo');
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
   const cardRef = useRef(null);
@@ -73,14 +74,15 @@ const WorkoutComplete = ({
   const earnedXp = parseMetricNumber(sessionPoints);
   const numericStreak = parseMetricNumber(streak);
   const shareAvailability = {
-    hasVolume: parseMetricNumber(sessionVolume) !== null,
     hasDuration: parseDurationSeconds(sessionDuration) !== null,
     hasXp: earnedXp !== null,
     hasStreak: numericStreak !== null && numericStreak > 0,
-    hasPr: Number(sessionPrs) > 0,
-    hasBoss: bossEncounter?.defeated === true,
+    hasSets: Number(completedSets) > 0,
+    hasDensity: calcDensity(sessionVolume, sessionDuration) !== null,
   };
-  const [fieldSelection, setFieldSelection] = useState(() => createShareCardFieldSelection(shareAvailability));
+  const [metricSelection, setMetricSelection] = useState(() => createShareCardMetricSelection(shareAvailability));
+  const [highlightSelection, setHighlightSelection] = useState('auto');
+  const levelProgress = getShareCardLevelProgress(totalXp);
 
   useEffect(() => {
     if (!cardRef.current) return undefined;
@@ -119,21 +121,20 @@ const WorkoutComplete = ({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [cardVariant, fieldSelection, selfieUrl]);
+  }, [highlightSelection, metricSelection, selfieUrl]);
 
   useEffect(() => () => {
     if (previousImageUrl.current) URL.revokeObjectURL(previousImageUrl.current);
   }, []);
 
-  const regenerateWith = (variant) => {
-    if (variant === cardVariant) return;
+  const updateMetricSelection = (nextSelection) => {
     setIsGenerating(true);
-    setCardVariant(variant);
+    setMetricSelection(nextSelection);
   };
 
-  const updateFieldSelection = (nextSelection) => {
+  const updateHighlightSelection = (nextSelection) => {
     setIsGenerating(true);
-    setFieldSelection(nextSelection);
+    setHighlightSelection(nextSelection);
   };
 
   const handleSelfieCapture = (event) => {
@@ -182,7 +183,7 @@ const WorkoutComplete = ({
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="workout-summary-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-2 backdrop-blur-md sm:p-4">
       <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1080px', height: '1920px' }}>
-        <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs, sets: completedSets }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} streak={numericStreak} xp={earnedXp} selfieUrl={selfieUrl} totalXp={totalXp} variant={cardVariant} fieldSelection={fieldSelection} sessionDate={sessionDate} levelUp={levelUp} newBadges={newBadges} />
+        <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs, sets: completedSets }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} streak={numericStreak} xp={earnedXp} selfieUrl={selfieUrl} totalXp={totalXp} metricSelection={metricSelection} highlightSelection={highlightSelection} sessionDate={sessionDate} levelUp={levelUp} newBadges={newBadges} />
       </div>
 
       <div className="workout-complete-panel max-h-[97dvh] w-full max-w-xl overflow-y-auto rounded-3xl border border-primary/35 bg-card shadow-2xl">
@@ -191,8 +192,8 @@ const WorkoutComplete = ({
             <CheckCircle2 className="mt-0.5 shrink-0 text-success drop-shadow-[0_0_10px_rgba(var(--success),0.4)]" size={31} />
             <div className="min-w-0">
               <p className="truncate font-cyber text-[11px] font-black uppercase tracking-[0.17em] text-primary">{workoutTitle}</p>
-              <h2 id="workout-summary-title" className="mt-0.5 text-xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Treino concluído'}</h2>
-              <p className="mt-0.5 text-xs text-muted">Seu progresso já foi registrado. Agora compartilhe seu resultado.</p>
+              <h2 id="workout-summary-title" className="mt-0.5 text-xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Seu Share Card está pronto'}</h2>
+              <p className="mt-0.5 text-xs text-muted">{partial ? 'Seu progresso foi registrado.' : 'Treino concluído. Personalize se quiser antes de compartilhar.'}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar resumo" className="touch-target flex shrink-0 items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
@@ -215,12 +216,7 @@ const WorkoutComplete = ({
             </div>
           </section>
 
-          <section aria-label="Formato do Share Card" className="mx-auto mt-4 max-w-[420px] space-y-3">
-            <div className="flex rounded-xl border border-border bg-input p-1">
-              <button type="button" aria-pressed={cardVariant === 'solo'} onClick={() => regenerateWith('solo')} className={`touch-target flex-1 rounded-lg text-sm font-black ${cardVariant === 'solo' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>SOLO</button>
-              <button type="button" aria-pressed={cardVariant === 'performance'} onClick={() => regenerateWith('performance')} className={`touch-target flex-1 rounded-lg text-sm font-black ${cardVariant === 'performance' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>PERFORMANCE</button>
-            </div>
-
+          <section aria-label="Personalização do Share Card" className="mx-auto mt-4 max-w-[420px] space-y-3">
             <div className="flex items-center justify-center gap-2">
               <label aria-label={selfieUrl ? 'Trocar foto; modo foto ativo' : 'Adicionar foto'} className={`touch-target inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 text-xs font-black ${selfieUrl ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted'}`}><Camera size={17} /> {selfieUrl ? 'FOTO ATIVA' : 'Usar foto'}<input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
               {selfieUrl && <button type="button" onClick={clearSelfie} aria-label="Remover foto" className="touch-target flex items-center justify-center rounded-xl border border-border px-3 text-muted"><X size={17} /></button>}
@@ -233,7 +229,19 @@ const WorkoutComplete = ({
                 <ChevronDown aria-hidden="true" size={18} className={`text-muted transition-transform ${customizerOpen ? 'rotate-180' : ''}`} />
               </button>
               {customizerOpen && <div className="border-t border-border px-3 py-3">
-                <ShareCardControls value={fieldSelection} onChange={updateFieldSelection} embedded {...shareAvailability} />
+                <ShareCardControls
+                  metricSelection={metricSelection}
+                  onMetricChange={updateMetricSelection}
+                  highlightSelection={highlightSelection}
+                  onHighlightChange={updateHighlightSelection}
+                  levelUp={levelUp}
+                  levelProgress={levelProgress}
+                  newBadges={newBadges}
+                  prs={sessionPrs}
+                  bossEncounter={bossEncounter}
+                  embedded
+                  {...shareAvailability}
+                />
               </div>}
             </div>
           </section>
