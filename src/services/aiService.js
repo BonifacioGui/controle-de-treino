@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { annotateImportedWorkout } from "../utils/importReviewModel";
 
 class AIError extends Error {
   constructor(message, type = "UNKNOWN") {
@@ -22,7 +23,7 @@ function createCacheKey(rawText, file, autoFix) {
   });
 }
 
-function validateWorkoutData(data) {
+function validateWorkoutData(data, sourceText = "", sourceKind = "text") {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new AIError(
       "A inteligência artificial retornou um formato inválido.",
@@ -53,7 +54,7 @@ function validateWorkoutData(data) {
     );
   }
 
-  return data;
+  return annotateImportedWorkout(data, sourceText, { sourceKind });
 }
 
 async function getFunctionErrorMessage(error) {
@@ -139,7 +140,7 @@ export const parseWorkoutWithAI = async (
       throw new AIError(message, "API_ERROR");
     }
 
-    const validatedData = validateWorkoutData(data);
+    const validatedData = validateWorkoutData(data, normalizedText, file ? "pdf" : "text");
 
     cache.set(cacheKey, validatedData);
 

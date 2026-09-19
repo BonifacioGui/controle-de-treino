@@ -3,10 +3,23 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('@supabase')) return 'vendor-supabase'
+          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts'
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react'
+          return undefined
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'Solo',
@@ -34,7 +47,9 @@ export default defineConfig({
       // 🔥 O CÉREBRO OFFLINE COMEÇA AQUI
       workbox: {
         // Diz para o navegador fazer download e guardar todos esses tipos de arquivo:
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,webp,svg,woff,woff2}'],
+        // Faz a migração única do antigo autoUpdate para o fluxo de atualização com confirmação.
+        importScripts: ['sw-prompt-migration.js'],
         // Se o usuário entrar numa rota que não existe offline, joga ele pro index principal:
         navigateFallback: '/controle-de-treino/index.html',
         // Quando você lançar uma versão nova do app, ele limpa a memória velha pra não pesar o celular do usuário:
