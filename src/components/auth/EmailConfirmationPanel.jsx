@@ -1,7 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw, TriangleAlert } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Loader2, Mail, RefreshCw, TriangleAlert } from 'lucide-react';
 import { getEmailConfirmationRedirectUrl } from '../../config/appConfig';
 import { supabase } from '../../services/supabaseClient';
+import {
+  getResendErrorMessage,
+  isAuthRateLimitError,
+  logAuthDiagnostic,
+} from '../../utils/authFlow';
 
 export const EMAIL_RESEND_COOLDOWN_SECONDS = 60;
 
@@ -9,6 +14,7 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [feedback, setFeedback] = useState(null);
+  const resendInFlight = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return undefined;
@@ -17,7 +23,8 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
   }, [cooldown]);
 
   const resendConfirmation = async () => {
-    if (!email || loading || cooldown > 0) return;
+    if (!email || resendInFlight.current || loading || cooldown > 0) return;
+    resendInFlight.current = true;
     setLoading(true);
     setFeedback(null);
     try {
@@ -28,16 +35,16 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
       });
       if (error) throw error;
       setCooldown(EMAIL_RESEND_COOLDOWN_SECONDS);
-      setFeedback({ type: 'success', message: 'Novo e-mail enviado. Verifique também a caixa de spam.' });
+      setFeedback({ type: 'success', message: 'Solicitação enviada. Confira sua caixa de entrada e spam.' });
     } catch (error) {
-      const rateLimited = /rate|limit|seconds/i.test(error?.message || '');
+      logAuthDiagnostic('Falha ao solicitar reenvio de confirmação:', error);
+      if (isAuthRateLimitError(error)) setCooldown(EMAIL_RESEND_COOLDOWN_SECONDS);
       setFeedback({
         type: 'error',
-        message: rateLimited
-          ? 'Aguarde um pouco antes de solicitar outro e-mail.'
-          : 'Não foi possível reenviar agora. Confira o endereço e tente novamente.',
+        message: getResendErrorMessage(error),
       });
     } finally {
+      resendInFlight.current = false;
       setLoading(false);
     }
   };
@@ -48,17 +55,16 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
         <Mail aria-hidden="true" size={44} />
       </div>
       <div>
-        <h2 id="confirmation-title" className="font-cyber text-xl font-black uppercase tracking-[0.1em] text-primary">Conta criada</h2>
+        <h2 id="confirmation-title" className="font-cyber text-xl font-black uppercase tracking-[0.1em] text-primary">Verifique seu e-mail</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Enviamos um link de confirmação para <strong className="break-all text-main">{email}</strong>.
-          Abra a mensagem e confirme o cadastro para acessar o SOLO. Caso não encontre, verifique a caixa de spam.
-          O remetente poderá aparecer como Supabase.
+          Se este endereço estiver apto para cadastro, enviaremos um link de confirmação para{' '}
+          <strong className="break-all text-main">{email}</strong>.
         </p>
       </div>
 
       <div className="rounded-xl border border-border bg-input/60 p-3 text-left text-xs leading-relaxed text-muted">
-        <p className="flex items-start gap-2"><CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-success" size={16} /> Sua conta já foi criada.</p>
-        <p className="mt-2 flex items-start gap-2"><TriangleAlert aria-hidden="true" className="mt-0.5 shrink-0 text-warning" size={16} /> O acesso será liberado depois da confirmação.</p>
+        <p className="flex items-start gap-2"><Mail aria-hidden="true" className="mt-0.5 shrink-0 text-primary" size={16} /> Confira a caixa de entrada e também a pasta de spam.</p>
+        <p className="mt-2 flex items-start gap-2"><TriangleAlert aria-hidden="true" className="mt-0.5 shrink-0 text-warning" size={16} /> Caso já possua uma conta, retorne ao login. Por segurança, esta tela não confirma se o endereço já está cadastrado.</p>
       </div>
 
       {feedback && (
@@ -74,7 +80,7 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
         className="touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-primary/50 bg-primary/5 px-4 text-sm font-black text-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : <RefreshCw aria-hidden="true" size={18} />}
-        {cooldown > 0 ? `Reenviar em ${cooldown}s` : 'Reenviar e-mail de confirmação'}
+        {cooldown > 0 ? `Reenviar em ${cooldown}s` : 'Reenviar e-mail'}
       </button>
 
       {onBack && (

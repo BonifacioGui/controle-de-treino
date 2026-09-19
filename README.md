@@ -30,7 +30,7 @@ Crie um arquivo `.env.local` com as variáveis usadas em `src/services/supabaseC
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-publica
-# Opcional no desenvolvimento; obrigatória no deploy para um redirect explícito.
+# Opcional no desenvolvimento; o workflow de produção define a URL pública explicitamente.
 VITE_PUBLIC_APP_URL=http://localhost:5173/controle-de-treino/
 ```
 

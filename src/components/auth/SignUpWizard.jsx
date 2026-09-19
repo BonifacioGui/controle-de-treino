@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { Zap, ShieldCheck, User, Target, ChevronRight, Check, X, Eye, EyeOff, Scale, Ruler, Calendar as CalendarIcon, Loader2, ArrowLeft, Dumbbell } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar'; 
 import EmailConfirmationPanel from './EmailConfirmationPanel';
 import { getEmailConfirmationRedirectUrl } from '../../config/appConfig';
+import { getSignUpErrorMessage, logAuthDiagnostic } from '../../utils/authFlow';
 import {
   MAX_PROFILE_GOALS,
   PROFILE_CLASSES,
@@ -42,7 +43,7 @@ const SignUpWizard = ({ onSwitch }) => {
   const [step, setStep] = useState(STEPS.CREDENTIALS);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [isSignedUp, setIsSignedUp] = useState(false);
+  const [confirmationRequested, setConfirmationRequested] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -51,8 +52,10 @@ const SignUpWizard = ({ onSwitch }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState(''); 
   const [metadata, setMetadata] = useState(INITIAL_METADATA);
+  const submissionInFlight = useRef(false);
 
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const normalizedEmail = email.trim();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
   const isPasswordValid = PASSWORD_RULES.every(rule => rule.test(password));
   const passwordsMatch = password === confirmPassword && password.length > 0;
   const isStep2Valid = metadata.username && metadata.birthdate && metadata.gender && metadata.height && metadata.weight;
@@ -61,11 +64,13 @@ const SignUpWizard = ({ onSwitch }) => {
   const displayDate = metadata.birthdate ? metadata.birthdate.split('-').reverse().join('/') : 'Selecione';
 
   const handleSignUp = async () => {
+    if (submissionInFlight.current || loading) return;
+    submissionInFlight.current = true;
     setLoading(true);
     setErrorMsg('');
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email, password,
+      const { error } = await supabase.auth.signUp({
+        email: normalizedEmail, password,
         options: {
           emailRedirectTo: getEmailConfirmationRedirectUrl(),
           data: {
@@ -76,12 +81,12 @@ const SignUpWizard = ({ onSwitch }) => {
         }
       });
       if (error) throw error;
-      if (data?.user) setIsSignedUp(true);
+      setConfirmationRequested(true);
     } catch (err) {
-      setErrorMsg(err?.message === 'User already registered'
-        ? 'Este e-mail já está em uso por outro usuário.'
-        : 'Não foi possível criar sua conta agora. Confira os dados e tente novamente.');
+      logAuthDiagnostic('Falha ao solicitar cadastro:', err);
+      setErrorMsg(getSignUpErrorMessage(err));
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
@@ -89,8 +94,8 @@ const SignUpWizard = ({ onSwitch }) => {
   const nextStep = () => setStep(s => Math.min(s + 1, TOTAL_STEPS));
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
-  if (isSignedUp) {
-    return <EmailConfirmationPanel email={email} onBack={onSwitch} />;
+  if (confirmationRequested) {
+    return <EmailConfirmationPanel email={normalizedEmail} onBack={onSwitch} />;
   }
 
   return (
@@ -221,7 +226,7 @@ const SignUpWizard = ({ onSwitch }) => {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-4"><button onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button onClick={handleSignUp} disabled={loading} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl flex items-center justify-center gap-2 uppercase text-sm">{loading ? <Loader2 size={18} className="animate-spin" /> : 'Finalizar'}</button></div>
+          <div className="flex gap-2 pt-4"><button type="button" onClick={prevStep} className="flex-1 border-2 border-border py-4 rounded-xl font-black uppercase text-xs text-muted">Voltar</button><button type="button" onClick={handleSignUp} disabled={loading} aria-busy={loading} className="flex-[2] bg-primary text-on-primary font-black py-4 rounded-xl flex items-center justify-center gap-2 uppercase text-sm disabled:cursor-not-allowed disabled:opacity-50">{loading ? <Loader2 size={18} className="animate-spin" /> : 'Finalizar'}</button></div>
         </div>
       )}
     </div>

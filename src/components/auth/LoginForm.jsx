@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { CheckCircle2, LogIn, Eye, EyeOff, Loader2, X, User, Lock } from 'lucide-react';
 import logoSolo from '../../assets/logo-solo.svg';
 import EmailConfirmationPanel from './EmailConfirmationPanel';
+import {
+  getLoginErrorMessage,
+  isEmailNotConfirmedError,
+  logAuthDiagnostic,
+} from '../../utils/authFlow';
 
 const LoginForm = ({ onSwitch, authNotice }) => {
   const [email, setEmail] = useState('');
@@ -11,28 +16,31 @@ const LoginForm = ({ onSwitch, authNotice }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState('');
+  const loginInFlight = useRef(false);
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault(); 
-    
+    if (loginInFlight.current || loading) return;
+    loginInFlight.current = true;
     setLoading(true);
     setErrorMsg('');
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const normalizedEmail = email.trim();
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       if (error) {
-        if (/email.*not.*confirmed/i.test(error.message || '')) {
-          setPendingConfirmationEmail(email);
+        logAuthDiagnostic('Falha no login:', error);
+        if (isEmailNotConfirmedError(error)) {
+          setPendingConfirmationEmail(normalizedEmail);
           return;
         }
-        const msg = error.message === 'Invalid login credentials'
-          ? 'Credenciais de acesso inválidas.'
-          : error.message;
-        setErrorMsg(msg);
+        setErrorMsg(getLoginErrorMessage(error));
       }
-    } catch {
-      setErrorMsg('Não foi possível acessar o Supabase. Verifique sua conexão e tente novamente.');
+    } catch (error) {
+      logAuthDiagnostic('Falha inesperada no login:', error);
+      setErrorMsg(getLoginErrorMessage(error));
     } finally {
+      loginInFlight.current = false;
       setLoading(false);
     }
   };
