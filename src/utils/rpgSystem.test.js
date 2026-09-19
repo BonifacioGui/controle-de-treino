@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateStats } from './rpgSystem';
+import { calculateStats, calculateStreak } from './rpgSystem';
 
 describe('XP', () => {
   it('ignora séries não confirmadas e nunca reduz o XP acumulado', () => {
@@ -55,5 +55,18 @@ describe('XP', () => {
     expect(result.DEX.xp).toBe(10);
     expect(result.VIT.xp).toBe(15);
     expect(result.STR.xp).toBe(0);
+  });
+});
+
+describe('sequência histórica', () => {
+  it('calcula a sequência em relação à data da sessão, não ao dia atual', () => {
+    const history = [
+      { dateKey: '2025-01-10' },
+      { dateKey: '2025-01-08' },
+      { dateKey: '2025-01-05' },
+      { dateKey: '2025-01-01' },
+    ];
+
+    expect(calculateStreak(history, '2025-01-10')).toBe(3);
   });
 });

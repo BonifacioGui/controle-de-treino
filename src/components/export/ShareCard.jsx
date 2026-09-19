@@ -1,456 +1,279 @@
 import React from 'react';
 import {
-  Skull, Zap, Trophy, Flame, Target,
-  Clock, Activity, Terminal, Dumbbell,
+  Award,
+  Clock3,
+  Dumbbell,
+  Flame,
+  Gauge,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  Zap,
 } from 'lucide-react';
+import logoSolo from '../../assets/logo-solo.svg';
+import { formatLocalDate } from '../../utils/dateUtils';
 import {
-  stripUnit,
   calcDensity,
   createShareCardFieldSelection,
-  getShareCardGridClass,
-  levelProgressPercent,
+  formatShareDuration,
+  formatShareVolume,
+  getShareCardLevelProgress,
+  normalizeShareCardVariant,
+  parseDurationSeconds,
+  parseMetricNumber,
+  resolveShareCardHighlight,
 } from './ShareCardUtils';
-import { getBossBattleReport } from '../../utils/bossModel';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CARD_WIDTH  = 1080;
+const CARD_WIDTH = 1080;
 const CARD_HEIGHT = 1920;
-const VARIANTS    = ['rpg', 'data'];
 
-// ─── StatCell ─────────────────────────────────────────────────────────────────
-
-const StatCell = ({ label, value, suffix, colorClass, Icon, hasDivider = false }) => (
-  <div className={`flex flex-col items-center justify-center text-center ${hasDivider ? 'border-l border-white/10' : ''}`}>
-    <div className="flex items-center justify-center gap-3 mb-4">
-      {Icon && <Icon aria-hidden="true" size={30} className={colorClass} />}
-      <span style={{ fontSize: '26px' }} className={`font-bold uppercase tracking-widest ${Icon ? colorClass : 'text-white/60'}`}>
-        {label}
-      </span>
+const ShareCardHeader = ({ label = 'Treino concluído' }) => (
+  <header className="flex items-center justify-between border-b border-white/10 pb-8">
+    <img src={logoSolo} alt="SOLO" className="h-[72px] w-auto max-w-[340px] object-contain object-left" />
+    <div className="flex items-center gap-3 text-cyan-300">
+      <span className="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.8)]" />
+      <span className="text-[25px] font-black uppercase tracking-[0.2em]">{label}</span>
     </div>
-    <div className="flex items-baseline justify-center gap-2">
-      <p style={{ fontSize: '72px', lineHeight: '1' }} className={`font-black ${colorClass} truncate`}>
-        {value}
-      </p>
-      {suffix && (
-        <span style={{ fontSize: '28px' }} className={`font-bold ${colorClass} uppercase`}>
-          {suffix}
-        </span>
-      )}
-    </div>
-  </div>
+  </header>
 );
 
-const StatGrid = ({ metrics, className = '' }) => {
-  if (metrics.length === 0) return null;
-  const columnCount = Math.min(metrics.length, 3);
-
+const ShareCardMetric = ({ label, value, accent = 'text-white', Icon }) => {
+  if (value === null || value === undefined || value === '') return null;
   return (
-    <div className={`grid ${getShareCardGridClass(metrics.length)} gap-6 ${className}`}>
-      {metrics.map(({ key, ...metric }, index) => (
-        <StatCell
-          key={key}
-          {...metric}
-          hasDivider={index % columnCount !== 0}
+    <div className="min-w-0 flex-1 border-l border-white/10 pl-7 first:border-l-0 first:pl-0">
+      <div className="mb-3 flex items-center gap-3 text-white/55">
+        {Icon && <Icon aria-hidden="true" size={25} className={accent} />}
+        <p className="text-[21px] font-bold uppercase tracking-[0.16em]">{label}</p>
+      </div>
+      <p className={`truncate text-[46px] font-black leading-none ${accent}`}>{value}</p>
+    </div>
+  );
+};
+
+const ShareCardProgress = ({ progress }) => {
+  if (!progress) return null;
+  const percent = Math.round(progress.progress);
+  const xpForLevel = Math.max(1, progress.nextThreshold - progress.currentThreshold);
+  const xpIntoLevel = Math.max(0, xpForLevel - progress.xpRemaining);
+  return (
+    <section className="py-7">
+      <div className="mb-5 flex items-end justify-between">
+        <p className="text-[34px] font-black uppercase tracking-[0.08em] text-white">Nível {progress.level}</p>
+        <p className="text-[28px] font-black text-fuchsia-300">{percent}%</p>
+      </div>
+      <div className="h-4 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-500 shadow-[0_0_22px_rgba(217,70,239,0.5)]"
+          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
         />
-      ))}
-    </div>
+      </div>
+      <p className="mt-4 text-[20px] font-bold uppercase tracking-[0.13em] text-white/45">
+        {xpIntoLevel.toLocaleString('pt-BR')} / {xpForLevel.toLocaleString('pt-BR')} XP para o próximo nível
+      </p>
+    </section>
   );
 };
 
-// ─── CardBackground ───────────────────────────────────────────────────────────
+const HIGHLIGHT_ICON = {
+  level: Zap,
+  badge: Award,
+  pr: Trophy,
+  boss: ShieldCheck,
+};
 
-const CardBackground = ({ selfieUrl }) => (
-  <>
-    {selfieUrl ? (
-      <img
-        src={selfieUrl}
-        alt="Selfie do Recruta"
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      />
-    ) : (
-      <div
-        className="absolute inset-0 z-0 opacity-15"
-        style={{
-          backgroundColor: '#02040a',
-          backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-    )}
-    
-    {/* Gradiente tático: Se tiver foto, escurece só a base. Senão, escurece tudo. */}
-    <div className={`absolute inset-0 z-10 bg-gradient-to-t ${selfieUrl ? 'from-black/90 via-black/40 to-transparent' : 'from-black via-black/80 to-black/30'}`} />
-    
-    <div
-      className="absolute inset-6 rounded-[40px] pointer-events-none border-2 border-white/10"
-      style={{ zIndex: 15 }}
-    />
-  </>
+const ShareCardHighlight = ({ highlight }) => {
+  if (!highlight) return null;
+  const Icon = HIGHLIGHT_ICON[highlight.type] || Sparkles;
+  return (
+    <section className="flex items-center gap-7 border-y border-yellow-300/25 bg-yellow-300/[0.06] px-8 py-7">
+      <div className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-full border border-yellow-300/35 text-yellow-300">
+        <Icon aria-hidden="true" size={39} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[20px] font-black uppercase tracking-[0.18em] text-yellow-300">{highlight.eyebrow}</p>
+        <p className="mt-2 truncate text-[38px] font-black uppercase leading-tight text-white">{highlight.title}</p>
+      </div>
+    </section>
+  );
+};
+
+const MainResult = ({ volume, compact = false }) => {
+  if (!volume) return null;
+  return (
+    <section>
+      <div className="flex items-baseline gap-5">
+        <p className={`${compact ? 'text-[96px]' : 'text-[142px]'} font-black leading-[0.86] tracking-[-0.055em] text-white`}>{volume}</p>
+        <p className={`${compact ? 'text-[40px]' : 'text-[50px]'} font-black text-cyan-300`}>KG</p>
+      </div>
+      <p className="mt-6 text-[24px] font-black uppercase tracking-[0.24em] text-cyan-300">Volume movimentado</p>
+    </section>
+  );
+};
+
+const ShareCardFooter = ({ sessionDate }) => (
+  <footer className="mt-auto flex items-end justify-between border-t border-white/10 pt-7">
+    <div>
+      <p className="text-[30px] font-black tracking-[0.28em] text-white">SOLO</p>
+      <p className="mt-2 text-[17px] font-bold uppercase tracking-[0.23em] text-white/40">Where discipline becomes dopamine</p>
+    </div>
+    {sessionDate && <p className="text-[22px] font-bold uppercase tracking-[0.12em] text-white/45">{sessionDate}</p>}
+  </footer>
 );
 
-// ─── SelfieVariant ────────────────────────────────────────────────────────────
+const SecondaryMetrics = ({ duration, xp, streak, sets, performance = false }) => {
+  const metrics = performance
+    ? [
+      duration && { key: 'duration', label: 'Duração', value: duration, Icon: Clock3 },
+      Number.isFinite(sets) && sets > 0 && { key: 'sets', label: 'Séries', value: sets, Icon: Dumbbell },
+      xp !== null && { key: 'xp', label: 'XP ganho', value: `+${xp}`, accent: 'text-fuchsia-300', Icon: Zap },
+    ].filter(Boolean)
+    : [
+      duration && { key: 'duration', label: 'Duração', value: duration, Icon: Clock3 },
+      xp !== null && { key: 'xp', label: 'XP ganho', value: `+${xp}`, accent: 'text-fuchsia-300', Icon: Zap },
+      streak !== null && { key: 'streak', label: 'Sequência', value: streak, accent: 'text-orange-400', Icon: Flame },
+    ].filter(Boolean);
 
-const SelfieVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, variant, fields }) => {
-  // Gera a data no formato DD.MM.YYYY para um visual mais tático/cyberpunk
-  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
-  const isDataVariant = variant === 'data';
-  const visibleBoss = fields.boss ? bossEncounter : null;
-  const metrics = [
-    fields.duration && { key: 'duration', label: 'Duração', value: stats.duration, colorClass: 'text-purple-400' },
-    fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
-    fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-400' },
-    fields.streak && { key: 'streak', label: 'Streak', value: streak, suffix: 'dias', colorClass: 'text-orange-500' },
-    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
-  ].filter(Boolean);
-
+  if (metrics.length === 0) return null;
   return (
-    <div className="flex flex-col h-full justify-between pb-4 pt-12">
-      
-      {/* Topo: Etiqueta do Alvo e Data da Operação */}
-      <div className="flex justify-between items-start w-full">
-        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full flex items-center gap-4 shadow-xl">
-          {isDataVariant ? <Terminal size={36} className="text-cyan-400" /> : <Target size={36} className="text-fuchsia-400" />}
-          <span style={{ fontSize: '32px' }} className="max-w-[650px] truncate text-white font-black tracking-widest uppercase drop-shadow-md">
-            {visibleBoss ? `ALVO: ${bossName}` : isDataVariant ? `SYS.LOG: ${workoutTitle}` : `TREINO: ${workoutTitle}`}
-          </span>
-        </div>
-        
-        <div className="bg-black/60 backdrop-blur-md border border-white/20 px-6 py-4 rounded-full flex items-center shadow-xl">
-          <span style={{ fontSize: '28px' }} className="text-white/80 font-mono font-bold tracking-widest uppercase">
-            {dataAtual}
-          </span>
-        </div>
-      </div>
-
-      {/* Base: somente os dados que o usuário autorizou no compartilhamento. */}
-      {metrics.length > 0 && (
-        <StatGrid metrics={metrics} className="bg-black/60 backdrop-blur-xl p-10 rounded-[40px] border border-white/20 shadow-2xl" />
-      )}
-    </div>
+    <section className="flex gap-5 border-y border-white/10 py-8">
+      {metrics.map(({ key, ...metric }) => <ShareCardMetric key={key} {...metric} />)}
+    </section>
   );
 };
 
-// ─── RpgVariant ───────────────────────────────────────────────────────────────
-
-const RpgVariant = ({ stats, bossName, workoutTitle, bossEncounter, streak, xp, currentLevel, totalXp, fields }) => {
-  const visibleBoss = fields.boss ? bossEncounter : null;
-  const bossDefeated = visibleBoss?.defeated === true;
-  const battleReport = getBossBattleReport(visibleBoss, fields.prs ? stats.prs : 0);
-  const progressPct  = levelProgressPercent(totalXp, currentLevel);
-  const horaAtual    = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const performanceMetrics = [
-    fields.duration && { key: 'duration', label: 'Duração', value: stats.duration, colorClass: 'text-purple-400' },
-    fields.volume && { key: 'volume', label: 'Volume', value: stripUnit(stats.volume), suffix: 'kg', colorClass: 'text-cyan-400' },
-    fields.prs && { key: 'prs', label: 'Recordes', value: stats.prs, colorClass: 'text-yellow-400', Icon: Trophy },
-  ].filter(Boolean);
-  const progressionMetrics = [
-    fields.xp && { key: 'xp', label: 'XP ganho', value: `+${xp}`, colorClass: 'text-fuchsia-500' },
-    fields.streak && { key: 'streak', label: 'Streak', value: streak, suffix: 'dias', colorClass: 'text-orange-500' },
-  ].filter(Boolean);
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b-4 border-primary/30 pb-10 mb-12 shrink-0">
-        <h1
-          style={{ fontSize: '120px', lineHeight: '0.9', letterSpacing: '-0.02em' }}
-          className="font-black text-white uppercase drop-shadow-2xl"
-        >
-          MISSÃO<br />
-          <span className="text-primary">CUMPRIDA</span>
-        </h1>
-        <div className="mt-8 inline-flex items-center gap-4 bg-primary/10 px-8 py-3 rounded-2xl border border-primary/20">
-          <span className="w-4 h-4 rounded-full bg-primary" />
-          <p style={{ fontSize: '32px' }} className="font-bold text-primary tracking-[0.3em] uppercase">
-            HORA: {horaAtual}
-          </p>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 flex flex-col justify-center gap-10">
-        {/* Snapshot canônico do treino e, quando disponível, do Boss */}
-        <div className="bg-black/80 p-12 rounded-[40px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center gap-8 mb-10">
-            <div className="w-32 h-32 bg-red-900/30 rounded-3xl flex items-center justify-center border border-red-500/40 shrink-0">
-              <Skull size={64} className="text-red-500" />
-            </div>
-            <div className="overflow-hidden flex-1">
-              <p style={{ fontSize: '28px' }} className="font-bold text-red-500 uppercase tracking-widest mb-2">
-                {visibleBoss ? (bossDefeated ? 'Alvo Neutralizado' : 'Sessão Registrada') : 'Relatório de Performance'}
-              </p>
-              <h2
-                style={{ fontSize: '80px', lineHeight: '1' }}
-                className="font-black text-white uppercase tracking-tighter truncate"
-              >
-                {visibleBoss ? bossName : workoutTitle}
-              </h2>
-              {visibleBoss && <p style={{ fontSize: '28px' }} className="mt-3 font-bold text-white/60">{Math.round(visibleBoss.damage).toLocaleString('pt-BR')} / {Math.round(visibleBoss.maxHp).toLocaleString('pt-BR')} dano</p>}
-            </div>
-          </div>
-
-          {/* Battle report */}
-          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl mb-10">
-            <p style={{ fontSize: '36px', lineHeight: '1.4' }} className="text-white/90 italic font-medium">
-              "{battleReport}"
-            </p>
-          </div>
-
-          {/* O progresso de nível pertence ao dado de XP e segue a mesma escolha. */}
-          {fields.xp && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-end">
-                <span style={{ fontSize: '48px' }} className="font-black text-fuchsia-400 uppercase tracking-widest">
-                  Nível {currentLevel}
-                </span>
-                <span style={{ fontSize: '32px' }} className="font-bold text-fuchsia-400/80">
-                  Progresso
-                </span>
-              </div>
-              <div className="w-full h-8 bg-black/60 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className="h-full bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <StatGrid metrics={performanceMetrics} className="bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0" />
-        <StatGrid metrics={progressionMetrics} className="bg-black/80 p-10 rounded-[40px] border border-white/10 shadow-2xl shrink-0" />
-      </div>
-    </div>
-  );
-};
-
-// ─── DataVariant ──────────────────────────────────────────────────────────────
-
-const DataVariant = ({ stats, workoutTitle, bossEncounter, streak, xp, currentLevel, fields }) => {
-  const cleanVolume = stripUnit(stats.volume);
-  const density     = calcDensity(stats.volume, stats.duration);
-  const visibleBoss = fields.boss ? bossEncounter : null;
-  const detailCardCount = Number(fields.duration) + Number(fields.volume && fields.duration);
-  const statusCardCount = Number(fields.xp) + Number(fields.streak) + Number(fields.prs && !fields.volume);
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b-4 border-cyan-500/30 pb-10 mb-12 shrink-0 flex items-end justify-between bg-black/80 p-8 rounded-[40px]">
-        <div>
-          <div className="flex items-center gap-4 mb-4">
-            <Terminal size={40} className="text-cyan-400" />
-            <h2 className="text-3xl font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-              SYS.LOG // {workoutTitle}
-            </h2>
-          </div>
-          <h1
-            style={{ fontSize: '90px', lineHeight: '0.9', letterSpacing: '-0.02em' }}
-            className="font-black text-white uppercase drop-shadow-2xl"
-          >
-            REGISTRO<br />
-            <span className="text-cyan-500 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">TÁTICO</span>
-          </h1>
-        </div>
-        <Activity size={80} className="text-white/20" />
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 flex flex-col justify-center gap-8">
-        {visibleBoss && (
-          <div className="bg-black/90 p-10 rounded-[40px] border border-red-500/35 shadow-2xl">
-            <div className="flex items-center justify-between gap-8">
-              <div className="min-w-0">
-                <p className="text-2xl text-red-400 font-mono uppercase tracking-widest mb-2">Boss // relatório</p>
-                <p className="truncate text-5xl font-black uppercase text-white">{visibleBoss.bossName}</p>
-              </div>
-              <p className="shrink-0 text-4xl font-black text-red-400">
-                {Math.round(visibleBoss.damage).toLocaleString('pt-BR')} / {Math.round(visibleBoss.maxHp).toLocaleString('pt-BR')}
-              </p>
-            </div>
-            <p className="mt-5 text-3xl text-white/70">{getBossBattleReport(visibleBoss, fields.prs ? stats.prs : 0)}</p>
-          </div>
-        )}
-
-        {/* Volume card */}
-        {fields.volume && <div className="relative bg-black/90 p-12 rounded-[40px] border-l-8 border-cyan-500 shadow-2xl flex flex-col items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-cyan-500/5 pointer-events-none" />
-
-          {fields.prs && (
-            <div className="absolute top-8 right-8 bg-yellow-500/20 border border-yellow-500/50 px-6 py-2 rounded-full flex items-center gap-3">
-              <Trophy size={24} className="text-yellow-500" />
-              <span className="text-yellow-500 font-bold text-2xl tracking-widest uppercase">
-                {stats.prs} Novos PRs
-              </span>
-            </div>
-          )}
-
-          <Dumbbell size={80} className="relative text-cyan-500/70 mb-6 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-          <p className="relative text-4xl text-cyan-400 font-mono tracking-[0.3em] uppercase mb-4">Volume Total</p>
-          <div className="relative flex items-baseline gap-4">
-            <p style={{ fontSize: '130px', lineHeight: '1' }} className="font-black text-white tracking-tighter drop-shadow-md">
-              {cleanVolume}
-            </p>
-            <span className="text-6xl text-cyan-500 font-bold">KG</span>
-          </div>
-        </div>}
-
-        {/* Duration / Density grid */}
-        {detailCardCount > 0 && <div className={`grid ${getShareCardGridClass(detailCardCount)} gap-8`}>
-          {fields.duration && <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
-            <div className="absolute -top-4 -right-4 p-6 opacity-20 pointer-events-none">
-              <Clock size={160} className="text-white" />
-            </div>
-            <p className="relative text-3xl text-white/70 font-mono uppercase tracking-widest mb-6">Duração</p>
-            <p style={{ fontSize: '90px', lineHeight: '1' }} className="relative font-black text-white tracking-tighter drop-shadow-md">
-              {stats.duration}
-            </p>
-          </div>}
-
-          {fields.volume && fields.duration && <div className="relative bg-black/90 p-10 rounded-[40px] border border-white/20 flex flex-col items-start justify-center overflow-hidden shadow-xl min-h-[260px]">
-            <div className="absolute -top-4 -right-4 p-6 opacity-20 pointer-events-none">
-              <Zap size={160} className="text-cyan-500" />
-            </div>
-            <p className="relative text-3xl text-cyan-500 font-mono uppercase tracking-widest mb-6 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
-              Densidade
-            </p>
-            <p style={{ fontSize: '90px', lineHeight: '1' }} className="relative font-black text-white tracking-tighter drop-shadow-md">
-              {density}{' '}
-              <span className="text-4xl text-white/70">kg/min</span>
-            </p>
-          </div>}
-        </div>}
-
-        {/* Status / Streak grid */}
-        {statusCardCount > 0 && <div className={`grid ${statusCardCount === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-8`}>
-          {fields.xp && <div className="bg-[#1a2332] border border-cyan-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
-            <div>
-              <p className="text-2xl text-cyan-300 font-mono uppercase tracking-widest mb-2">Status</p>
-              <p className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">
-                Nível {currentLevel}
-              </p>
-            </div>
-            <p className="text-5xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
-              +{xp} XP
-            </p>
-          </div>}
-
-          {fields.streak && <div className="bg-black/90 border border-orange-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
-            <div>
-              <p className="text-2xl text-orange-400 font-mono uppercase tracking-widest mb-2">Streak</p>
-              <p className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">
-                {streak} Dias
-              </p>
-            </div>
-            <Flame size={60} className="text-orange-500" />
-          </div>}
-
-          {fields.prs && !fields.volume && <div className="bg-black/90 border border-yellow-500/30 p-10 rounded-[40px] flex items-center justify-between gap-5 shadow-2xl">
-            <div>
-              <p className="text-2xl text-yellow-400 font-mono uppercase tracking-widest mb-2">Recordes</p>
-              <p className="text-5xl font-black uppercase tracking-tighter text-yellow-400">{stats.prs} novos PRs</p>
-            </div>
-            <Trophy size={60} className="text-yellow-500" />
-          </div>}
-        </div>}
-      </div>
-    </div>
-  );
-};
-
-// ─── CardFooter ───────────────────────────────────────────────────────────────
-
-const CardFooter = ({ variant }) => (
-  <div className="pt-8 mt-auto flex justify-between items-end border-t border-white/10 shrink-0">
-    <p style={{ fontSize: '32px' }} className="font-black text-white/40 tracking-widest uppercase italic">
-      SOLO OS // {variant === 'data' ? 'DADOS_BRUTOS' : 'REDE_DE_BATALHA'}
-    </p>
-    <p style={{ fontSize: '32px' }} className="font-mono font-bold text-white/60">
-      {new Date().toLocaleDateString('pt-BR')}
-    </p>
+const SoloShareVariant = ({ title, volume, duration, xp, streak, progress, highlight, sessionDate }) => (
+  <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
+    <ShareCardHeader />
+    <main className="flex flex-1 flex-col justify-center gap-14 pb-12 pt-16">
+      <section>
+        <p className="mb-6 text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
+        <h1 className="max-w-[900px] text-[82px] font-black uppercase leading-[0.94] tracking-[-0.035em] text-white">{title}</h1>
+      </section>
+      <MainResult volume={volume} />
+      <SecondaryMetrics duration={duration} xp={xp} streak={streak} />
+      <ShareCardProgress progress={progress} />
+      <ShareCardHighlight highlight={highlight} />
+    </main>
+    <ShareCardFooter sessionDate={sessionDate} />
   </div>
 );
 
-// ─── ShareCard ────────────────────────────────────────────────────────────────
+const PerformanceShareVariant = ({ title, volume, duration, sets, xp, streak, density, progress, highlight, sessionDate }) => (
+  <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
+    <ShareCardHeader label="Performance" />
+    <main className="flex flex-1 flex-col justify-center gap-14 pb-10 pt-16">
+      <section>
+        <p className="mb-5 text-[22px] font-black uppercase tracking-[0.22em] text-cyan-300">Resumo da sessão</p>
+        <h1 className="max-w-[900px] text-[76px] font-black uppercase leading-[0.96] tracking-[-0.03em] text-white">{title}</h1>
+      </section>
+      <MainResult volume={volume} compact />
+      <SecondaryMetrics duration={duration} xp={xp} sets={sets} performance />
+      {density !== null && (
+        <section className="flex items-center justify-between border-b border-white/10 pb-8">
+          <div className="flex items-center gap-4 text-cyan-300"><Gauge size={30} /><span className="text-[24px] font-black uppercase tracking-[0.16em]">Densidade</span></div>
+          <p className="text-[42px] font-black text-white">{density} <span className="text-[24px] text-white/45">KG/MIN</span></p>
+        </section>
+      )}
+      {streak !== null && <p className="flex items-center gap-4 text-[30px] font-black text-orange-400"><Flame size={31} /> {streak} {streak === 1 ? 'DIA EM SEQUÊNCIA' : 'DIAS EM SEQUÊNCIA'}</p>}
+      <ShareCardProgress progress={progress} />
+      <ShareCardHighlight highlight={highlight} />
+    </main>
+    <ShareCardFooter sessionDate={sessionDate} />
+  </div>
+);
+
+const PhotoShareVariant = ({ title, volume, duration, xp, streak, progress, sessionDate }) => (
+  <div className="relative z-10 flex h-full flex-col px-[74px] py-[70px]">
+    <div className="flex items-start justify-between">
+      <img src={logoSolo} alt="SOLO" className="h-[70px] w-auto max-w-[330px] object-contain object-left drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)]" />
+      {sessionDate && <p className="rounded-full bg-black/45 px-5 py-3 text-[20px] font-bold uppercase tracking-[0.12em] text-white/80">{sessionDate}</p>}
+    </div>
+    <main className="mt-auto pb-5">
+      <p className="mb-5 text-[21px] font-black uppercase tracking-[0.23em] text-cyan-300">Treino concluído</p>
+      <h1 className="max-w-[900px] text-[71px] font-black uppercase leading-[0.95] tracking-[-0.03em] text-white drop-shadow-[0_3px_20px_rgba(0,0,0,0.9)]">{title}</h1>
+      <div className="mt-10"><MainResult volume={volume} compact /></div>
+      <div className="mt-9"><SecondaryMetrics duration={duration} xp={xp} streak={streak} /></div>
+      <ShareCardProgress progress={progress} />
+      <p className="mt-5 text-[18px] font-bold uppercase tracking-[0.24em] text-white/55">SOLO · Where discipline becomes dopamine</p>
+    </main>
+  </div>
+);
+
+const ShareCardBackground = ({ photo }) => (
+  <div className="absolute inset-0 overflow-hidden bg-[#05070d]">
+    {photo ? (
+      <>
+        <img src={photo} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/5 to-black/95" />
+        <div className="absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-[#03050a] via-[#03050a]/75 to-transparent" />
+      </>
+    ) : (
+      <>
+        <div className="absolute -right-48 -top-36 h-[660px] w-[660px] rounded-full bg-cyan-500/10 blur-[120px]" />
+        <div className="absolute -bottom-40 -left-44 h-[720px] w-[720px] rounded-full bg-fuchsia-600/10 blur-[135px]" />
+        <div className="absolute inset-0 opacity-[0.09]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
+      </>
+    )}
+    <div className="absolute inset-[26px] border border-white/10" />
+  </div>
+);
 
 const ShareCard = ({
-  stats,
-  bossName,
+  stats = {},
   bossEncounter = null,
   workoutTitle = 'Treino',
-  streak,
-  xp,
+  streak = null,
+  xp = null,
   cardRef,
-  selfieUrl,
-  currentLevel = 1,
-  totalXp      = 0,
-  variant      = 'rpg',
+  selfieUrl = null,
+  totalXp = null,
+  variant = 'solo',
   fieldSelection,
+  sessionDate = null,
+  levelUp = false,
+  newBadges = [],
 }) => {
-  const safeVariant = VARIANTS.includes(variant) ? variant : 'rpg';
-  const resolvedBossName = bossEncounter?.bossName || bossName || '';
+  const safeVariant = normalizeShareCardVariant(variant);
+  const numericXp = parseMetricNumber(xp);
+  const numericStreak = parseMetricNumber(streak);
+  const volume = formatShareVolume(stats.volume);
+  const duration = formatShareDuration(stats.duration);
+  const sets = parseMetricNumber(stats.sets);
+  const prs = parseMetricNumber(stats.prs) ?? 0;
   const fields = createShareCardFieldSelection({
     selection: fieldSelection,
-    hasPr: Number(stats?.prs) > 0,
-    hasBoss: Boolean(bossEncounter),
+    hasVolume: volume !== null,
+    hasDuration: parseDurationSeconds(stats.duration) !== null,
+    hasXp: numericXp !== null,
+    hasStreak: numericStreak !== null && numericStreak > 0,
+    hasPr: prs > 0,
+    hasBoss: bossEncounter?.defeated === true,
   });
+  const progress = fields.xp ? getShareCardLevelProgress(totalXp) : null;
+  const highlight = resolveShareCardHighlight({ levelUp, levelProgress: progress, newBadges, prs, bossEncounter, fields });
+  const displayDate = formatLocalDate(sessionDate, { month: 'short' }).replace('.', '').toUpperCase();
+  const shared = {
+    title: workoutTitle || 'Treino',
+    volume: fields.volume ? volume : null,
+    duration: fields.duration ? duration : null,
+    xp: fields.xp ? Math.max(0, Math.round(numericXp)) : null,
+    streak: fields.streak ? Math.max(0, Math.round(numericStreak)) : null,
+    progress,
+    highlight,
+    sessionDate: displayDate,
+  };
 
   return (
-    <div aria-hidden="true" className="fixed top-0 left-[-9999px] pointer-events-none">
-      <div
-        ref={cardRef}
-        style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px`, backgroundColor: '#050B14' }}
-        className="font-cyber relative overflow-hidden flex flex-col"
-      >
-        {/* Layers 0–1: background + overlays */}
-        <CardBackground selfieUrl={selfieUrl} />
-
-        {/* Layer 2: content - Lógica Condicional Adicionada! */}
-        <div className="absolute inset-0 flex flex-col p-[80px]" style={{ zIndex: 20 }}>
-          {selfieUrl ? (
-            <SelfieVariant 
-              stats={stats} 
-              bossName={resolvedBossName}
-              workoutTitle={workoutTitle}
-              bossEncounter={bossEncounter}
-              streak={streak}
-              xp={xp}
-              variant={safeVariant}
-              fields={fields}
-            />
-          ) : (
-            <>
-              {safeVariant === 'rpg' && (
-                <RpgVariant
-                  stats={stats}
-                  bossName={resolvedBossName}
-                  workoutTitle={workoutTitle}
-                  bossEncounter={bossEncounter}
-                  streak={streak}
-                  xp={xp}
-                  currentLevel={currentLevel}
-                  totalXp={totalXp}
-                  fields={fields}
-                />
-              )}
-
-              {safeVariant === 'data' && (
-                <DataVariant
-                  stats={stats}
-                  workoutTitle={workoutTitle}
-                  bossEncounter={bossEncounter}
-                  streak={streak}
-                  xp={xp}
-                  currentLevel={currentLevel}
-                  fields={fields}
-                />
-              )}
-
-              <CardFooter variant={safeVariant} />
-            </>
-          )}
-        </div>
+    <div aria-hidden="true" className="fixed left-[-9999px] top-0 pointer-events-none">
+      <div ref={cardRef} style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} className="relative overflow-hidden bg-[#05070d] font-cyber">
+        <ShareCardBackground photo={selfieUrl} />
+        {selfieUrl ? (
+          <PhotoShareVariant {...shared} />
+        ) : safeVariant === 'performance' ? (
+          <PerformanceShareVariant {...shared} sets={sets} density={fields.volume && fields.duration ? calcDensity(stats.volume, stats.duration) : null} />
+        ) : (
+          <SoloShareVariant {...shared} />
+        )}
       </div>
     </div>
   );

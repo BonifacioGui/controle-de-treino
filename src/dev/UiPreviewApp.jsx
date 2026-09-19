@@ -253,14 +253,17 @@ const UiPreviewApp = () => {
         <WorkoutComplete
           onClose={noop}
           sessionVolume="6.420 kg"
-          sessionDuration="48 min"
+          sessionDuration={2880}
           sessionPoints="+312 XP"
           sessionPrs={1}
           completedSets={16}
           workoutTitle="Peito + Tríceps"
           bossEncounter={{ ...encounter, damage: 5270, remainingHp: 0, defeated: true, overkill: 270 }}
           streak={4}
-          currentLevel={12}
+          totalXp={13894}
+          sessionDate="2026-09-18"
+          levelUp
+          newBadges={[{ title: 'Máquina quente' }]}
           syncStatus="synced"
           theme={theme}
         />

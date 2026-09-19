@@ -936,6 +936,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
         ...reportSnapshot,
         streak: calculateStreak(finalHistory),
         level: statsAfter.level || 1,
+        totalXp: statsAfter.xp,
+        levelUp: (statsAfter.level || 1) > (statsBefore.level || 1),
         newBadges,
         syncStatus: savedToCloud ? 'synced' : (navigator.onLine ? 'pending' : 'offline'),
       },

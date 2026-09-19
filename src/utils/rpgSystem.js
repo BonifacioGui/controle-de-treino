@@ -152,14 +152,16 @@ export const getFlameStyle = (streak) => {
 };
 
 // --- 5. CÁLCULO DE OFENSIVA (Com Tolerância de 3 Dias) ---
-export const calculateStreak = (history) => {
+export const calculateStreak = (history, referenceDateKey = getLocalDateKey()) => {
   if (!Array.isArray(history) || history.length === 0) return 0;
 
-  const uniqueDates = [...new Set(history.map((entry) => entry?.dateKey).filter(Boolean))]
+  const uniqueDates = [...new Set(history
+    .map((entry) => entry?.dateKey)
+    .filter((dateKey) => dateKey && (!referenceDateKey || dateKey <= referenceDateKey)))]
     .sort((left, right) => right.localeCompare(left));
   if (uniqueDates.length === 0) return 0;
   const toleranceDays = 3; 
-  if (daysBetweenLocalDates(uniqueDates[0], getLocalDateKey()) > toleranceDays) {
+  if (referenceDateKey && daysBetweenLocalDates(uniqueDates[0], referenceDateKey) > toleranceDays) {
     return 0;
   }
   let currentStreak = 1;

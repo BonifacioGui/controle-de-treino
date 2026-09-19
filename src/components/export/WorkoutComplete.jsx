@@ -15,7 +15,13 @@ import {
 import { toBlob } from 'html-to-image';
 import ShareCard from './ShareCard';
 import ShareCardControls from './ShareCardControls';
-import { createShareCardFieldSelection } from './ShareCardUtils';
+import {
+  createShareCardFieldSelection,
+  formatShareDuration,
+  parseDurationSeconds,
+  parseMetricNumber,
+  waitForShareCardImages,
+} from './ShareCardUtils';
 import { getBossBattleReport } from '../../utils/bossModel';
 
 const WorkoutComplete = ({
@@ -29,11 +35,11 @@ const WorkoutComplete = ({
   syncStatus = 'synced',
   workoutTitle = 'Treino',
   bossEncounter = null,
-  bossName = 'Treino concluído',
-  bossHp = 10000,
-  streak = 0,
-  currentLevel = 1,
-  totalXp = 0,
+  streak = null,
+  totalXp = null,
+  sessionDate = null,
+  levelUp = false,
+  newBadges = [],
   theme = 'dark',
 }) => {
   const [showShareTools, setShowShareTools] = useState(false);
@@ -41,14 +47,21 @@ const WorkoutComplete = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [cardVariant, setCardVariant] = useState('rpg');
-  const [fieldSelection, setFieldSelection] = useState(() => createShareCardFieldSelection({
-    hasPr: Number(sessionPrs) > 0,
-    hasBoss: Boolean(bossEncounter),
-  }));
+  const [cardVariant, setCardVariant] = useState('solo');
   const [feedback, setFeedback] = useState('');
   const cardRef = useRef(null);
   const previousImageUrl = useRef(null);
+  const earnedXp = parseMetricNumber(sessionPoints);
+  const numericStreak = parseMetricNumber(streak);
+  const shareAvailability = {
+    hasVolume: parseMetricNumber(sessionVolume) !== null,
+    hasDuration: parseDurationSeconds(sessionDuration) !== null,
+    hasXp: earnedXp !== null,
+    hasStreak: numericStreak !== null && numericStreak > 0,
+    hasPr: Number(sessionPrs) > 0,
+    hasBoss: bossEncounter?.defeated === true,
+  };
+  const [fieldSelection, setFieldSelection] = useState(() => createShareCardFieldSelection(shareAvailability));
 
   useEffect(() => {
     if (!showShareTools || !cardRef.current) return undefined;
@@ -62,11 +75,13 @@ const WorkoutComplete = ({
     setIsGenerating(true);
     const timer = window.setTimeout(async () => {
       try {
+        await waitForShareCardImages(cardRef.current);
+        if (cancelled) return;
         const blob = await toBlob(cardRef.current, {
           pixelRatio: 1,
           backgroundColor: '#050B14',
           skipFonts: true,
-          filter: (node) => node.tagName === 'IMG' ? node.complete : true,
+          filter: (node) => node.tagName === 'IMG' ? node.complete && node.naturalWidth > 0 : true,
         });
         if (!blob || cancelled) return;
         if (previousImageUrl.current) URL.revokeObjectURL(previousImageUrl.current);
@@ -120,6 +135,11 @@ const WorkoutComplete = ({
     event.target.value = '';
   };
 
+  const clearSelfie = () => {
+    setIsGenerating(true);
+    setSelfieUrl(null);
+  };
+
   const handleShare = async () => {
     if (!imageFile) return;
     if (navigator.canShare?.({ files: [imageFile] })) {
@@ -141,14 +161,14 @@ const WorkoutComplete = ({
     link.click();
   };
 
-  const earnedXp = Number.parseInt(String(sessionPoints).replace(/\D/g, ''), 10) || 0;
   const savedInCloud = syncStatus === 'synced';
+  const durationLabel = formatShareDuration(sessionDuration) || '—';
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="workout-summary-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md">
       {showShareTools && (
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1080px', height: '1920px' }}>
-          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} bossName={bossName} bossHp={bossHp} streak={streak} xp={earnedXp} selfieUrl={selfieUrl} currentLevel={currentLevel} totalXp={totalXp} variant={cardVariant} fieldSelection={fieldSelection} />
+          <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs, sets: completedSets }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} streak={numericStreak} xp={earnedXp} selfieUrl={selfieUrl} totalXp={totalXp} variant={cardVariant} fieldSelection={fieldSelection} sessionDate={sessionDate} levelUp={levelUp} newBadges={newBadges} />
         </div>
       )}
 
@@ -160,16 +180,16 @@ const WorkoutComplete = ({
 
         <div className="p-5">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border bg-input p-3"><p className="text-xs font-bold text-muted">Duração</p><p className="mt-1 text-lg font-black text-main">{sessionDuration}</p></div>
+            <div className="rounded-xl border border-border bg-input p-3"><p className="text-xs font-bold text-muted">Duração</p><p className="mt-1 text-lg font-black text-main">{durationLabel}</p></div>
             <div className="rounded-xl border border-border bg-input p-3"><p className="text-xs font-bold text-muted">Séries</p><p className="mt-1 text-lg font-black text-main">{completedSets}</p></div>
             <div className="rounded-xl border border-border bg-input p-3"><p className="text-xs font-bold text-muted">Volume</p><p className="mt-1 text-lg font-black text-main">{sessionVolume}</p></div>
             <div className="rounded-xl border border-border bg-input p-3"><p className="text-xs font-bold text-muted">Recompensa</p><p className="mt-1 text-lg font-black text-primary">{sessionPoints}</p></div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3 text-sm font-bold text-muted">
-            <span className="flex items-center gap-2 text-gold"><Trophy aria-hidden="true" size={17} /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>
-            <span className="flex items-center gap-2">🔥 sequência: {streak} {streak === 1 ? 'dia' : 'dias'}</span>
-          </div>
+          {(Number(sessionPrs) > 0 || (numericStreak ?? 0) > 0) && <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3 text-sm font-bold text-muted">
+            {Number(sessionPrs) > 0 && <span className="flex items-center gap-2 text-gold"><Trophy aria-hidden="true" size={17} /> {sessionPrs} {sessionPrs === 1 ? 'novo PR de carga' : 'novos PRs de carga'}</span>}
+            {(numericStreak ?? 0) > 0 && <span className="flex items-center gap-2">🔥 sequência: {numericStreak} {numericStreak === 1 ? 'dia' : 'dias'}</span>}
+          </div>}
 
           {bossEncounter && (
             <div className={`mt-3 rounded-xl border p-4 ${bossEncounter.defeated ? 'border-success/40 bg-success/5' : 'border-secondary/40 bg-secondary/5'}`}>
@@ -194,19 +214,21 @@ const WorkoutComplete = ({
             </div>
           ) : (
             <section className="mt-6 space-y-3 border-t border-border pt-5">
-              <div className="flex rounded-xl border border-border bg-input p-1"><button type="button" aria-pressed={cardVariant === 'rpg'} onClick={() => regenerateWith('rpg')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'rpg' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo RPG</button><button type="button" aria-pressed={cardVariant === 'data'} onClick={() => regenerateWith('data')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'data' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo dados</button></div>
+              <div className="flex rounded-xl border border-border bg-input p-1"><button type="button" aria-pressed={cardVariant === 'solo'} onClick={() => regenerateWith('solo')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'solo' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>SOLO</button><button type="button" aria-pressed={cardVariant === 'performance'} onClick={() => regenerateWith('performance')} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardVariant === 'performance' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>PERFORMANCE</button></div>
               <ShareCardControls
                 value={fieldSelection}
                 onChange={updateFieldSelection}
-                hasPr={Number(sessionPrs) > 0}
-                hasBoss={Boolean(bossEncounter)}
+                {...shareAvailability}
               />
               <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-xl border border-primary/40 bg-black">
                 {isGenerating && <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60"><Loader2 className="animate-spin text-primary" /></div>}
                 {generatedImage && <img src={generatedImage} alt="Prévia do card do treino" className="h-full w-full object-contain" />}
               </div>
-              <div className="grid grid-cols-[2.75rem_1fr_1fr] gap-2">
-                <label aria-label="Adicionar foto" className="touch-target flex cursor-pointer items-center justify-center rounded-xl border border-border text-muted"><Camera size={19} /><input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
+              <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
+                <div className="flex gap-1">
+                  <label aria-label={selfieUrl ? 'Trocar foto; modo foto ativo' : 'Adicionar foto'} className={`touch-target flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-xs font-black ${selfieUrl ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted'}`}><Camera size={19} /><span>{selfieUrl ? 'FOTO' : ''}</span><input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
+                  {selfieUrl && <button type="button" onClick={clearSelfie} aria-label="Remover foto" className="touch-target flex items-center justify-center rounded-xl border border-border px-2 text-muted"><X size={17} /></button>}
+                </div>
                 <button type="button" onClick={handleShare} disabled={isGenerating || !generatedImage} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-on-primary disabled:opacity-40"><Share2 size={17} /> Compartilhar</button>
                 <button type="button" onClick={handleDownload} disabled={isGenerating || !generatedImage} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-main disabled:opacity-40"><Download size={17} /> Baixar card</button>
               </div>

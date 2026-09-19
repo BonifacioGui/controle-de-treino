@@ -2,17 +2,26 @@ import React, { useId } from 'react';
 import { toggleShareCardField } from './ShareCardUtils';
 
 const FIELD_OPTIONS = Object.freeze([
-  { key: 'volume', label: 'Volume' },
-  { key: 'duration', label: 'Duração' },
-  { key: 'xp', label: 'XP' },
-  { key: 'streak', label: 'Sequência' },
+  { key: 'volume', label: 'Volume', requires: 'hasVolume' },
+  { key: 'duration', label: 'Duração', requires: 'hasDuration' },
+  { key: 'xp', label: 'XP', requires: 'hasXp' },
+  { key: 'streak', label: 'Sequência', requires: 'hasStreak' },
   { key: 'prs', label: 'Recordes', requires: 'hasPr' },
   { key: 'boss', label: 'Boss', requires: 'hasBoss' },
 ]);
 
-const ShareCardControls = ({ value, onChange, hasPr = false, hasBoss = false }) => {
+const ShareCardControls = ({
+  value,
+  onChange,
+  hasVolume = true,
+  hasDuration = true,
+  hasXp = true,
+  hasStreak = true,
+  hasPr = false,
+  hasBoss = false,
+}) => {
   const descriptionId = useId();
-  const availability = { hasPr, hasBoss };
+  const availability = { hasVolume, hasDuration, hasXp, hasStreak, hasPr, hasBoss };
   const options = FIELD_OPTIONS.filter((option) => !option.requires || availability[option.requires]);
 
   return (

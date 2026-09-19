@@ -296,7 +296,11 @@ const WorkoutApp = () => {
     const result = await actions.finishWorkout(options);
     if (result?.requiresConfirmation) return result;
 
-    const report = result.reportSnapshot;
+    const report = {
+      ...result.reportSnapshot,
+      levelUp: result.subiuDeNivel === true,
+      totalXp: result.reportSnapshot?.totalXp ?? stats?.xp ?? null,
+    };
     writeUserStoredJSON(userId, STORAGE_KEYS.pendingShareCard, report);
     setPendingReport(report);
     setReportUserId(userId);
@@ -465,7 +469,7 @@ const WorkoutApp = () => {
         <Suspense fallback={<ViewFallback />}>
           <WorkoutComplete
             onClose={closeReport}
-            sessionDuration={`${currentPendingReport.version === 2 ? Math.max(1, Math.floor((currentPendingReport.duration || 0) / 60)) : (currentPendingReport.duration || 0)} min`}
+            sessionDuration={currentPendingReport.version === 2 ? (currentPendingReport.duration ?? null) : `${currentPendingReport.duration || 0} min`}
             sessionVolume={`${Math.round(currentPendingReport.volume || 0).toLocaleString('pt-BR')} kg`}
             sessionPoints={`+${currentPendingReport.earnedXp ?? currentPendingReport.xp ?? 0} XP`}
             sessionPrs={currentPendingReport.prsBroken || 0}
@@ -474,11 +478,10 @@ const WorkoutApp = () => {
             syncStatus={currentPendingReport.syncStatus}
             workoutTitle={currentPendingReport.workoutTitle || currentPendingReport.workoutName}
             bossEncounter={currentPendingReport.bossEncounter || null}
-            bossName={currentPendingReport.bossEncounter?.bossName || ''}
-            bossHp={currentPendingReport.bossEncounter?.maxHp || 0}
-            streak={currentPendingReport.streak || stats?.streak || 0}
-            currentLevel={currentPendingReport.level || stats?.level || 1}
-            totalXp={stats?.xp || 0}
+            streak={currentPendingReport.streak ?? stats?.streak ?? null}
+            totalXp={currentPendingReport.totalXp ?? stats?.xp ?? null}
+            sessionDate={currentPendingReport.dateKey}
+            levelUp={currentPendingReport.levelUp === true}
             newBadges={currentPendingReport.newBadges || []}
             theme={theme}
           />

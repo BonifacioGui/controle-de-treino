@@ -23,10 +23,16 @@ import { formatLocalDate } from '../../utils/dateUtils';
 import { groupHistoryByDate } from '../../utils/historyGrouping';
 import { calculateCompletedVolume } from '../../utils/sessionModel';
 import { calculateSessionXp } from '../../utils/xpModel';
+import { calculateStats, calculateStreak } from '../../utils/rpgSystem';
 import { formatEnteredLoad } from '../../utils/loadModel';
 import { OVERLOAD_STATUS } from '../../utils/overloadModel';
 import ShareCardControls from '../export/ShareCardControls';
-import { createShareCardFieldSelection } from '../export/ShareCardUtils';
+import {
+  createShareCardFieldSelection,
+  parseDurationSeconds,
+  parseMetricNumber,
+  waitForShareCardImages,
+} from '../export/ShareCardUtils';
 
 const ShareCard = lazy(() => import('../export/ShareCard'));
 
@@ -52,14 +58,27 @@ const formatDuration = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
 };
 
-const getSessionShareStats = (session) => ({
-  duration: formatDuration(session.duration),
-  volume: Math.round(
-    session.totalVolume
-    || (session.exercises || []).reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0),
-  ).toString(),
-  prs: session.prsBroken || 0,
-});
+const getSessionShareStats = (session) => {
+  const hasExerciseData = Array.isArray(session.exercises);
+  const storedVolume = parseMetricNumber(session.totalVolume ?? session.total_volume);
+  const completedSets = hasExerciseData
+    ? session.exercises.reduce((total, exercise) => total + (exercise.sets || []).filter((set) => set.completed).length, 0)
+    : null;
+  return {
+    duration: parseDurationSeconds(session.duration),
+    volume: storedVolume ?? (hasExerciseData
+      ? session.exercises.reduce((sum, exercise) => sum + calculateCompletedVolume(exercise.sets, exercise), 0)
+      : null),
+    prs: parseMetricNumber(session.prsBroken ?? session.prs_broken),
+    sets: completedSets,
+  };
+};
+
+const sessionMatches = (left, right) => {
+  const leftId = left?.id || left?.localId || left?.sessionId;
+  const rightId = right?.id || right?.localId || right?.sessionId;
+  return leftId && rightId ? leftId === rightId : left === right;
+};
 
 const ExerciseSummary = ({ exercise }) => {
   const completedSets = (exercise.sets || []).filter((set) => set.completed);
@@ -291,12 +310,14 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
     const timer = window.setTimeout(async () => {
       try {
         const { toBlob } = await import('html-to-image');
+        await waitForShareCardImages(shareCardNode);
+        if (cancelled) return;
         const blob = await toBlob(shareCardNode, {
           backgroundColor: '#050B14',
           cacheBust: true,
           pixelRatio: 1,
           skipFonts: true,
-          filter: (node) => node.tagName === 'IMG' ? node.complete : true,
+          filter: (node) => node.tagName === 'IMG' ? node.complete && node.naturalWidth > 0 : true,
         });
         if (!blob || cancelled) return;
         if (previousCardPreviewUrl.current) URL.revokeObjectURL(previousCardPreviewUrl.current);
@@ -378,19 +399,43 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
 
   const openCardComposer = (session, preferredAction) => {
     const stats = getSessionShareStats(session);
+    const sessionIndex = history.findIndex((entry) => sessionMatches(entry, session));
+    const historyThroughSession = sessionIndex >= 0 ? history.slice(sessionIndex) : [session];
+    const historyBeforeSession = sessionIndex >= 0 ? history.slice(sessionIndex + 1) : [];
+    const statsThroughSession = calculateStats(historyThroughSession);
+    const statsBeforeSession = calculateStats(historyBeforeSession);
+    const canCalculateXp = session.earnedXp !== undefined
+      || session.earned_xp !== undefined
+      || stats.volume !== null;
+    const calculatedXp = canCalculateXp ? calculateSessionXp(session) : null;
+    const calculatedStreak = calculateStreak(historyThroughSession, session.dateKey);
+    const shareContext = {
+      xp: calculatedXp,
+      totalXp: canCalculateXp ? statsThroughSession.xp : null,
+      streak: calculatedStreak > 0 ? calculatedStreak : null,
+      levelUp: canCalculateXp && statsThroughSession.level > statsBeforeSession.level,
+      newBadges: session.newBadges || session.reportSnapshot?.newBadges || [],
+    };
+    const availability = {
+      hasVolume: stats.volume !== null,
+      hasDuration: stats.duration !== null,
+      hasXp: shareContext.xp !== null,
+      hasStreak: shareContext.streak !== null,
+      hasPr: Number(stats.prs) > 0,
+      hasBoss: session.bossEncounter?.defeated === true,
+    };
     cardReturnFocusRef.current = document.activeElement;
     setCardPreviewUrl(null);
     setCardImageFile(null);
     setIsCardGenerating(true);
     setCardDraft({
       session,
+      shareContext,
+      availability,
       preferredAction,
-      variant: 'rpg',
+      variant: 'solo',
       selfieUrl: null,
-      fieldSelection: createShareCardFieldSelection({
-        hasPr: Number(stats.prs) > 0,
-        hasBoss: Boolean(session.bossEncounter),
-      }),
+      fieldSelection: createShareCardFieldSelection(availability),
     });
   };
 
@@ -436,8 +481,6 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
   }, [toastMessage]);
 
   const draftStats = cardDraft ? getSessionShareStats(cardDraft.session) : null;
-  const hasDraftPr = Number(draftStats?.prs) > 0;
-  const hasDraftBoss = Boolean(cardDraft?.session.bossEncounter);
 
   return (
     <>
@@ -493,15 +536,14 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
 
             <div className="space-y-3">
               <div className="flex rounded-xl border border-border bg-input p-1">
-                <button type="button" aria-pressed={cardDraft.variant === 'rpg'} onClick={() => updateCardDraft({ variant: 'rpg' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'rpg' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo RPG</button>
-                <button type="button" aria-pressed={cardDraft.variant === 'data'} onClick={() => updateCardDraft({ variant: 'data' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'data' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>Modo dados</button>
+                <button type="button" aria-pressed={cardDraft.variant === 'solo'} onClick={() => updateCardDraft({ variant: 'solo' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'solo' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>SOLO</button>
+                <button type="button" aria-pressed={cardDraft.variant === 'performance'} onClick={() => updateCardDraft({ variant: 'performance' })} className={`touch-target flex-1 rounded-lg text-sm font-bold ${cardDraft.variant === 'performance' ? 'bg-primary/15 text-primary' : 'text-muted'}`}>PERFORMANCE</button>
               </div>
 
               <ShareCardControls
                 value={cardDraft.fieldSelection}
                 onChange={(fieldSelection) => updateCardDraft({ fieldSelection })}
-                hasPr={hasDraftPr}
-                hasBoss={hasDraftBoss}
+                {...cardDraft.availability}
               />
 
               <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-xl border border-primary/40 bg-black">
@@ -510,8 +552,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <label className="touch-target inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border px-3 text-sm font-bold text-main">
-                  <Camera size={18} /> {cardDraft.selfieUrl ? 'Trocar selfie' : 'Adicionar selfie'}
+                <label className={`touch-target inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold ${cardDraft.selfieUrl ? 'border-primary bg-primary/15 text-primary' : 'border-border text-main'}`}>
+                  <Camera size={18} /> {cardDraft.selfieUrl ? 'FOTO ativa · trocar' : 'Adicionar foto'}
                   <input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleHistorySelfie} />
                 </label>
                 {cardDraft.selfieUrl && <button type="button" onClick={() => updateCardDraft({ selfieUrl: null })} className="touch-target rounded-xl border border-border px-3 text-sm font-bold text-muted">Remover selfie</button>}
@@ -537,7 +579,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
 
       {cardDraft && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.session.streak ?? 0} xp={calculateSessionXp(cardDraft.session)} currentLevel={cardDraft.session.level || 1} totalXp={0} variant={cardDraft.variant} selfieUrl={cardDraft.selfieUrl} fieldSelection={cardDraft.fieldSelection} />
+          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.shareContext.streak} xp={cardDraft.shareContext.xp} totalXp={cardDraft.shareContext.totalXp} variant={cardDraft.variant} selfieUrl={cardDraft.selfieUrl} fieldSelection={cardDraft.fieldSelection} sessionDate={cardDraft.session.dateKey} levelUp={cardDraft.shareContext.levelUp} newBadges={cardDraft.shareContext.newBadges} />
         </Suspense>
       )}
 
