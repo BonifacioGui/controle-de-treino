@@ -265,7 +265,6 @@ const UiPreviewApp = () => {
           levelUp
           newBadges={[{ title: 'Máquina quente' }]}
           syncStatus="synced"
-          theme={theme}
         />
       )}
       {screen === 'rest' && <RestTimer endTime={restEndTime} onAdjust={noop} onSkip={noop} />}

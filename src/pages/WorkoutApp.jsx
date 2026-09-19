@@ -483,7 +483,6 @@ const WorkoutApp = () => {
             sessionDate={currentPendingReport.dateKey}
             levelUp={currentPendingReport.levelUp === true}
             newBadges={currentPendingReport.newBadges || []}
-            theme={theme}
           />
         </Suspense>
       )}

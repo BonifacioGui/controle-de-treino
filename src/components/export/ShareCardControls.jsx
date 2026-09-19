@@ -19,15 +19,16 @@ const ShareCardControls = ({
   hasStreak = true,
   hasPr = false,
   hasBoss = false,
+  embedded = false,
 }) => {
   const descriptionId = useId();
   const availability = { hasVolume, hasDuration, hasXp, hasStreak, hasPr, hasBoss };
   const options = FIELD_OPTIONS.filter((option) => !option.requires || availability[option.requires]);
 
   return (
-    <fieldset aria-describedby={descriptionId} className="rounded-xl border border-border bg-input/45 p-3">
-      <legend className="px-1 text-xs font-black uppercase tracking-[0.14em] text-main">Dados do card</legend>
-      <p id={descriptionId} className="mb-3 text-xs leading-relaxed text-muted">Escolha o que aparece na prévia e na imagem final.</p>
+    <fieldset aria-describedby={descriptionId} className={embedded ? 'p-0' : 'rounded-xl border border-border bg-input/45 p-3'}>
+      <legend className="px-1 text-xs font-black uppercase tracking-[0.14em] text-main">{embedded ? 'Mostrar no card' : 'Dados do card'}</legend>
+      <p id={descriptionId} className={`text-xs leading-relaxed text-muted ${embedded ? 'mb-2' : 'mb-3'}`}>{embedded ? 'Desmarque o que não quiser compartilhar.' : 'Escolha o que aparece na prévia e na imagem final.'}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <label key={option.key} className="cursor-pointer">
