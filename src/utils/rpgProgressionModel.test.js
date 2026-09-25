@@ -74,6 +74,15 @@ describe('modelo explicável de progressão RPG', () => {
     expect(RPG_ATTRIBUTE_INFO.DEX.name).toBe('Técnica');
   });
 
+  it('não expõe identificadores internos nem nomes antigos nas explicações públicas', () => {
+    const publicCopy = Object.values(RPG_ATTRIBUTE_INFO)
+      .flatMap(({ name, summary, howToEarn, calculation }) => [name, summary, howToEarn, calculation])
+      .join(' ');
+
+    expect(publicCopy).not.toMatch(/\b(?:STR|DEX|VIT|CHA)\b/);
+    expect(publicCopy).not.toMatch(/\b(?:Destreza|Vitalidade|Carisma)\b/i);
+  });
+
   it.each([
     ['FOR', 'STR'],
     ['DES', 'DEX'],

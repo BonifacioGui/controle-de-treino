@@ -22,6 +22,10 @@ const TacticalRadar = ({ radarData, maxStat }) => {
   const [previewKey, setPreviewKey] = useState(null);
   const activeKey = previewKey || pinnedKey;
   const activeItem = radarData.find((item) => getMetricKey(item) === activeKey);
+  const displayRadarData = radarData.map((item) => {
+    const info = RPG_ATTRIBUTE_INFO[getMetricKey(item)];
+    return { ...item, publicSubject: info?.name || item.subject };
+  });
 
   const togglePinned = (key) => {
     const closing = pinnedKey === key;
@@ -51,7 +55,7 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             cx="50%"
             cy="50%"
             outerRadius="55%"
-            data={radarData}
+            data={displayRadarData}
             onMouseMove={(state) => {
               const key = getChartKey(state);
               if (key) setPreviewKey(key);
@@ -63,7 +67,7 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             }}
           >
             <PolarGrid stroke="var(--chart-grid)" />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--chart-text)', fontSize: 11, fontWeight: 800 }} />
+            <PolarAngleAxis dataKey="publicSubject" tick={{ fill: 'var(--chart-text)', fontSize: 11, fontWeight: 800 }} />
             <PolarRadiusAxis angle={30} domain={[0, maxStat]} tick={false} axisLine={false} />
             <Radar
               name="Nível"
@@ -99,7 +103,7 @@ const TacticalRadar = ({ radarData, maxStat }) => {
               onPointerLeave={(event) => event.pointerType === 'mouse' && setPreviewKey((current) => current === key ? null : current)}
               className={`touch-target flex min-h-11 items-center justify-between gap-1 rounded-xl border px-2 text-left text-[10px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-xs ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-input/40 text-main hover:border-primary/40'}`}
             >
-              <span>{item.subject}</span>
+              <span>{info.name}</span>
               <span className="tabular-nums text-muted">{item.A}</span>
             </button>
           );

@@ -17,11 +17,15 @@ const STAT_CONFIG = {
   DISCIPLINE: { icon: ListChecks, color: 'text-amber-500', bgIcon: 'bg-amber-500/10', bar: 'bg-amber-500', glow: '' },
 };
 
-const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, onToggle }) => {
+const PRIMARY_ATTRIBUTE_KEYS = ['STR', 'DEX', 'VIT', 'CHA'];
+const CONSISTENCY_INDICATOR_KEYS = ['FOCUS', 'DISCIPLINE'];
+
+const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, onToggle, variant = 'attribute' }) => {
   const config = STAT_CONFIG[statKey] || { icon: Activity, color: 'text-zinc-500', bgIcon: 'bg-zinc-500/10', bar: 'bg-zinc-500', glow: '' };
   const info = RPG_ATTRIBUTE_INFO[statKey];
   const Icon = config.icon;
   const isXpAttribute = Number.isFinite(Number(data.xp));
+  const isIndicator = variant === 'indicator';
   const levelProgress = isXpAttribute ? getRpgLevelProgress(data.xp) : null;
   const currentValue = data.valueLabel || `Nível ${levelProgress?.level || 1}`;
 
@@ -36,12 +40,12 @@ const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, o
       onBlur={onPreviewEnd}
       onPointerEnter={(event) => event.pointerType === 'mouse' && onPreview()}
       onPointerLeave={(event) => event.pointerType === 'mouse' && onPreviewEnd()}
-      className={`group w-full rounded-xl border bg-input/50 p-3 text-left shadow-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-4 dark:bg-zinc-900/50 ${active ? 'border-primary/60 bg-primary/5' : 'border-border hover:-translate-y-0.5 hover:border-primary/30 dark:border-white/5 dark:hover:border-white/20'}`}
+      className={`group w-full border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isIndicator ? 'rounded-lg bg-input/25 p-3 shadow-none dark:bg-zinc-900/30' : 'rounded-xl bg-input/50 p-3 shadow-sm sm:p-4 dark:bg-zinc-900/50'} ${active ? 'border-primary/60 bg-primary/5' : 'border-border hover:-translate-y-0.5 hover:border-primary/30 dark:border-white/5 dark:hover:border-white/20'}`}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className={`${isIndicator ? 'mb-2' : 'mb-3'} flex items-center justify-between`}>
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className={`rounded-lg p-1.5 transition-colors group-hover:bg-opacity-20 sm:p-2 ${config.bgIcon} ${config.color}`}>
-            <Icon aria-hidden="true" size={16} className="sm:h-5 sm:w-5" />
+          <span className={`rounded-lg transition-colors group-hover:bg-opacity-20 ${isIndicator ? 'p-1.5' : 'p-1.5 sm:p-2'} ${config.bgIcon} ${config.color}`}>
+            <Icon aria-hidden="true" size={isIndicator ? 15 : 16} className={isIndicator ? '' : 'sm:h-5 sm:w-5'} />
           </span>
           <span className="flex min-w-0 flex-col">
             <span className="text-[11px] font-black uppercase leading-tight tracking-widest text-main sm:text-xs dark:text-zinc-300">
@@ -52,13 +56,13 @@ const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, o
 
         <span className="flex items-center gap-1.5 text-right">
           <CircleHelp aria-hidden="true" size={14} className={active ? 'text-primary' : 'text-muted'} />
-          <span className="text-right text-sm font-black leading-none text-main drop-shadow-sm sm:text-base dark:text-white dark:drop-shadow-md">
+          <span className={`${isIndicator ? 'text-xs text-muted sm:text-sm' : 'text-sm text-main sm:text-base dark:text-white'} text-right font-black leading-none drop-shadow-sm dark:drop-shadow-md`}>
             {currentValue}
           </span>
         </span>
       </div>
 
-      <p className="mb-3 min-h-10 text-xs leading-relaxed text-muted">{info.summary}</p>
+      <p className={`${isIndicator ? 'mb-2' : 'mb-3 min-h-10'} text-xs leading-relaxed text-muted`}>{info.summary}</p>
 
       {isXpAttribute ? <span className="block space-y-1.5">
         <span className="flex items-end justify-between gap-2 text-[10px] font-bold uppercase text-muted sm:text-xs">
@@ -71,7 +75,7 @@ const StatCard = ({ statKey, data, active, detailsId, onPreview, onPreviewEnd, o
             style={{ width: `${levelProgress.progress}%` }}
           />
         </span>
-      </span> : <span className="block rounded-lg border border-border bg-card/50 px-3 py-2 text-[10px] font-bold leading-relaxed text-muted">{data.nextLabel}</span>}
+      </span> : <span className="block border-t border-border/70 pt-2 text-[10px] font-bold leading-relaxed text-muted">{data.nextLabel}</span>}
       {isXpAttribute && <span className="mt-2 block text-[10px] font-bold leading-relaxed text-muted">
         Faltam {levelProgress.xpRemaining.toLocaleString('pt-BR')} XP para o nível {levelProgress.level + 1}.
       </span>}
@@ -104,8 +108,6 @@ const CharacterSheet = ({ rpgData, history = [], stats }) => {
       nextLabel: `Falta${sessionsToNextDisciplinePoint === 1 ? '' : 'm'} ${sessionsToNextDisciplinePoint} ${sessionsToNextDisciplinePoint === 1 ? 'sessão válida' : 'sessões válidas'} para o próximo ponto base. Inatividade pode reduzir o valor.`,
     },
   };
-  const attributeKeys = ['STR', 'DEX', 'VIT', 'CHA', 'FOCUS', 'DISCIPLINE'];
-
   const togglePinned = (key) => {
     const closing = pinnedKey === key;
     setPinnedKey(closing ? null : key);
@@ -132,13 +134,13 @@ const CharacterSheet = ({ rpgData, history = [], stats }) => {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-500 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-purple-500" />
           </span>
-          Atributos de combate
+          Atributos do operador
         </h3>
-        <p className="mt-2 text-xs leading-relaxed text-muted">Passe o mouse, use Tab ou toque em um atributo para ver o cálculo e como ganhar XP.</p>
+        <p className="mt-2 text-xs leading-relaxed text-muted">Selecione um atributo para ver como ele evolui e quais ações geram XP.</p>
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 sm:gap-4">
-        {attributeKeys.map((key) => (
+      <div className="relative z-10 grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 sm:gap-4" aria-label="Atributos principais">
+        {PRIMARY_ATTRIBUTE_KEYS.map((key) => (
           <StatCard
             key={key}
             statKey={key}
@@ -150,6 +152,28 @@ const CharacterSheet = ({ rpgData, history = [], stats }) => {
             onToggle={() => togglePinned(key)}
           />
         ))}
+      </div>
+
+      <div className="relative z-10 mt-6 border-t border-border/70 pt-5 dark:border-white/10">
+        <div className="mb-3">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-muted">Indicadores de consistência</h4>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Foco e Disciplina mostram sua regularidade; eles não definem os atributos da sua evolução física.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 min-[560px]:grid-cols-2" aria-label="Indicadores de consistência">
+          {CONSISTENCY_INDICATOR_KEYS.map((key) => (
+            <StatCard
+              key={key}
+              statKey={key}
+              data={displayData[key]}
+              active={activeKey === key}
+              detailsId={detailsId}
+              onPreview={() => setPreviewKey(key)}
+              onPreviewEnd={() => setPreviewKey((current) => current === key ? null : current)}
+              onToggle={() => togglePinned(key)}
+              variant="indicator"
+            />
+          ))}
+        </div>
       </div>
 
       {activeKey && (
