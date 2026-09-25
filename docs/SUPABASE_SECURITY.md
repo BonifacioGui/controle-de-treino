@@ -65,3 +65,64 @@ Além das políticas, a instância precisa aceitar em `overload_status` os valor
 `NORMAL`, `OVERLOAD`, `MANUTENÇÃO` e `REDUÇÃO`. A migration
 `202608260001_session_integrity.sql` também deve estar aplicada para que
 `session_id` forneça a deduplicação robusta descrita pelo cliente.
+
+## Auditoria somente leitura no SQL Editor
+
+O repositório não contém um dump completo do schema nem migrations de RLS. Para
+confirmar o estado real sem alterar nada, execute no SQL Editor do projeto:
+
+```sql
+select n.nspname as schema_name,
+       c.relname as table_name,
+       c.relrowsecurity as rls_enabled,
+       c.relforcerowsecurity as rls_forced
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where c.relkind = 'r'
+  and (n.nspname, c.relname) in (
+    ('public', 'workout_history'),
+    ('public', 'workout_plans'),
+    ('public', 'body_stats'),
+    ('storage', 'objects')
+  )
+order by 1, 2;
+
+select schemaname,
+       tablename,
+       policyname,
+       roles,
+       cmd,
+       qual as using_expression,
+       with_check
+from pg_policies
+where (schemaname, tablename) in (
+  ('public', 'workout_history'),
+  ('public', 'workout_plans'),
+  ('public', 'body_stats'),
+  ('storage', 'objects')
+)
+order by schemaname, tablename, cmd, policyname;
+
+select conrelid::regclass as table_name,
+       conname,
+       pg_get_constraintdef(oid) as definition
+from pg_constraint
+where conrelid in (
+  'public.workout_history'::regclass,
+  'public.workout_plans'::regclass,
+  'public.body_stats'::regclass
+)
+order by table_name::text, conname;
+
+select id, name, public
+from storage.buckets
+where id = 'avatars';
+```
+
+Confirme que as políticas das tabelas públicas restringem cada operação por
+`auth.uid() = user_id`, com `USING` e `WITH CHECK` conforme a operação. Em
+`storage.objects`, confirme que upload, alteração e remoção no bucket `avatars`
+validam o prefixo/caminho pertencente ao usuário autenticado. Procure também por
+políticas permissivas antigas (`USING (true)` ou `WITH CHECK (true)`), pois elas
+podem neutralizar o isolamento esperado. Esses resultados precisam ser avaliados
+no painel antes de afirmar que RLS está corretamente configurado.

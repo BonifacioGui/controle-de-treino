@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import LoginForm from './LoginForm';
+import PasswordRecoveryRequest from './PasswordRecoveryRequest';
+import PasswordResetPanel from './PasswordResetPanel';
 import SignUpWizard from './SignUpWizard';
 
-const AuthLayout = ({ authNotice = null }) => {
+const AuthLayout = ({ authNotice = null, passwordRecovery = false, onPasswordRecoveryComplete }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [recoveryEmail, setRecoveryEmail] = useState(null);
 
   return (
     <div className="auth-layout min-h-screen bg-page text-main flex items-center justify-center p-4 font-sans relative overflow-hidden pb-20">
@@ -18,8 +21,12 @@ const AuthLayout = ({ authNotice = null }) => {
 
       <div className="auth-panel w-full max-w-[420px] bg-card border-2 border-border p-6 sm:p-8 rounded-3xl relative z-10 transition-all duration-500">
         
-        {isLogin ? (
-          <LoginForm onSwitch={() => setIsLogin(false)} authNotice={authNotice} />
+        {passwordRecovery ? (
+          <PasswordResetPanel onComplete={onPasswordRecoveryComplete} />
+        ) : recoveryEmail !== null ? (
+          <PasswordRecoveryRequest initialEmail={recoveryEmail} onBack={() => setRecoveryEmail(null)} />
+        ) : isLogin ? (
+          <LoginForm onSwitch={() => setIsLogin(false)} onForgotPassword={setRecoveryEmail} authNotice={authNotice} />
         ) : (
           <SignUpWizard onSwitch={() => setIsLogin(true)} />
         )}

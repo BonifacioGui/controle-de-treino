@@ -9,7 +9,7 @@ import {
   logAuthDiagnostic,
 } from '../../utils/authFlow';
 
-const LoginForm = ({ onSwitch, authNotice }) => {
+const LoginForm = ({ onSwitch, onForgotPassword, authNotice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -130,6 +130,15 @@ const LoginForm = ({ onSwitch, authNotice }) => {
               className="touch-target flex items-center justify-center rounded-xl text-muted transition-colors hover:text-primary"
             >
               {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </div>
+          <div className="mt-1.5 text-right">
+            <button
+              type="button"
+              onClick={() => onForgotPassword(email)}
+              className="touch-target -mr-2 inline-flex items-center rounded-lg px-2 text-xs font-bold text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Esqueci minha senha
             </button>
           </div>
         </div>

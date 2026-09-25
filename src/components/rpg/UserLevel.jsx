@@ -1,32 +1,18 @@
-import React, { useId, useState } from 'react';
+import React, { useState } from 'react';
 import { CircleHelp, Trophy, Terminal } from 'lucide-react';
 import { getRpgLevelProgress, RPG_XP_INFO } from '../../utils/rpgProgressionModel';
-import ProgressionDetails from './ProgressionDetails';
+import ProgressionDetailsSheet from './ProgressionDetailsSheet';
 
 const UserLevel = ({ stats }) => {
-  const detailsId = useId();
-  const [detailsPinned, setDetailsPinned] = useState(false);
-  const [detailsPreviewed, setDetailsPreviewed] = useState(false);
-  const detailsOpen = detailsPinned || detailsPreviewed;
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const barWidth = stats?.progress || 0;
 
   if (!stats) return null;
 
   const levelProgress = getRpgLevelProgress(stats.xp);
 
-  const toggleDetails = () => {
-    const closing = detailsPinned;
-    setDetailsPinned(!detailsPinned);
-    if (closing) setDetailsPreviewed(false);
-  };
-
   return (
     <div 
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return;
-        setDetailsPinned(false);
-        setDetailsPreviewed(false);
-      }}
       className="bg-card dark:bg-[#050B14] border border-yellow-500/30 dark:border-yellow-500/40 p-5 relative shadow-sm dark:shadow-[0_0_20px_rgba(250,204,21,0.1)] mt-2 group transition-colors"
       style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}
     >
@@ -95,29 +81,27 @@ const UserLevel = ({ stats }) => {
       <div className="relative z-10 mt-4 border-t border-yellow-500/20 pt-3">
         <button
           type="button"
-          aria-expanded={detailsOpen}
-          aria-controls={detailsId}
-          onClick={toggleDetails}
-          onFocus={() => setDetailsPreviewed(true)}
-          onBlur={() => setDetailsPreviewed(false)}
-          onPointerEnter={(event) => event.pointerType === 'mouse' && setDetailsPreviewed(true)}
-          onPointerLeave={(event) => event.pointerType === 'mouse' && setDetailsPreviewed(false)}
+          aria-haspopup="dialog"
+          onClick={() => setDetailsOpen(true)}
           className="touch-target inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-black text-yellow-700 transition-colors hover:bg-yellow-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 dark:text-yellow-400"
         >
           <CircleHelp aria-hidden="true" size={16} /> Como ganho XP?
         </button>
 
-        {detailsOpen && (
-          <div className="mt-2" aria-live="polite">
-            <ProgressionDetails
-              id={detailsId}
-              info={RPG_XP_INFO}
-              levelProgress={levelProgress}
-              valueLabel={`${Math.floor(Math.max(0, Number(stats.xp) || 0)).toLocaleString('pt-BR')} XP`}
-            />
-          </div>
-        )}
       </div>
+
+      <ProgressionDetailsSheet
+        isOpen={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        title={RPG_XP_INFO.name}
+        items={[{
+          key: 'XP_TOTAL',
+          info: RPG_XP_INFO,
+          levelProgress,
+          valueLabel: `Nível ${levelProgress.level}`,
+          progressValueLabel: `${Math.floor(Math.max(0, Number(stats.xp) || 0)).toLocaleString('pt-BR')} XP`,
+        }]}
+      />
     </div>
   );
 };

@@ -95,6 +95,7 @@ const WorkoutApp = () => {
   const [authNotice, setAuthNotice] = useState(() => (
     typeof window === 'undefined' ? null : getAuthCallbackNotice(window.location.href)
   ));
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const userId = authSession?.user?.id || null;
   const initialSettings = useMemo(() => readStoredJSON(STORAGE_KEYS.settings, {}), []);
   const [theme, setTheme] = useState(() => normalizeTheme(initialSettings.theme));
@@ -207,9 +208,11 @@ const WorkoutApp = () => {
       try {
         if (supabaseConfigurationError) throw new Error(supabaseConfigurationError);
 
-        const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+        const authListener = supabase.auth.onAuthStateChange((event, session) => {
           if (!active) return;
           authStateReceived = true;
+          if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+          if (event === 'SIGNED_OUT') setPasswordRecovery(false);
           setAuthSession(session);
           setAuthError('');
           setIsSessionLoading(false);
@@ -234,10 +237,10 @@ const WorkoutApp = () => {
   }, [authRetryKey]);
 
   useEffect(() => {
-    if (isSessionLoading || !authNotice || typeof window === 'undefined') return;
+    if (isSessionLoading || (!authNotice && !passwordRecovery) || typeof window === 'undefined') return;
     const cleanUrl = getCleanAuthCallbackUrl(window.location.href);
     window.history.replaceState(window.history.state, '', cleanUrl);
-  }, [authNotice, isSessionLoading]);
+  }, [authNotice, isSessionLoading, passwordRecovery]);
 
   useEffect(() => {
     if (!userId || !state.isHydrated) return;
@@ -329,6 +332,16 @@ const WorkoutApp = () => {
 
   if (isSessionLoading) return <LoadingScreen logo={logoSolo} />;
   if (authError) return <AuthRecoveryScreen message={authError} onRetry={() => setAuthRetryKey((value) => value + 1)} />;
+  if (passwordRecovery) return (
+    <AuthLayout
+      passwordRecovery
+      onPasswordRecoveryComplete={() => {
+        setPasswordRecovery(false);
+        setAuthSession(null);
+        setAuthNotice({ type: 'success', message: 'Senha atualizada. Entre novamente com sua nova senha.' });
+      }}
+    />
+  );
   if (!authSession) return <AuthLayout authNotice={authNotice} />;
   if (!state.isHydrated) return <LoadingScreen logo={logoSolo} />;
 

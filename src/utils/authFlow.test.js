@@ -3,6 +3,8 @@ import {
   getAuthCallbackNotice,
   getCleanAuthCallbackUrl,
   getLoginErrorMessage,
+  getPasswordRecoveryRequestErrorMessage,
+  getPasswordUpdateErrorMessage,
   getResendErrorMessage,
   getSignUpErrorMessage,
   isEmailNotConfirmedError,
@@ -25,6 +27,15 @@ describe('fluxo de autenticação', () => {
       message: 'Este link de confirmação expirou ou já foi utilizado. Solicite um novo e-mail.',
     });
     expect(notice.message).not.toContain('Database');
+  });
+
+  it('distingue um link expirado de recuperação sem expor detalhes técnicos', () => {
+    const notice = getAuthCallbackNotice('https://solo.test/?auth=recovery&error_code=otp_expired&error_description=Sensitive%20detail');
+    expect(notice).toEqual({
+      type: 'error',
+      message: 'Este link de redefinição de senha expirou ou já foi utilizado. Solicite um novo e-mail.',
+    });
+    expect(notice.message).not.toContain('Sensitive');
   });
 
   it('remove somente os parâmetros técnicos do callback', () => {
@@ -59,6 +70,15 @@ describe('fluxo de autenticação', () => {
       .toBe('Não foi possível solicitar o cadastro agora. Confira os dados e tente novamente.');
     expect(getResendErrorMessage({ status: 429, message: 'rate limit' }))
       .toBe('Aguarde um pouco antes de solicitar outro e-mail.');
+  });
+
+  it('mantém erros de recuperação seguros e sem confirmação de existência da conta', () => {
+    expect(getPasswordRecoveryRequestErrorMessage({ message: 'User not found' }))
+      .toBe('Não foi possível solicitar a redefinição agora. Tente novamente em instantes.');
+    expect(getPasswordRecoveryRequestErrorMessage(new TypeError('Failed to fetch')))
+      .toBe('Não foi possível conectar ao serviço de autenticação.');
+    expect(getPasswordUpdateErrorMessage({ status: 429, message: 'rate limit' }))
+      .toBe('Muitas tentativas. Aguarde um pouco e tente novamente.');
   });
 
   it('registra diagnóstico técnico somente em desenvolvimento', () => {

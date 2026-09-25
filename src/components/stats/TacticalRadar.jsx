@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useState } from 'react';
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -12,41 +12,25 @@ import {
   getAttributeKeyFromSubject,
   RPG_ATTRIBUTE_INFO,
 } from '../../utils/rpgProgressionModel';
-import ProgressionDetails from '../rpg/ProgressionDetails';
+import ProgressionDetailsSheet from '../rpg/ProgressionDetailsSheet';
 
 const getMetricKey = (item) => item?.metricKey || getAttributeKeyFromSubject(item?.subject);
 
 const TacticalRadar = ({ radarData, maxStat }) => {
-  const detailsId = useId();
-  const [pinnedKey, setPinnedKey] = useState(null);
-  const [previewKey, setPreviewKey] = useState(null);
-  const activeKey = previewKey || pinnedKey;
+  const [activeKey, setActiveKey] = useState(null);
   const activeItem = radarData.find((item) => getMetricKey(item) === activeKey);
   const displayRadarData = radarData.map((item) => {
     const info = RPG_ATTRIBUTE_INFO[getMetricKey(item)];
     return { ...item, publicSubject: info?.name || item.subject };
   });
 
-  const togglePinned = (key) => {
-    const closing = pinnedKey === key;
-    setPinnedKey(closing ? null : key);
-    if (closing) setPreviewKey(null);
-  };
-
   const getChartKey = (state) => getMetricKey(state?.activePayload?.[0]?.payload);
 
   return (
-    <section
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return;
-        setPinnedKey(null);
-        setPreviewKey(null);
-      }}
-      className="space-y-4 rounded-3xl border-2 border-border bg-card p-5 shadow-sm transition-all duration-500"
-    >
+    <section className="space-y-4 rounded-3xl border-2 border-border bg-card p-5 shadow-sm transition-all duration-500">
       <header className="text-center">
         <h3 className="text-sm font-black uppercase tracking-widest text-primary">Mapeamento tático</h3>
-        <p className="mt-1 text-xs leading-relaxed text-muted">Toque em um atributo, passe o mouse ou use Tab para entender o valor.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">Toque em um atributo para entender o valor.</p>
       </header>
 
       <div aria-hidden="true" className="relative h-64 w-full">
@@ -56,14 +40,9 @@ const TacticalRadar = ({ radarData, maxStat }) => {
             cy="50%"
             outerRadius="55%"
             data={displayRadarData}
-            onMouseMove={(state) => {
-              const key = getChartKey(state);
-              if (key) setPreviewKey(key);
-            }}
-            onMouseLeave={() => setPreviewKey(null)}
             onClick={(state) => {
               const key = getChartKey(state);
-              if (key) setPinnedKey((current) => current === key ? null : key);
+              if (key) setActiveKey(key);
             }}
           >
             <PolarGrid stroke="var(--chart-grid)" />
@@ -88,20 +67,14 @@ const TacticalRadar = ({ radarData, maxStat }) => {
         {radarData.map((item) => {
           const key = getMetricKey(item);
           const info = RPG_ATTRIBUTE_INFO[key];
-          const active = activeKey === key;
           if (!key || !info) return null;
           return (
             <button
               key={key}
               type="button"
-              aria-expanded={active}
-              aria-controls={detailsId}
-              onClick={() => togglePinned(key)}
-              onFocus={() => setPreviewKey(key)}
-              onBlur={() => setPreviewKey((current) => current === key ? null : current)}
-              onPointerEnter={(event) => event.pointerType === 'mouse' && setPreviewKey(key)}
-              onPointerLeave={(event) => event.pointerType === 'mouse' && setPreviewKey((current) => current === key ? null : current)}
-              className={`touch-target flex min-h-11 items-center justify-between gap-1 rounded-xl border px-2 text-left text-[10px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-xs ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-input/40 text-main hover:border-primary/40'}`}
+              aria-haspopup="dialog"
+              onClick={() => setActiveKey(key)}
+              className="touch-target flex min-h-11 items-center justify-between gap-1 rounded-xl border border-border bg-input/40 px-2 text-left text-[10px] font-black text-main transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-xs"
             >
               <span>{info.name}</span>
               <span className="tabular-nums text-muted">{item.A}</span>
@@ -110,15 +83,16 @@ const TacticalRadar = ({ radarData, maxStat }) => {
         })}
       </div>
 
-      {activeKey && activeItem && (
-        <div aria-live="polite">
-          <ProgressionDetails
-            id={detailsId}
-            info={RPG_ATTRIBUTE_INFO[activeKey]}
-            valueLabel={activeKey === 'FOCUS' || activeKey === 'DISCIPLINE' ? `${activeItem.A} pontos` : `Nível ${activeItem.A}`}
-          />
-        </div>
-      )}
+      <ProgressionDetailsSheet
+        isOpen={Boolean(activeKey && activeItem)}
+        onClose={() => setActiveKey(null)}
+        title={RPG_ATTRIBUTE_INFO[activeKey]?.name || 'Detalhes'}
+        items={activeKey && activeItem ? [{
+          key: activeKey,
+          info: RPG_ATTRIBUTE_INFO[activeKey],
+          valueLabel: activeKey === 'FOCUS' || activeKey === 'DISCIPLINE' ? `${activeItem.A} pontos` : `Nível ${activeItem.A}`,
+        }] : []}
+      />
     </section>
   );
 };

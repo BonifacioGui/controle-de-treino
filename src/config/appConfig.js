@@ -52,3 +52,9 @@ export const getEmailConfirmationRedirectUrl = (options) => {
   redirect.searchParams.set('auth', 'confirmed');
   return redirect.toString();
 };
+
+export const getPasswordRecoveryRedirectUrl = (options) => {
+  const redirect = new URL(getPublicAppUrl(options));
+  redirect.searchParams.set('auth', 'recovery');
+  return redirect.toString();
+};

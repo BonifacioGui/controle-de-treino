@@ -52,6 +52,26 @@ export default defineConfig({
         importScripts: ['sw-prompt-migration.js'],
         // Se o usuário entrar numa rota que não existe offline, joga ele pro index principal:
         navigateFallback: '/controle-de-treino/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
         // Quando você lançar uma versão nova do app, ele limpa a memória velha pra não pesar o celular do usuário:
         cleanupOutdatedCaches: true, 
       }

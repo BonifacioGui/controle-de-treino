@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getEmailConfirmationRedirectUrl, getPublicAppUrl, OFFICIAL_PUBLIC_APP_URL } from './appConfig';
+import {
+  getEmailConfirmationRedirectUrl,
+  getPasswordRecoveryRedirectUrl,
+  getPublicAppUrl,
+  OFFICIAL_PUBLIC_APP_URL,
+} from './appConfig';
 
 describe('configuração central da URL pública', () => {
   it('usa localhost e o base path no desenvolvimento', () => {
@@ -17,6 +22,12 @@ describe('configuração central da URL pública', () => {
       .toBe('https://bonifaciogui.github.io/controle-de-treino/?auth=confirmed');
   });
 
+  it('gera o destino público de recuperação reconhecível pelo aplicativo', () => {
+    expect(getPasswordRecoveryRedirectUrl({
+      configuredUrl: 'https://bonifaciogui.github.io/controle-de-treino/',
+    })).toBe('https://bonifaciogui.github.io/controle-de-treino/?auth=recovery');
+  });
+
   it('nunca aceita localhost como destino de um build de produção', () => {
     expect(getPublicAppUrl({
       configuredUrl: 'http://localhost:5173/',
@@ -31,6 +42,12 @@ describe('configuração central da URL pública', () => {
       isProduction: true,
       productionFallbackUrl: 'http://127.0.0.1:5173/',
     })).toBe(OFFICIAL_PUBLIC_APP_URL);
+    expect(getPasswordRecoveryRedirectUrl({
+      configuredUrl: 'http://localhost:5173/',
+      baseUrl: '/controle-de-treino/',
+      origin: 'http://localhost:5173',
+      isProduction: true,
+    })).toBe(`${OFFICIAL_PUBLIC_APP_URL}?auth=recovery`);
   });
 
   it('deriva uma URL absoluta do host publicado quando a variável não existe', () => {

@@ -42,6 +42,18 @@ export const getResendErrorMessage = (error) => {
   return 'Não foi possível solicitar outro e-mail agora. Tente novamente em instantes.';
 };
 
+export const getPasswordRecoveryRequestErrorMessage = (error) => {
+  if (isAuthRateLimitError(error)) return 'Muitas solicitações. Aguarde um pouco e tente novamente.';
+  if (isAuthNetworkError(error)) return 'Não foi possível conectar ao serviço de autenticação.';
+  return 'Não foi possível solicitar a redefinição agora. Tente novamente em instantes.';
+};
+
+export const getPasswordUpdateErrorMessage = (error) => {
+  if (isAuthRateLimitError(error)) return 'Muitas tentativas. Aguarde um pouco e tente novamente.';
+  if (isAuthNetworkError(error)) return 'Não foi possível conectar ao serviço de autenticação.';
+  return 'Não foi possível atualizar a senha. Solicite um novo link e tente novamente.';
+};
+
 export const getSafeAuthDiagnostic = (error) => ({
   code: error?.code || null,
   status: error?.status || null,
@@ -83,13 +95,14 @@ export const getAuthCallbackNotice = (urlValue) => {
     const normalizedCallbackError = `${errorCode} ${errorDescription}`.toLowerCase();
     const expired = /expired|otp_expired|invalid.*token/.test(normalizedCallbackError);
     const rateLimited = /rate|limit|too many/.test(normalizedCallbackError);
+    const callbackName = authState === 'recovery' ? 'redefinição de senha' : 'confirmação';
     return {
       type: 'error',
       message: expired
-        ? 'Este link de confirmação expirou ou já foi utilizado. Solicite um novo e-mail.'
+        ? `Este link de ${callbackName} expirou ou já foi utilizado. Solicite um novo e-mail.`
         : rateLimited
-          ? 'Muitas tentativas de confirmação. Aguarde um pouco e solicite um novo e-mail.'
-          : 'Não foi possível validar este link de confirmação. Solicite um novo e-mail.',
+          ? `Muitas tentativas de ${callbackName}. Aguarde um pouco e solicite um novo e-mail.`
+          : `Não foi possível validar este link de ${callbackName}. Solicite um novo e-mail.`,
     };
   }
   if (authState === 'confirmed') {
