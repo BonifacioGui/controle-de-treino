@@ -118,26 +118,22 @@ const WorkoutView = ({
         />
 
         <section className="solo-workout-hero rounded-2xl border border-primary/35 bg-card p-4 shadow-sm">
-          <div className="flex flex-col items-start justify-between gap-2 min-[360px]:flex-row min-[360px]:gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">Treino selecionado</p>
-              <h1 className="mt-1 text-lg font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
-              <p className="mt-1 text-sm text-muted">{currentWorkout.focus || 'Foco geral'} • {currentWorkout.exercises?.length || 0} exercícios</p>
-            </div>
-            <span className="shrink-0 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">Treino {activeDay}</span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
+            <p className="mt-1 text-sm font-medium text-muted">{currentWorkout.focus || 'Foco geral'} <span aria-hidden="true">·</span> {currentWorkout.exercises?.length || 0} exercícios</p>
           </div>
           {lastSession && !sessionActive && (
-            <p className="mt-3 text-sm text-muted">
-              Última sessão: {formatLocalDate(lastSession.dateKey)}
+            <p className="mt-2 text-xs text-muted">
+              Último treino: {formatLocalDate(lastSession.dateKey, { year: undefined })}
               {daysSinceLast === 1 ? ' • há 1 dia' : daysSinceLast > 1 ? ` • há ${daysSinceLast} dias` : ''}
             </p>
           )}
           {!sessionActive && !isTutorialDay && (
             <>
               {completedToday && (
-                <p className="mt-3 rounded-lg border border-success/35 bg-success/10 px-3 py-2 text-xs font-bold text-success">Já registrado nesta data. Você ainda pode iniciar outra sessão.</p>
+                <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-success"><CheckCircle2 aria-hidden="true" size={13} /> Registrado hoje · você ainda pode repetir</p>
               )}
-              <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
+              <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target mt-3 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
                 <Play fill="currentColor" /> Iniciar treino
               </button>
             </>
@@ -207,43 +203,44 @@ const WorkoutView = ({
         )}
 
         {!sessionActive && !isTutorialDay && (
-          <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
-            <div>
+          <section className="space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
+            <div className="px-1">
               <h2 className="flex items-center gap-2 text-base font-black text-main"><Dumbbell className="text-primary" /> Exercícios</h2>
-              <p className="mt-1 text-sm text-muted">Confira sua ficha antes de iniciar. Nada será registrado até você confirmar cada série.</p>
             </div>
             <ol className="space-y-2">
               {currentWorkout.exercises.map((exercise, index) => {
                 const performance = getExercisePerformance(history, exercise.name, exercise);
                 return (
-                  <li key={`${exercise.name}-${index}`} className="rounded-xl border border-border bg-input/40 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-main">{index + 1}. {exercise.name}</p>
+                  <li key={`${exercise.name}-${index}`} className="rounded-xl border border-border bg-input/35 px-3 py-2.5">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <p className="min-w-0 flex-1 text-sm font-black leading-snug text-main">{index + 1}. {exercise.name}</p>
+                      <span className="shrink-0 text-xs font-black text-primary">{exercise.sets}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
                         {performance.lastSummary ? (
-                          <p className="mt-1 truncate text-xs text-muted" title={performance.lastSummary}>Última: {performance.lastSummary}</p>
+                          <p className="truncate text-[11px] text-muted" title={performance.lastSummary}>Última: {performance.lastSummary}</p>
                         ) : (
-                          <p className="mt-1 text-xs text-muted">Sem sessão anterior registrada</p>
+                          <p className="text-[11px] text-muted">Sem sessão anterior registrada</p>
                         )}
                         {performance.pr && (
-                          <p className="mt-0.5 inline-flex flex-wrap items-center gap-x-1 text-xs font-bold text-gold">
-                            <Trophy aria-hidden="true" size={13} className="shrink-0" />
+                          <p className="mt-0.5 inline-flex flex-wrap items-center gap-x-1 text-[11px] font-semibold text-gold">
+                            <Trophy aria-hidden="true" size={12} className="shrink-0" />
                             <span>PR: {performance.pr.primary}{performance.pr.secondary ? ` • ${performance.pr.secondary}` : ''}</span>
                           </p>
                         )}
                       </div>
-                      <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-1 text-xs font-black text-primary">{exercise.sets}</span>
+                      <button
+                        type="button"
+                        onClick={() => setGuideExercise(exercise.name)}
+                        aria-label={`Ver como fazer ${exercise.name}`}
+                        className="touch-target -my-2 inline-flex shrink-0 items-center gap-1 rounded-lg px-1.5 text-[11px] font-semibold text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <CircleHelp size={14} aria-hidden="true" /> Como fazer
+                      </button>
                     </div>
                     {exercise.note && <p className="mt-2 text-xs text-muted">{exercise.note}</p>}
                     {exercise.alternatives?.length > 0 && <p className="mt-2 text-xs text-muted">Alternativas: {exercise.alternatives.join(', ')}</p>}
-                    <button
-                      type="button"
-                      onClick={() => setGuideExercise(exercise.name)}
-                      aria-label={`Ver como fazer ${exercise.name}`}
-                      className="touch-target mt-3 inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <CircleHelp size={15} aria-hidden="true" /> Como fazer
-                    </button>
                   </li>
                 );
               })}

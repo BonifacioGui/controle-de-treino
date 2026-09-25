@@ -264,6 +264,7 @@ const UiPreviewApp = () => {
           sessionDate="2026-09-18"
           levelUp
           newBadges={[{ title: 'Máquina quente' }]}
+          nextWorkout={{ day: 'B', title: workoutB.title, focus: workoutB.focus }}
           syncStatus="synced"
         />
       )}

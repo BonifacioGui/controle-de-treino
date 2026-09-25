@@ -1139,7 +1139,7 @@
 .solo-workout-hero {
   position: relative;
   overflow: hidden;
-  min-height: 8.5rem;
+  min-height: 0;
   background:
     linear-gradient(120deg, rgba(0, 224, 255, .09), transparent 45%),
     linear-gradient(300deg, rgba(255, 42, 145, .09), transparent 42%),

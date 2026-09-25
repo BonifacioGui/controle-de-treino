@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ArrowRight,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -62,6 +63,7 @@ const WorkoutComplete = ({
   sessionDate = null,
   levelUp = false,
   newBadges = [],
+  nextWorkout = null,
 }) => {
   const [selfieUrl, setSelfieUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(true);
@@ -194,6 +196,12 @@ const WorkoutComplete = ({
               <p className="truncate font-cyber text-[11px] font-black uppercase tracking-[0.17em] text-primary">{workoutTitle}</p>
               <h2 id="workout-summary-title" className="mt-0.5 text-xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Seu Share Card está pronto'}</h2>
               <p className="mt-0.5 text-xs text-muted">{partial ? 'Seu progresso foi registrado.' : 'Treino concluído. Personalize se quiser antes de compartilhar.'}</p>
+              {nextWorkout?.title && (
+                <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted">
+                  <ArrowRight aria-hidden="true" size={14} className="mt-0.5 shrink-0 text-primary" />
+                  <span>Próximo treino: <strong className="font-black text-main">{nextWorkout.title}{nextWorkout.focus ? ` — ${nextWorkout.focus}` : ''}</strong></span>
+                </p>
+              )}
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar resumo" className="touch-target flex shrink-0 items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>

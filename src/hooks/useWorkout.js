@@ -60,7 +60,10 @@ import {
   isHapticRetryFresh,
   triggerHaptic,
 } from '../utils/haptics';
-import { resolveSelectedWorkoutDay } from '../utils/workoutSelection';
+import {
+  getWorkoutDayAfterCompletion,
+  resolveSelectedWorkoutDay,
+} from '../utils/workoutSelection';
 import { useWorkoutSession } from './useWorkoutSession';
 
 const getInitialWorkout = (data) => Object.keys(data || {})[0] || 'A';
@@ -342,7 +345,6 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
           sessionStatus: session.status,
           sessionWorkoutName: session.workoutName,
           latestSession,
-          today: getLocalDateKey(),
         }));
         if (session.status !== SESSION_STATUS.idle && session.dateKey) setSelectedDate(session.dateKey);
       } else if (!planRow?.plan_data && Object.keys(workoutData).length > 0 && !planSync.dirty) {
@@ -773,6 +775,19 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       previousSessions,
       safeDay,
     );
+    const workoutDayAfterCompletion = getWorkoutDayAfterCompletion({
+      plan: workoutData,
+      completedDay: safeDay,
+      isHistoryEdit: Boolean(editTarget),
+      previousDay: editTarget?.previousWorkoutName,
+    });
+    const nextWorkout = !editTarget && workoutDayAfterCompletion
+      ? {
+          day: workoutDayAfterCompletion,
+          title: workoutData[workoutDayAfterCompletion]?.title || `Treino ${workoutDayAfterCompletion}`,
+          focus: workoutData[workoutDayAfterCompletion]?.focus || '',
+        }
+      : null;
     const reportSnapshot = {
       version: 2,
       sessionId: session.sessionId || createSessionId(),
@@ -788,6 +803,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       overloadStatus,
       partial,
       bossEncounter,
+      nextWorkout,
     };
 
     let localEntry = normalizeHistoryEntry({
@@ -837,6 +853,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     setSessionNoteState('');
     closeRestTimer();
     completeSession();
+    if (workoutDayAfterCompletion) {
+      setActiveDay(workoutDayAfterCompletion);
+      writeUserStoredText(userId, STORAGE_KEYS.activeDay, workoutDayAfterCompletion);
+    }
 
     let savedToCloud = false;
     if (userId && navigator.onLine && !syncInFlight.current) {
@@ -956,7 +976,12 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     setSessionNoteState('');
     closeRestTimer();
     resetSession();
-  }, [activeDay, closeRestTimer, resetSession, selectedDate, session.dateKey, session.workoutName]);
+    const previousWorkoutName = session.editTarget?.previousWorkoutName;
+    if (previousWorkoutName && workoutData[previousWorkoutName]) {
+      setActiveDay(previousWorkoutName);
+      writeUserStoredText(userId, STORAGE_KEYS.activeDay, previousWorkoutName);
+    }
+  }, [activeDay, closeRestTimer, resetSession, selectedDate, session.dateKey, session.editTarget, session.workoutName, userId, workoutData]);
 
   const reopenHistoryEntry = useCallback((id) => {
     if (sessionActive) throw new Error('Finalize ou descarte o treino atual antes de corrigir outra sessão.');
@@ -1006,10 +1031,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       note: entry.note,
       progress: restoredProgress,
       bossEncounter: entry.bossEncounter,
-      editTarget: { id: entry.id, localId: entry.localId },
+      editTarget: { id: entry.id, localId: entry.localId, previousWorkoutName: activeDay },
     });
     return true;
-  }, [closeRestTimer, reopenSession, sessionActive, visibleHistory]);
+  }, [activeDay, closeRestTimer, reopenSession, sessionActive, visibleHistory]);
 
   const actions = useMemo(() => ({
     updateSetData,

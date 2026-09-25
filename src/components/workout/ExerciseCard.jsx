@@ -186,6 +186,7 @@ const ExerciseCard = ({
           </div>
           <p className="mt-1 text-xs font-semibold text-muted">
             {exerciseProgress.skipped ? 'Exercício pulado' : `${completedSets}/${expectedSets} séries`}
+            {!exerciseProgress.skipped && ex.sets ? ` • Meta ${ex.sets}` : ''}
             {volume > 0 ? ` • ${Math.round(volume).toLocaleString('pt-BR')} kg` : ''}
           </p>
         </div>
@@ -212,9 +213,9 @@ const ExerciseCard = ({
               <button
                 type="button"
                 onClick={() => setShowGuide(true)}
-                className="touch-target inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-primary/5 px-3 text-xs font-bold text-primary hover:bg-primary/10"
+                className="touch-target inline-flex items-center gap-1 rounded-lg px-2 text-xs font-semibold text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <CircleHelp size={15} /> Como fazer
+                <CircleHelp size={14} /> Como fazer
               </button>
               {lastExercise && (
                 <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
