@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Crosshair, ShieldCheck, Sparkles, Swords, X } from 'lucide-react';
+import { Crosshair, ShieldCheck, Sparkles, Swords, X, Zap } from 'lucide-react';
 import scavengerImg from '../../assets/scavenger.webp';
 import revenantImg from '../../assets/t-800.webp';
 import colossusImg from '../../assets/mechagodzilla.webp';
@@ -47,6 +47,10 @@ const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', u
   const discreet = experienceMode === 'discreet';
   const immersive = experienceMode === 'immersive';
   const tacticalLab = theme === 'light';
+  const criticalBonus = Number(encounter.criticalBonus) || 0;
+  const criticalHits = Number(encounter.criticalHits) || 0;
+  const powerBonus = Number(encounter.powerBonus) || 0;
+  const powerHits = Number(encounter.powerHits) || 0;
   const dismissIntro = () => {
     if (userId) writeUserStoredJSON(userId, STORAGE_KEYS.bossIntroSeen, true);
     setShowIntro(false);
@@ -60,7 +64,7 @@ const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', u
       {showIntro && (
         <div className="relative z-20 flex items-start gap-3 border-b border-primary/30 bg-primary/10 px-3 py-3 text-xs leading-relaxed text-muted sm:px-4">
           <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={17} />
-          <p className="flex-1"><strong className="text-main">Como funciona:</strong> séries confirmadas causam dano pelo volume real. Um novo recorde de carga dá +20% somente naquela série.</p>
+          <p className="flex-1"><strong className="text-main">Como funciona:</strong> séries confirmadas causam dano pelo volume real. Novo recorde de carga gera CRITICAL HIT (+20%); mais repetições na mesma carga gera POWER HIT (+10%).</p>
           <button type="button" onClick={dismissIntro} aria-label="Entendi, fechar explicação" className="touch-target -m-2 flex items-center justify-center text-muted hover:text-main"><X size={18} /></button>
         </div>
       )}
@@ -96,8 +100,11 @@ const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', u
             <span className="font-bold text-main">{Math.round(encounter.damage).toLocaleString('pt-BR')} / {Math.round(encounter.maxHp).toLocaleString('pt-BR')} dano</span>
             <span className="text-muted">HP restante: {Math.round(encounter.remainingHp).toLocaleString('pt-BR')}</span>
           </div>
-          {encounter.criticalBonus > 0 && (
-            <p className="mt-2 flex items-center gap-1 text-xs font-bold text-gold"><Sparkles size={14} /> {encounter.criticalHits} critical {encounter.criticalHits === 1 ? 'hit' : 'hits'} • +{Math.round(encounter.criticalBonus).toLocaleString('pt-BR')} dano</p>
+          {criticalBonus > 0 && (
+            <p className="mt-2 flex items-center gap-1 text-xs font-bold text-gold"><Sparkles size={14} /> {criticalHits} {criticalHits === 1 ? 'CRITICAL HIT' : 'CRITICAL HITS'} • +{Math.round(criticalBonus).toLocaleString('pt-BR')} dano</p>
+          )}
+          {powerBonus > 0 && (
+            <p className="mt-1 flex items-center gap-1 text-xs font-bold text-primary"><Zap size={14} /> {powerHits} {powerHits === 1 ? 'POWER HIT' : 'POWER HITS'} • +{Math.round(powerBonus).toLocaleString('pt-BR')} dano</p>
           )}
           {encounter.overkill > 0 && <p className="mt-1 text-xs font-bold text-success">Overkill: {Math.round(encounter.overkill).toLocaleString('pt-BR')}</p>}
         </div>

@@ -1,5 +1,6 @@
 import { calculateSetCanonicalVolume, getCanonicalLoad, getSetLoadMode, isCanonicalLoadMode } from './loadModel';
-import { getMaxCompletedLoad } from './progressionUtils';
+import { parsePositiveInteger } from './numberUtils';
+import { getCompletedLoadBenchmarks } from './progressionUtils';
 
 export const BOSS_CATALOG = Object.freeze([
   { id: 'scavenger-unit', name: 'SCAVENGER UNIT', tier: 1, rarity: 'common', assetKey: 'scavenger', aura: '#8b9bb4' },
@@ -56,6 +57,8 @@ export const createBossEncounter = ({ sessionId, dateKey, workoutName, workout, 
     baseDamage: 0,
     criticalBonus: 0,
     criticalHits: 0,
+    powerBonus: 0,
+    powerHits: 0,
     remainingHp: maxHp,
     overkill: 0,
     defeated: false,
@@ -64,33 +67,45 @@ export const createBossEncounter = ({ sessionId, dateKey, workoutName, workout, 
   };
 };
 
-const getHistoricalBestLoad = (history, workoutName, exercise) => {
-  const currentMode = getSetLoadMode({}, exercise);
-  const historicalExercises = history
-    .filter((entry) => entry.workoutName === workoutName)
-    .flatMap((entry) => entry.exercises || []);
-  return getMaxCompletedLoad(historicalExercises, exercise.name, currentMode);
-};
-
-export const calculateWorkoutBossDamage = (exercises = [], history = [], workoutName) => {
+export const calculateWorkoutBossDamage = (exercises = [], history = []) => {
   let baseDamage = 0;
   let criticalBonus = 0;
   let criticalHits = 0;
+  let powerBonus = 0;
+  let powerHits = 0;
+  const historicalExercises = history.flatMap((entry) => entry.exercises || []);
 
   exercises.forEach((exercise) => {
-    if (!isCanonicalLoadMode(getSetLoadMode({}, exercise))) return;
-    let runningBest = getHistoricalBestLoad(history, workoutName, exercise);
+    const currentMode = getSetLoadMode({}, exercise);
+    if (!isCanonicalLoadMode(currentMode)) return;
+    const benchmarks = getCompletedLoadBenchmarks(historicalExercises, exercise.name, currentMode);
+    let runningBest = benchmarks.bestLoad;
+    const runningBestRepsByLoad = new Map(benchmarks.bestRepsByLoad);
     (exercise.sets || []).forEach((set) => {
       if (!set.completed) return;
+      if (getSetLoadMode(set, exercise) !== currentMode) return;
       const setDamage = calculateSetCanonicalVolume(set, exercise);
       const canonicalLoad = getCanonicalLoad(set, exercise) ?? 0;
-      if (setDamage <= 0) return;
+      const reps = parsePositiveInteger(set.reps);
+      if (setDamage <= 0 || reps === null) return;
       baseDamage += setDamage;
+
       if (runningBest > 0 && canonicalLoad > runningBest) {
         criticalBonus += setDamage * 0.2;
         criticalHits += 1;
+      } else {
+        const previousBestReps = runningBestRepsByLoad.get(canonicalLoad) || 0;
+        if (previousBestReps > 0 && reps > previousBestReps) {
+          powerBonus += setDamage * 0.1;
+          powerHits += 1;
+        }
       }
+
       runningBest = Math.max(runningBest, canonicalLoad);
+      runningBestRepsByLoad.set(canonicalLoad, Math.max(
+        runningBestRepsByLoad.get(canonicalLoad) || 0,
+        reps,
+      ));
     });
   });
 
@@ -99,7 +114,9 @@ export const calculateWorkoutBossDamage = (exercises = [], history = [], workout
     baseDamage: round(baseDamage),
     criticalBonus: round(criticalBonus),
     criticalHits,
-    damage: round(baseDamage + criticalBonus),
+    powerBonus: round(powerBonus),
+    powerHits,
+    damage: round(baseDamage + criticalBonus + powerBonus),
   };
 };
 

@@ -219,11 +219,15 @@ const WorkoutView = ({
                     <div className="mt-0.5 flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         {performance.lastSummary ? (
-                          <p className="truncate text-[11px] text-muted" title={performance.lastSummary}>Última: {performance.lastSummary}</p>
+                          <p className="inline-flex max-w-full items-center gap-1 truncate text-[11px] text-muted" title={performance.lastSummary}>
+                            <span className="shrink-0">Melhor da última:</span>
+                            <span className="truncate">{performance.lastSummary}</span>
+                            {performance.lastBestIsPr && <Trophy aria-label="Recorde histórico" size={12} className="shrink-0 text-gold" />}
+                          </p>
                         ) : (
                           <p className="text-[11px] text-muted">Sem sessão anterior registrada</p>
                         )}
-                        {performance.pr && (
+                        {performance.pr && !performance.lastBestIsPr && (
                           <p className="mt-0.5 inline-flex flex-wrap items-center gap-x-1 text-[11px] font-semibold text-gold">
                             <Trophy aria-hidden="true" size={12} className="shrink-0" />
                             <span>PR: {performance.pr.primary}{performance.pr.secondary ? ` • ${performance.pr.secondary}` : ''}</span>

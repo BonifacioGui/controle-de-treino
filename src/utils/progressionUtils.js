@@ -1,4 +1,5 @@
 import { getCanonicalLoad, getSetLoadMode, isCanonicalLoadMode } from './loadModel';
+import { parsePositiveInteger } from './numberUtils';
 import { isSameExercise } from './workoutUtils';
 
 const getExerciseLoadMode = (exercise = {}) => getSetLoadMode(
@@ -21,6 +22,27 @@ export const getMaxCompletedLoadRecord = (exercises = [], exerciseName, required
 export const getMaxCompletedLoad = (exercises = [], exerciseName, requiredMode = null) => (
   getMaxCompletedLoadRecord(exercises, exerciseName, requiredMode)?.canonicalLoad || 0
 );
+
+export const getCompletedLoadBenchmarks = (exercises = [], exerciseName, requiredMode) => {
+  const bestRepsByLoad = new Map();
+  let bestLoad = 0;
+
+  exercises.forEach((exercise) => {
+    if (!isSameExercise(exerciseName, exercise.name)) return;
+    (exercise.sets || []).forEach((set) => {
+      if (set.completed !== true) return;
+      const mode = getSetLoadMode(set, exercise);
+      if (!isCanonicalLoadMode(mode) || mode !== requiredMode) return;
+      const canonicalLoad = getCanonicalLoad(set, exercise);
+      const reps = parsePositiveInteger(set.reps);
+      if (canonicalLoad === null || canonicalLoad < 0 || reps === null) return;
+      bestLoad = Math.max(bestLoad, canonicalLoad);
+      bestRepsByLoad.set(canonicalLoad, Math.max(bestRepsByLoad.get(canonicalLoad) || 0, reps));
+    });
+  });
+
+  return { bestLoad, bestRepsByLoad };
+};
 
 export const countLoadPrs = (currentExercises = [], history = []) => (
   currentExercises.reduce((count, exercise) => {
