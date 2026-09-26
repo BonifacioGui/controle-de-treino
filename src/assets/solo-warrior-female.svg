@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 360" role="img" aria-labelledby="title desc">
+  <title id="title">Guerreira cibernética feminina original do SOLO</title>
+  <desc id="desc">Figura atlética frontal com armadura tecnológica, visor e silhueta de energia.</desc>
+  <defs>
+    <linearGradient id="female-shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17293a"/>
+      <stop offset="0.5" stop-color="#08121f"/>
+      <stop offset="1" stop-color="#210c27"/>
+    </linearGradient>
+    <linearGradient id="female-plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#344b60"/>
+      <stop offset="0.55" stop-color="#131f2e"/>
+      <stop offset="1" stop-color="#080e19"/>
+    </linearGradient>
+    <linearGradient id="female-energy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#26eaff"/>
+      <stop offset="0.5" stop-color="#b9fbff"/>
+      <stop offset="1" stop-color="#ff3ab6"/>
+    </linearGradient>
+    <filter id="female-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="#27e9ff" stroke-linecap="round" opacity=".2">
+    <path d="M45 91C20 145 25 263 57 320"/>
+    <path d="M195 91c25 54 20 172-12 229"/>
+    <path d="M59 34C95 5 151 7 181 39" stroke-dasharray="2 9"/>
+    <path d="M32 185h20M188 185h20M46 289h16M178 289h16"/>
+  </g>
+
+  <g stroke-linejoin="round">
+    <path d="m101 34-17 4 8-19 17 8L123 6l8 23 17-9-2 21 19 7-29 8-38-5-21-8Z" fill="url(#female-shell)" stroke="url(#female-energy)" stroke-width="2"/>
+    <path d="M94 44q27-17 53 3l-5 36-22 18-22-18Z" fill="url(#female-shell)" stroke="#6df1ff" stroke-width="1.8"/>
+    <path d="m99 59 18-6 25 9-8 13-17 3-14-4Z" fill="#07101c" stroke="#ff3ab6" stroke-width="1.5" filter="url(#female-glow)"/>
+    <path d="m109 83 11 7 11-8M120 90v12" fill="none" stroke="#36e5f8" stroke-width="1.35"/>
+    <path d="m103 91-3 17 20 14 20-14-4-18-16 12Z" fill="url(#female-plate)" stroke="#37e0f3" stroke-width="1.4"/>
+
+    <path d="m95 103-33 8-25 23 14 24 25-18 5 67 39 21 39-21 5-67 25 18 14-24-25-23-33-8-25 19Z" fill="url(#female-shell)" stroke="#4de7f8" stroke-width="2"/>
+    <path d="m82 111-25 5-19 18 14 17 25-17ZM158 111l25 5 19 18-14 17-25-17Z" fill="url(#female-plate)" stroke="#ff3ab6" stroke-width="1.7"/>
+    <path d="m87 116 33 12 33-12 5 44-38 21-38-21Z" fill="url(#female-plate)" stroke="#43e4f7" stroke-width="1.6"/>
+    <path d="m93 127 27 8 27-8-5 25-22 12-22-12Z" fill="#0c1825" stroke="#ff3ab6" stroke-width="1.25"/>
+    <path d="M120 130v81M88 168l32 13 32-13M91 190l29-9 29 9" fill="none" stroke="#42e0f2" stroke-width="1.15" opacity=".8"/>
+    <path d="m88 163-7 44 39 21 39-21-7-44-32 18Z" fill="url(#female-shell)" stroke="#35dff3" stroke-width="1.5"/>
+
+    <path d="m52 151-11 15-8 65 17 9 17-64 10-42Z" fill="url(#female-shell)" stroke="#42e4f7" stroke-width="1.8"/>
+    <path d="m188 151 11 15 8 65-17 9-17-64-10-42Z" fill="url(#female-shell)" stroke="#42e4f7" stroke-width="1.8"/>
+    <path d="m34 220-5 37 16 13 13-28-8-11Z" fill="url(#female-plate)" stroke="#ff3ab6" stroke-width="1.4"/>
+    <path d="m206 220 5 37-16 13-13-28 8-11Z" fill="url(#female-plate)" stroke="#ff3ab6" stroke-width="1.4"/>
+    <path d="M43 270v11l-11 13 5 7 16-8 3-21ZM197 270v11l11 13-5 7-16-8-3-21Z" fill="#09131f" stroke="#37dff2" stroke-width="1.4"/>
+
+    <path d="m81 204-13 43 12 54 25-3 15-70Z" fill="url(#female-plate)" stroke="#4ce7f8" stroke-width="1.8"/>
+    <path d="m159 204 13 43-12 54-25-3-15-70Z" fill="url(#female-plate)" stroke="#4ce7f8" stroke-width="1.8"/>
+    <path d="m80 288-4 48 29 2 2-41ZM160 288l4 48-29 2-2-41Z" fill="url(#female-shell)" stroke="#3be2f5" stroke-width="1.8"/>
+    <path d="m76 325-9 23 39 2-1-15ZM164 325l9 23-39 2 1-15Z" fill="#07101c" stroke="#ff3ab6" stroke-width="1.6"/>
+    <path d="m82 234 23 7M158 234l-23 7M80 272l26 5M160 272l-26 5M79 313l26 4M161 313l-26 4" fill="none" stroke="#ff3ab6" stroke-width="1.15" opacity=".75"/>
+  </g>
+
+  <g fill="#bcfbff" filter="url(#female-glow)">
+    <circle cx="120" cy="144" r="3"/>
+    <circle cx="45" cy="250" r="2"/>
+    <circle cx="195" cy="250" r="2"/>
+  </g>
+</svg>

@@ -1,25 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, Terminal } from 'lucide-react';
+import React, { useState } from 'react';
+import { CircleHelp, Trophy, Terminal } from 'lucide-react';
+import { getRpgLevelProgress, RPG_XP_INFO } from '../../utils/rpgProgressionModel';
+import ProgressionDetailsSheet from './ProgressionDetailsSheet';
 
-// 🔥 PADRÃO OURO: Recebe 'stats' direto e confia na matemática do rpgSystem!
 const UserLevel = ({ stats }) => {
-  
-  // 🔥 ESTADO DE ANIMAÇÃO: Controla a largura da barra
-  const [barWidth, setBarWidth] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const barWidth = stats?.progress || 0;
 
-  // 🔥 EFEITO GATILHO: Espera a tela renderizar e joga a barra para o valor real
-  useEffect(() => {
-    setBarWidth(0);
-    
-    const timer = setTimeout(() => {
-      // Usando o nome correto que veio do useWorkout!
-      setBarWidth(stats?.progress || 0);
-    }, 150);
+  if (!stats) return null;
 
-    return () => clearTimeout(timer);
-  }, [stats?.progress]);
-
-  if (!stats) return null; // Prevenção contra carregamento fantasma
+  const levelProgress = getRpgLevelProgress(stats.xp);
 
   return (
     <div 
@@ -36,23 +26,23 @@ const UserLevel = ({ stats }) => {
         <Trophy size={80} />
       </div>
 
-      <div className="flex justify-between items-end mb-4 relative z-10">
+      <div className="relative z-10 mb-4 flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-end min-[360px]:justify-between">
         <div>
           <div className="flex items-center gap-1.5 mb-1.5 opacity-80">
             <Terminal size={10} className="text-yellow-600 dark:text-yellow-500" />
-            <span className="text-[9px] font-mono font-black text-yellow-600 dark:text-yellow-500 uppercase tracking-widest block">
+            <span className="block whitespace-nowrap font-mono text-[9px] font-black uppercase tracking-widest text-yellow-600 dark:text-yellow-500">
               Status de Patente
             </span>
           </div>
-          <h2 className="text-2xl font-black text-main dark:text-white uppercase leading-none dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
+          <h2 className="font-rank text-main dark:text-white uppercase dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
             {stats.title || 'Recruta'}
           </h2>
         </div>
-        <div className="text-right">
+        <div className="text-left min-[360px]:text-right">
           <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-500 via-yellow-600 to-yellow-800 dark:from-yellow-300 dark:via-yellow-500 dark:to-yellow-700 leading-none block drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">
             LVL {stats.level || 1}
           </span>
-          <span className="text-[9px] font-black text-yellow-600/80 dark:text-yellow-500/70 uppercase tracking-widest mt-1 block">
+          <span className="mt-1 block whitespace-nowrap text-[9px] font-black uppercase tracking-widest text-yellow-600/80 dark:text-yellow-500/70">
             {Math.floor(stats.xp || 0).toLocaleString()} XP TOTAL
           </span>
         </div>
@@ -60,10 +50,9 @@ const UserLevel = ({ stats }) => {
 
       {/* Barra de XP */}
       <div className="relative z-10">
-        <div className="flex justify-between text-[9px] font-black text-muted mb-1.5 uppercase tracking-wider">
+        <div className="mb-1.5 flex flex-col gap-1 text-[9px] font-black uppercase tracking-wider text-muted min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
           <span>PROGRESSO DE NÍVEL</span>
-          <span className="text-yellow-600 dark:text-yellow-500/80">
-            {/* 🔥 Usa o xpRemaining que já veio calculado do servidor */}
+          <span className="whitespace-nowrap text-yellow-600 dark:text-yellow-500/80">
             {Math.max(0, stats.xpRemaining || 0).toLocaleString()} XP P/ LVL {(stats.level || 1) + 1}
           </span>
         </div>
@@ -88,6 +77,31 @@ const UserLevel = ({ stats }) => {
           </span>
         </div>
       </div>
+
+      <div className="relative z-10 mt-4 border-t border-yellow-500/20 pt-3">
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setDetailsOpen(true)}
+          className="touch-target inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-black text-yellow-700 transition-colors hover:bg-yellow-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 dark:text-yellow-400"
+        >
+          <CircleHelp aria-hidden="true" size={16} /> Como ganho XP?
+        </button>
+
+      </div>
+
+      <ProgressionDetailsSheet
+        isOpen={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        title={RPG_XP_INFO.name}
+        items={[{
+          key: 'XP_TOTAL',
+          info: RPG_XP_INFO,
+          levelProgress,
+          valueLabel: `Nível ${levelProgress.level}`,
+          progressValueLabel: `${Math.floor(Math.max(0, Number(stats.xp) || 0)).toLocaleString('pt-BR')} XP`,
+        }]}
+      />
     </div>
   );
 };

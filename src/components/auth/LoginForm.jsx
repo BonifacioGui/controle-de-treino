@@ -1,41 +1,65 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import { LogIn, Eye, EyeOff, Loader2, X, User, Lock } from 'lucide-react';
+import { CheckCircle2, LogIn, Eye, EyeOff, Loader2, X, User, Lock } from 'lucide-react';
 import logoSolo from '../../assets/logo-solo.svg';
+import EmailConfirmationPanel from './EmailConfirmationPanel';
+import {
+  getLoginErrorMessage,
+  isEmailNotConfirmedError,
+  logAuthDiagnostic,
+} from '../../utils/authFlow';
 
-const LoginForm = ({ onSwitch }) => {
+const LoginForm = ({ onSwitch, onForgotPassword, authNotice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState('');
+  const loginInFlight = useRef(false);
 
-  // 🔥 A MÁGICA: Agora recebe o evento 'e' e previne o refresh da página
   const handleLogin = async (e) => {
     if (e) e.preventDefault(); 
-    
+    if (loginInFlight.current || loading) return;
+    loginInFlight.current = true;
     setLoading(true);
     setErrorMsg('');
     
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      // Tradução rápida de erros comuns para manter a imersão
-      const msg = error.message === 'Invalid login credentials' 
-        ? 'Credenciais de acesso inválidas.' 
-        : error.message;
-      setErrorMsg(msg);
+    try {
+      const normalizedEmail = email.trim();
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (error) {
+        logAuthDiagnostic('Falha no login:', error);
+        if (isEmailNotConfirmedError(error)) {
+          setPendingConfirmationEmail(normalizedEmail);
+          return;
+        }
+        setErrorMsg(getLoginErrorMessage(error));
+      }
+    } catch (error) {
+      logAuthDiagnostic('Falha inesperada no login:', error);
+      setErrorMsg(getLoginErrorMessage(error));
+    } finally {
+      loginInFlight.current = false;
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
+  if (pendingConfirmationEmail) {
+    return <EmailConfirmationPanel email={pendingConfirmationEmail} onBack={() => setPendingConfirmationEmail('')} />;
+  }
+
   return (
-    // 🔥 MUDANÇA: 'form' com 'onSubmit' permite o ENTER e o botão 'IR' do celular
     <form onSubmit={handleLogin} className="space-y-6 animate-in slide-in-from-left duration-300">
+      {authNotice && (
+        <div role={authNotice.type === 'error' ? 'alert' : 'status'} className={`flex items-start justify-center gap-2 rounded-xl border p-3 text-center text-xs font-black ${authNotice.type === 'error' ? 'border-danger/50 bg-danger/10 text-danger' : 'border-success/50 bg-success/10 text-success'}`}>
+          {authNotice.type === 'success' ? <CheckCircle2 aria-hidden="true" size={17} className="shrink-0" /> : <X aria-hidden="true" size={17} className="shrink-0" />}
+          <span className="leading-relaxed">{authNotice.message}</span>
+        </div>
+      )}
       
       {errorMsg && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-xl mb-6 text-[11px] font-black uppercase text-center flex items-center justify-center gap-2 animate-in fade-in shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+        <div className="border border-danger/50 bg-danger/10 text-danger p-3 rounded-xl mb-6 text-xs font-black uppercase text-center flex items-center justify-center gap-2 animate-in fade-in shadow-sm">
             <X size={16} className="shrink-0" /> 
             <span className="leading-tight">{errorMsg}</span>
         </div>
@@ -44,20 +68,20 @@ const LoginForm = ({ onSwitch }) => {
       {/* CABEÇALHO LOGIN */}
       <div className="flex flex-col items-center text-center mb-10 mt-2">
         <div className="flex items-center justify-center gap-3">
-          <h1 className="font-sans font-black text-5xl sm:text-6xl tracking-[0.15em] bg-gradient-to-r from-[#00ffff] via-[#ff00ff] to-[#00ffff] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_10px_rgba(0,255,255,0.4)] transition-all duration-500">
+          <h1 className="auth-wordmark font-cyber font-black text-5xl sm:text-6xl tracking-[0.15em] bg-[length:200%_auto] bg-clip-text text-transparent leading-none uppercase transition-all duration-500">
             SOLO
           </h1>
           <div className="relative h-10 w-auto flex items-center justify-center shrink-0">
             <img 
               src={logoSolo} 
               alt="SOLO Logo" 
-              className="object-contain h-full w-auto drop-shadow-[0_0_8px_rgba(0,243,255,0.7)] transition-all duration-300 relative z-10" 
+              className="auth-logo object-contain h-full w-auto transition-all duration-300 relative z-10"
             />
           </div>
         </div>
-        <p className="font-mono text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-[0.35em] mt-5 pl-3 border-l-2 border-slate-700/80">
-          Where <span className="text-slate-100 font-bold">Discipline</span> Becomes{' '}
-          <span className="text-secondary drop-shadow-[0_0_8px_rgba(var(--secondary),0.6)] font-extrabold">Dopamine</span>
+        <p className="auth-tagline font-mono text-xs text-muted uppercase tracking-[0.28em] mt-5 pl-3 border-l-2 border-border">
+          Where <span className="text-main font-bold">Discipline</span> Becomes{' '}
+          <span className="text-secondary font-extrabold">Dopamine</span>
         </p>
       </div>
 
@@ -66,10 +90,10 @@ const LoginForm = ({ onSwitch }) => {
         
         {/* Campo E-mail */}
         <div className="group">
-          <label htmlFor="email-input" className="text-[10px] font-black uppercase text-muted mb-1.5 block group-focus-within:text-primary transition-colors cursor-pointer">
+          <label htmlFor="email-input" className="mb-1.5 block cursor-pointer text-xs font-black uppercase text-muted transition-colors group-focus-within:text-primary">
             E-mail de Acesso
           </label>
-          <div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary focus-within:shadow-[0_0_15px_rgba(0,243,255,0.15)] transition-all duration-300">
+          <div className="auth-field flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary transition-all duration-300">
             <User className="text-muted shrink-0 mr-3.5 group-focus-within:text-primary transition-colors" size={18} />
             <input 
               id="email-input"
@@ -85,10 +109,10 @@ const LoginForm = ({ onSwitch }) => {
 
         {/* Campo Senha */}
         <div className="relative group">
-          <label htmlFor="password-input" className="text-[10px] font-black uppercase text-muted mb-1.5 block group-focus-within:text-primary transition-colors cursor-pointer">
+          <label htmlFor="password-input" className="mb-1.5 block cursor-pointer text-xs font-black uppercase text-muted transition-colors group-focus-within:text-primary">
             Senha de Acesso
           </label>
-          <div className="flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary focus-within:shadow-[0_0_15px_rgba(0,243,255,0.15)] transition-all duration-300">
+          <div className="auth-field flex items-center w-full bg-input border-2 border-border rounded-xl px-4 py-4 focus-within:border-primary transition-all duration-300">
             <Lock className="text-muted shrink-0 mr-3.5 group-focus-within:text-primary transition-colors" size={18} />
             <input 
               id="password-input"
@@ -100,21 +124,30 @@ const LoginForm = ({ onSwitch }) => {
               onChange={(e) => setPassword(e.target.value)} 
             />
             <button 
-              type="button" // 🔥 Evita que este botão submeta o formulário
+              type="button"
               onClick={() => setShowPassword(!showPassword)} 
-              className="text-muted hover:text-primary transition-colors p-1"
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              className="touch-target flex items-center justify-center rounded-xl text-muted transition-colors hover:text-primary"
             >
               {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </div>
+          <div className="mt-1.5 text-right">
+            <button
+              type="button"
+              onClick={() => onForgotPassword(email)}
+              className="touch-target -mr-2 inline-flex items-center rounded-lg px-2 text-xs font-bold text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Esqueci minha senha
             </button>
           </div>
         </div>
       </div>
 
-      {/* 🔥 BOTÃO SUBMIT: O 'type="submit"' é o que fecha o pacto com o Enter */}
       <button 
         type="submit"
         disabled={loading || !email || !password} 
-        className="w-full mt-2 bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-[length:200%_auto] animate-gradient text-black font-black py-4 rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-40 disabled:hover:scale-100 uppercase tracking-widest text-sm"
+        className="auth-primary-action w-full mt-2 font-black py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-40 disabled:hover:scale-100 uppercase tracking-widest text-sm"
       >
         {loading ? (
           <><Loader2 size={18} className="animate-spin" /> VERIFICANDO...</>
@@ -126,9 +159,9 @@ const LoginForm = ({ onSwitch }) => {
       {/* Link de Switch */}
       <div className="text-center pt-2">
         <button 
-          type="button" // 🔥 Importante ser type="button" para não tentar logar ao clicar aqui
+          type="button"
           onClick={onSwitch} 
-          className="text-[10px] font-black text-muted hover:text-primary uppercase tracking-[0.2em] transition-colors py-2 px-4 rounded-lg hover:bg-white/5"
+          className="touch-target rounded-lg px-4 text-xs font-black text-muted transition-colors hover:bg-primary/5 hover:text-primary"
         >
           Novo no SOLO? <span className="hover:underline">Criar Conta</span>
         </button>

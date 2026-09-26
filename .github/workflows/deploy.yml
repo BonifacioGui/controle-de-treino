@@ -2,7 +2,9 @@ name: Deploy para GitHub Pages
 
 on:
   push:
-    branches: ["main"] # Verifique se sua branch principal se chama main ou master
+    # A branch de revisão publica uma prévia no Pages antes do merge.
+    # Remover agent/revisao-ux-features desta lista antes de concluir o PR.
+    branches: ["main", "agent/revisao-ux-features"]
 
 concurrency:
   group: "pages"
@@ -16,6 +18,9 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      # URL pública não é segredo e deve ficar explícita no build publicado.
+      VITE_PUBLIC_APP_URL: https://bonifaciogui.github.io/controle-de-treino/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +36,6 @@ jobs:
           npm install
           npm run build
         env:
-          # 🔥 ESSA É A PARTE QUE FALTA :
-          # O GitHub pega o valor do "Secret" e injeta no processo do Vite
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
@@ -43,5 +46,3 @@ jobs:
 
       - name: Deploy
         uses: actions/deploy-pages@v4
-
-        

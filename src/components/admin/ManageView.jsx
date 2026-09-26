@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
-const EXERCISE_CATALOG = {
-  Peito: ["Supino Reto (Barra)", "Supino Reto (Halter)", "Supino Inclinado (Barra)", "Supino Inclinado (Halter)", "Crucifixo no Crossover", "Crucifixo (Halter)", "Voador (Peck Deck)", "Flexão de Braço", "Pullover", "Crossover Polia Alta", "Crossover Polia Baixa", "Supino Declinado"],
-  Costas: ["Puxada Frontal (Pulley)", "Puxada Triângulo", "Remada Curvada", "Remada Baixa", "Remada Unilateral (Serrote)", "Remada Cavalinho", "Pull-down", "Barra Fixa", "Levantamento Terra"],
-  Pernas: ["Agachamento Livre", "Agachamento Hack", "Agachamento Búlgaro", "Leg Press 45º", "Leg Press Horizontal", "Cadeira Extensora", "Mesa Flexora", "Cadeira Flexora", "Stiff", "Levantamento Terra Romeno (RDL)", "Elevação Pélvica", "Cadeira Abdutora", "Cadeira Adutora", "Panturrilha em Pé", "Panturrilha Sentado"],
-  Ombros: ["Desenvolvimento (Barra)", "Desenvolvimento (Halter)", "Desenvolvimento Máquina", "Elevação Lateral (Halter)", "Elevação Lateral (Polia)", "Elevação Frontal", "Encolhimento", "Crucifixo Invertido", "Face Pull"],
-  Braços: ["Rosca Direta (Barra)", "Rosca Alternada (Halter)", "Rosca Martelo", "Rosca Scott", "Rosca na Polia", "Tríceps Pulley (Barra)", "Tríceps Pulley (Corda)", "Tríceps Testa", "Tríceps Francês", "Tríceps Coice", "Mergulho (Paralelas)"],
-  Core: ["Prancha Isométrica", "Abdominal Supra", "Abdominal Infra", "Abdominal Infra na Barra", "Giro Russo (Russian Twist)", "Abdominal Máquina", "Roda Abdominal"],
-  Cardio: ["Esteira", "Bicicleta Ergométrica", "Bicicleta Spinning", "Elíptico", "Escada", "Pular Corda", "Remo Seco", "Corrida Livre"]
-};
+import { inferLegacyLoadMode, LOAD_MODE_OPTIONS, LOAD_MODES } from '../../utils/loadModel';
+import { ALL_EXERCISES, EXERCISE_CATALOG } from '../../data/exerciseCatalog';
 
 const ManageView = ({ 
   activeDay, setActiveDay, addDay, removeDay, workoutData, addExercise, 
@@ -45,8 +38,7 @@ const ManageView = ({
 
   const getFilteredExercises = () => {
     if (!searchQuery) return EXERCISE_CATALOG[activeTab];
-    const allEx = Object.values(EXERCISE_CATALOG).flat();
-    return allEx.filter(ex => ex.toLowerCase().includes(searchQuery.toLowerCase()));
+    return ALL_EXERCISES.filter(ex => ex.toLowerCase().includes(searchQuery.toLowerCase()));
   };
 
   const openAddDayModal = () => {
@@ -78,7 +70,7 @@ const ManageView = ({
   };
 
   return (
-    <main className="space-y-6 animate-in slide-in-from-right duration-500 font-cyber pb-24 relative">
+    <main className="space-y-6 animate-in slide-in-from-right duration-500 font-sans pb-24 relative">
       
       {/* SELETOR DE PROTOCOLOS */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
@@ -86,14 +78,14 @@ const ManageView = ({
           <button 
             key={day} 
             onClick={() => setActiveDay(day)}
-            className={`px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 ${activeDay === day ? 'bg-primary border-primary text-black scale-105 shadow-[0_0_15px_rgba(var(--primary),0.3)]' : 'bg-card border-border text-muted hover:border-primary/50 hover:text-main dark:hover:text-white'}`}
+            className={`px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 ${activeDay === day ? 'bg-primary border-primary text-on-primary scale-105 shadow-md' : 'bg-card border-border text-muted hover:border-primary/50 hover:text-main dark:hover:text-white'}`}
           >
             {day}
           </button>
         ))}
         <button 
           onClick={openAddDayModal}
-          className="px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 border-dashed border-success/50 bg-success/10 text-success hover:bg-success hover:text-black flex items-center gap-1 shadow-sm"
+          className="px-4 py-3 rounded-xl font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all border-2 border-dashed border-success/50 bg-success/10 text-success hover:bg-success hover:text-on-success flex items-center gap-1 shadow-sm"
         >
           <Plus size={16} /> NOVO
         </button>
@@ -102,44 +94,37 @@ const ManageView = ({
       {/* Header de Configuração */}
       <div className="flex justify-between items-center pb-1 px-1">
         <div className="flex items-center gap-2">
-          <Settings size={20} className="text-secondary animate-[spin_4s_linear_infinite]" />
-          <h2 className="text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
-            EDITANDO: <span className="text-secondary">{activeDay}</span>
+          <Settings size={20} className="text-secondary" />
+          <h2 className="font-cyber text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+            {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
         </div>
         
         <div className="flex gap-2 items-center">
-          {activeDay !== 'INÍCIO' && (
-            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-black transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
+          {workoutData[activeDay] && (
+            <button onClick={() => addExercise(activeDay)} className="bg-success/10 border border-success/50 p-2 rounded-lg text-success hover:bg-success hover:text-on-success transition-all shadow-sm dark:shadow-[0_0_10px_rgba(var(--success),0.2)] active:scale-95" title="Adicionar Exercício Manualmente">
               <Plus size={18} strokeWidth={2.5} />
             </button>
           )}
 
-          <button onClick={requestDeleteDay} className="bg-red-500/10 border border-red-500/50 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 ml-1" title="Apagar Protocolo">
-            <Trash2 size={18} strokeWidth={2.5} />
-          </button>
+          {workoutData[activeDay] && <button onClick={requestDeleteDay} className="bg-danger/10 border border-danger/50 p-2 rounded-lg text-danger hover:bg-danger hover:text-on-danger transition-all shadow-sm active:scale-95 ml-1" title="Apagar treino"><Trash2 size={18} strokeWidth={2.5} /></button>}
         </div>
       </div>
 
-      {/* 🔥 BOTÃO DA IA EM DESTAQUE E ISOLADO */}
       <div className="px-1 border-b border-secondary/30 pb-4 mb-4">
         <button 
           onClick={() => setView('importer')}
           className="w-full py-3 px-4 border border-dashed border-primary/50 text-primary bg-primary/10 rounded-xl font-bold uppercase tracking-wider hover:bg-primary/20 transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
         >
-          <Cpu size={18} className="animate-pulse" />
-          <span>Decodificar Treino com IA </span>
+          <Cpu size={18} />
+          <span>Importar treino com IA</span>
         </button>
       </div>
 
-      {activeDay === 'INÍCIO' ? (
-        <div className="mt-8 p-6 border-2 border-dashed border-red-500/30 rounded-xl text-center bg-red-500/5 animate-pulse mx-1">
-          <span className="text-xs font-black uppercase text-red-500 tracking-widest block mb-2">
-            ⚠️ ACESSO NEGADO
-          </span>
-          <span className="text-[10px] font-bold uppercase text-muted tracking-widest">
-            Este é um protocolo do sistema. Crie um + NOVO protocolo para equipar exercícios.
-          </span>
+      {!workoutData[activeDay] ? (
+        <div className="mx-1 mt-6 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center">
+          <span className="block text-base font-black text-main">Seu plano está vazio</span>
+          <span className="mt-2 block text-sm leading-relaxed text-muted">Use o botão “Novo” acima para criar um treino ou importe uma ficha já existente.</span>
         </div>
       ) : (
         <div className="space-y-3 px-1">
@@ -160,20 +145,40 @@ const ManageView = ({
                 />
               </div>
 
-              {/* 🔥 2. NOVO: ARMAMENTO SECUNDÁRIO (SWAP) */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-yellow-500/70 uppercase tracking-[0.1em] ml-1 flex items-center gap-1">
-                  Exercício secundário (Swap)
-                </label>
-                <input 
-                  className="bg-input border border-yellow-500/30 focus:border-yellow-500 text-yellow-500/90 text-xs font-bold w-full outline-none p-2 rounded transition-all placeholder-muted/30 uppercase" 
-                  value={ex.alternatives && ex.alternatives.length > 0 ? ex.alternatives[0] : ''} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    editExerciseBase(activeDay, i, 'alternatives', val ? [val] : []);
-                  }}
-                  placeholder="Opcional: Ex: Supino Reto (Halter)"
-                />
+              <div className="space-y-2">
+                <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-warning">Alternativas de substituição</span>
+                {(ex.alternatives || []).map((alternative, alternativeIndex) => (
+                  <div key={`${i}-${alternativeIndex}`} className="flex gap-2">
+                    <input
+                      list={`exercise-options-${i}`}
+                      aria-label={`Alternativa ${alternativeIndex + 1} de ${ex.name}`}
+                      className="min-w-0 flex-1 rounded-lg border border-warning/30 bg-input p-2 text-xs font-bold text-main outline-none focus:border-warning"
+                      value={alternative}
+                      onChange={(event) => {
+                        const alternatives = [...(ex.alternatives || [])];
+                        alternatives[alternativeIndex] = event.target.value;
+                        editExerciseBase(activeDay, i, 'alternatives', alternatives);
+                      }}
+                      placeholder="Ex.: Remada Baixa"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remover alternativa ${alternativeIndex + 1}`}
+                      onClick={() => editExerciseBase(activeDay, i, 'alternatives', (ex.alternatives || []).filter((_, index) => index !== alternativeIndex))}
+                      className="touch-target flex w-11 shrink-0 items-center justify-center rounded-lg border border-danger/30 text-danger"
+                    >
+                      <X size={17} />
+                    </button>
+                  </div>
+                ))}
+                <datalist id={`exercise-options-${i}`}>{ALL_EXERCISES.map((exercise) => <option key={exercise} value={exercise} />)}</datalist>
+                <button
+                  type="button"
+                  onClick={() => editExerciseBase(activeDay, i, 'alternatives', [...(ex.alternatives || []), ''])}
+                  className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-warning/40 text-xs font-bold text-warning"
+                >
+                  <Plus size={15} /> Adicionar alternativa
+                </button>
               </div>
 
               {/* 3. META E LIXEIRA */}
@@ -186,9 +191,34 @@ const ManageView = ({
                     onChange={(e) => editExerciseBase(activeDay, i, 'sets', e.target.value)} 
                   />
                 </div>
-                <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-red-500/30 text-red-500 p-2 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
+                <button onClick={() => removeExercise(activeDay, i)} className="bg-input border border-danger/30 text-danger p-2 hover:bg-danger hover:text-on-danger rounded-lg transition-all shadow-sm active:scale-95" title="Remover Exercício">
                   <Trash2 size={18}/>
                 </button>
+              </div>
+
+              <div className={`grid gap-3 ${inferLegacyLoadMode(ex) === LOAD_MODES.perSide ? 'sm:grid-cols-2' : ''}`}>
+                <label className="space-y-1">
+                  <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-muted">Como registrar a carga</span>
+                  <select
+                    value={ex.loadMode || inferLegacyLoadMode(ex)}
+                    onChange={(event) => editExerciseBase(activeDay, i, 'loadMode', event.target.value)}
+                    className="h-11 w-full rounded-lg border border-border bg-input px-3 text-sm font-bold text-main outline-none focus:border-primary"
+                  >
+                    {LOAD_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                {(ex.loadMode || inferLegacyLoadMode(ex)) === LOAD_MODES.perSide && (
+                  <label className="space-y-1">
+                    <span className="ml-1 block text-[10px] font-black uppercase tracking-[0.1em] text-muted">Peso da barra (kg)</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={ex.barWeight ?? '20'}
+                      onChange={(event) => editExerciseBase(activeDay, i, 'barWeight', event.target.value)}
+                      className="h-11 w-full rounded-lg border border-border bg-input px-3 text-sm font-black text-main outline-none focus:border-primary"
+                    />
+                  </label>
+                )}
               </div>
 
             </div>
@@ -202,15 +232,14 @@ const ManageView = ({
       </div>
       )}
 
-      <div className="pt-4 px-1">
+      {workoutData[activeDay] && <div className="pt-4 px-1">
         <button 
           onClick={() => setView('workout')} 
-          // 🔥 Adicionado 'active:' para as cores mudarem no exato momento do toque na tela do celular
           className="w-full py-4 border-2 border-primary text-primary bg-primary/10 hover:bg-primary active:bg-primary hover:text-white dark:hover:text-black active:text-white dark:active:text-black rounded-xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.5)]"
         >
           <Save size={18} strokeWidth={2.5} /> EFETIVAR ALTERAÇÕES
         </button>
-      </div>
+      </div>}
 
       {/* MODAL DO ARSENAL */}
       {isCatalogOpen && createPortal(
@@ -236,7 +265,7 @@ const ManageView = ({
             {!searchQuery && (
               <div className="flex overflow-x-auto p-2 gap-2 border-b border-border shrink-0 scrollbar-hide">
                 {Object.keys(EXERCISE_CATALOG).map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${activeTab === tab ? 'bg-primary text-black' : 'bg-input/50 text-muted hover:text-main dark:hover:text-white border border-border hover:bg-input'}`}> {tab} </button>
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all shadow-sm ${activeTab === tab ? 'bg-primary text-on-primary' : 'bg-input/50 text-muted hover:text-main dark:hover:text-white border border-border hover:bg-input'}`}> {tab} </button>
                 ))}
               </div>
             )}
@@ -257,7 +286,7 @@ const ManageView = ({
             </div>
             
             <div className="p-4 bg-card/90 dark:bg-black/80 border-t border-border shrink-0 backdrop-blur-md">
-              <button onClick={confirmSelection} disabled={selectedExercises.length === 0} className="w-full bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all hover:scale-[1.02] shadow-md dark:shadow-[0_0_20px_rgba(var(--primary),0.3)]">
+              <button onClick={confirmSelection} disabled={selectedExercises.length === 0} className="w-full bg-primary text-on-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all hover:scale-[1.02] shadow-md dark:shadow-[0_0_20px_rgba(var(--primary),0.3)]">
                 {selectedExercises.length > 0 ? `EQUIPAR ${selectedExercises.length} EXERCÍCIO${selectedExercises.length > 1 ? 'S' : ''}` : 'SELECIONE NO ARSENAL'}
               </button>
             </div>
@@ -275,7 +304,7 @@ const ManageView = ({
             <input autoFocus type="text" placeholder="EX: A, B, PUSH..." className="w-full bg-input border-2 border-border p-4 rounded-xl outline-none focus:border-primary text-main dark:text-white font-black uppercase transition-all placeholder-muted/50 mb-6 text-center tracking-widest shadow-inner" value={newDayInput} onChange={(e) => setNewDayInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmAddDay()} />
             <div className="flex gap-3">
               <button onClick={() => setIsAddDayModalOpen(false)} className="flex-1 p-3 rounded-xl border border-border text-muted font-bold uppercase text-xs hover:text-main dark:hover:text-white hover:bg-input transition-all">Cancelar</button>
-              <button onClick={confirmAddDay} className="flex-1 p-3 rounded-xl bg-primary text-black font-black uppercase text-xs hover:scale-105 transition-all shadow-md dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]">Criar</button>
+              <button onClick={confirmAddDay} className="flex-1 p-3 rounded-xl bg-primary text-on-primary font-black uppercase text-xs hover:scale-105 transition-all shadow-md dark:shadow-[0_0_15px_rgba(var(--primary),0.4)]">Criar</button>
             </div>
           </div>
         </div>,
@@ -287,7 +316,7 @@ const ManageView = ({
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 dark:bg-black/90 backdrop-blur-md" onClick={() => setIsDeleteModalOpen(false)}></div>
           <div className="bg-card border-2 border-red-500 w-full max-w-sm p-8 rounded-3xl shadow-2xl dark:shadow-[0_0_40px_rgba(239,68,68,0.2)] relative z-10 animate-in zoom-in-95 duration-200 text-center">
-            <div className="w-16 h-16 bg-red-500/10 border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <div className="w-16 h-16 bg-red-500/10 border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
             <h3 className="font-black uppercase tracking-widest text-red-500 mb-2 text-xl">Confirmar Exclusão</h3>
@@ -295,7 +324,7 @@ const ManageView = ({
               Você está prestes a apagar o protocolo <span className="text-main dark:text-white">"{activeDay}"</span> e todos os seus exercícios. Esta ação é irreversível.
             </p>
             <div className="flex flex-col gap-3">
-              <button onClick={confirmDeleteDay} className="w-full p-4 rounded-xl bg-red-500 text-white font-black uppercase text-xs hover:bg-red-600 transition-all shadow-md dark:shadow-[0_0_15px_rgba(239,68,68,0.4)] active:scale-95">
+              <button onClick={confirmDeleteDay} className="w-full p-4 rounded-xl bg-danger text-on-danger font-black uppercase text-xs transition-all shadow-md active:scale-95">
                 DESTRUIR PROTOCOLO
               </button>
               <button onClick={() => setIsDeleteModalOpen(false)} className="w-full p-4 rounded-xl border border-border text-muted font-black uppercase text-xs hover:text-main dark:hover:text-white hover:bg-input transition-all">

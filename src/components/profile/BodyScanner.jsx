@@ -3,9 +3,10 @@ import {
   Scale, X, Plus, CalendarDays, Save, Pencil, Trash2, 
   FileText, Archive, ChevronDown, ChevronUp 
 } from 'lucide-react';
+import { formatLocalDate, normalizeLocalDateKey } from '../../utils/dateUtils';
 
 const formatNumberInput = (value) => {
-  return value.replace(/[^0-9.]/g, '');
+  return value.replace(/[^0-9.,]/g, '').replace(/([.,].*)[.,]/g, '$1');
 };
 
 const BodyScanner = ({
@@ -27,10 +28,9 @@ const BodyScanner = ({
   bioCalfR, setBioCalfR,
   bioNote, setBioNote,
   handleSaveBiometrics, isSavingBio,
-  sortedBody, handleEditBio, requestDelete, getBfColorClass
+  sortedBody, handleEditBio, requestDelete
 }) => {
 
-  // 🔥 ESTADOS DE EXPANSÃO E ARQUIVO
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState(null); 
   const [expandedCardId, setExpandedCardId] = useState(null); 
@@ -39,17 +39,6 @@ const BodyScanner = ({
   const recentHistory = sortedBody.slice(0, RECENT_LIMIT);
   const olderHistoryCount = sortedBody.length - RECENT_LIMIT;
 
-  const getBfStatusText = (bfValue) => {
-    if (!bfValue || bfValue === '--') return '';
-    const val = parseFloat(bfValue);
-    if (isNaN(val)) return '';
-    if (val < 10) return 'ATLETA';
-    if (val <= 17) return 'FITNESS';
-    if (val <= 24) return 'MODERADO';
-    return 'ALTO';
-  };
-
-  // 🔥 CORRIGIDO: Sub-componente com as Panturrilhas inclusas!
   const ExpandedStats = ({ b, isCard }) => (
     <div className={`p-4 bg-black/5 dark:bg-black/20 border-t border-border animate-in slide-in-from-top-2 duration-200 ${isCard ? 'rounded-b-2xl' : ''}`}>
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -57,8 +46,8 @@ const BodyScanner = ({
            <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Cintura</span>
            <span className="text-xs font-black text-main dark:text-white">{b.waist || '--'}cm</span>
          </div>
-         <div className="flex flex-col items-center p-2 bg-warning/10 rounded-lg border border-warning/20">
-           <span className="text-[8px] text-warning uppercase font-bold tracking-widest">Abdome</span>
+         <div className="flex flex-col items-center p-2 bg-input/50 rounded-lg border border-border/50">
+           <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Abdome</span>
            <span className="text-xs font-black text-main dark:text-white">{b.abdomen || '--'}cm</span>
          </div>
       </div>
@@ -92,7 +81,6 @@ const BodyScanner = ({
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_left || '--'}</span>
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.leg_right || '--'}</span>
          </div>
-         {/* 🔥 A PANTURRILHA ENTROU AQUI */}
          <div className="flex justify-between items-baseline px-2 py-0.5">
            <span className="text-[9px] text-main font-bold uppercase w-12">Pantur.</span>
            <span className="text-[10px] font-black text-main dark:text-white flex-1 text-center">{b.calf_left || '--'}</span>
@@ -117,7 +105,7 @@ const BodyScanner = ({
         </h3>
         <button 
           onClick={handleToggleForm} 
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-black border-secondary shadow-[0_0_10px_rgba(var(--secondary),0.4)]' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all text-xs font-black uppercase tracking-widest ${showBioForm ? 'bg-secondary text-on-secondary border-secondary shadow-sm' : 'bg-card text-secondary border-secondary/50 hover:bg-secondary/10'}`}
         >
           {showBioForm ? <X size={12}/> : <Plus size={12}/>} 
           {showBioForm ? 'Cancelar' : 'Escanear'}
@@ -142,11 +130,11 @@ const BodyScanner = ({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">Peso (KG)*</label>
-                <input type="text" inputMode="decimal" placeholder="80.5" value={bioWeight} onChange={(e) => setBioWeight(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-success outline-none focus:border-success transition-colors" />
+                <input type="text" inputMode="decimal" placeholder="80.5" value={bioWeight} onChange={(e) => setBioWeight(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main outline-none focus:border-primary transition-colors" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">BF (%)</label>
-                <input type="text" inputMode="decimal" placeholder="15.0" value={bioBf} onChange={(e) => setBioBf(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-warning outline-none focus:border-warning transition-colors" />
+                <input type="text" inputMode="decimal" placeholder="15.0" value={bioBf} onChange={(e) => setBioBf(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main outline-none focus:border-primary transition-colors" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 block">Massa Magra</label>
@@ -165,8 +153,8 @@ const BodyScanner = ({
                 <input type="text" inputMode="decimal" placeholder="00.0" value={bioWaist} onChange={(e) => setBioWaist(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-primary" />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-warning uppercase tracking-widest mb-1 block text-center">Abdome</label>
-                <input type="text" inputMode="decimal" placeholder="00.0" value={bioAbdomen} onChange={(e) => setBioAbdomen(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-warning" />
+                <label className="text-[8px] font-bold text-muted uppercase tracking-widest mb-1 block text-center">Abdome</label>
+                <input type="text" inputMode="decimal" placeholder="00.0" value={bioAbdomen} onChange={(e) => setBioAbdomen(formatNumberInput(e.target.value))} className="w-full bg-input border border-border rounded-lg p-2 text-center text-xs font-black text-main dark:text-white outline-none focus:border-primary" />
               </div>
               <div>
                 <label className="text-[8px] font-bold text-muted uppercase tracking-widest mb-1 block text-center">Quadril</label>
@@ -223,7 +211,7 @@ const BodyScanner = ({
           <button 
             onClick={handleSaveBiometrics}
             disabled={isSavingBio || !bioWeight}
-            className="w-full bg-secondary text-black font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 shadow-sm"
+            className="w-full bg-secondary text-on-secondary font-black uppercase tracking-widest py-3 rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 shadow-sm"
           >
             {isSavingBio ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full"/> : <Save size={16} />}
             Registrar Status
@@ -246,7 +234,7 @@ const BodyScanner = ({
           >
             <div className="flex justify-between items-center border-b border-border/50 pb-2">
               <span className="font-black text-secondary text-xs tracking-widest flex items-center gap-1.5">
-                <CalendarDays size={14} /> {b.date}
+                <CalendarDays size={14} /> {formatLocalDate(normalizeLocalDateKey(b.date))}
               </span>
               <div className="flex gap-3">
                 <button onClick={() => handleEditBio(b)} className="text-muted hover:text-primary transition-colors" title="Editar"><Pencil size={14} /></button>
@@ -257,18 +245,13 @@ const BodyScanner = ({
             <div className="grid grid-cols-3 gap-2">
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">Peso</span>
-                 <span className="text-sm font-black text-success mt-0.5">{b.weight || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">kg</span></span>
+                 <span className="mt-0.5 text-sm font-black text-main">{b.weight || '--'}<span className="ml-0.5 text-[8px] font-normal text-muted">kg</span></span>
                </div>
                <div className="flex flex-col items-center justify-center p-2 bg-input/80 dark:bg-black/30 rounded-xl border border-border/30 shadow-sm relative">
                  <span className="text-[8px] text-muted uppercase font-bold tracking-widest">BF</span>
-                 <span className={`text-sm font-black mt-0.5 ${getBfColorClass(b.bf)}`}>
-                   {b.bf || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">%</span>
-                 </span>
-                 {b.bf && (
-                   <span className={`text-[6px] font-black uppercase tracking-widest mt-1 opacity-80 ${getBfColorClass(b.bf)}`}>
-                     {getBfStatusText(b.bf)}
-                   </span>
-                 )}
+                  <span className="mt-0.5 text-sm font-black text-main">
+                    {b.bf || '--'}<span className="text-[8px] text-muted ml-0.5 font-normal">%</span>
+                  </span>
                </div>
                <div className="flex flex-col items-center justify-center p-2 bg-primary/10 rounded-xl border border-primary/30 shadow-sm">
                  <span className="text-[8px] text-primary uppercase font-bold tracking-widest">M. Magra</span>
@@ -307,7 +290,7 @@ const BodyScanner = ({
       {isArchiveOpen && (
         <div className="mt-4 space-y-2 animate-in slide-in-from-top-4 fade-in duration-300">
           <div className="flex items-center gap-2 mb-3 px-2">
-            <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Registos Anteriores</h4>
+            <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Registros anteriores</h4>
             <div className="h-px bg-border flex-1"></div>
           </div>
 
@@ -320,10 +303,10 @@ const BodyScanner = ({
                   className="p-3 flex items-center justify-between cursor-pointer hover:bg-input/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-16 text-[10px] font-black text-main dark:text-white">{b.date}</span>
+                    <span className="w-20 text-[10px] font-black text-main dark:text-white">{formatLocalDate(normalizeLocalDateKey(b.date), { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                     <div className="flex gap-3 text-[10px] font-bold">
-                      <span className="text-success">{b.weight}kg</span>
-                      <span className={getBfColorClass(b.bf)}>{b.bf}% BF</span>
+                       <span className="text-main">{b.weight}kg</span>
+                       <span className="text-main">{b.bf}% BF</span>
                     </div>
                   </div>
                   

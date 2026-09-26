@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 360" role="img" aria-labelledby="title desc">
+  <title id="title">Guerreiro cibernético masculino original do SOLO</title>
+  <desc id="desc">Figura atlética frontal com armadura tecnológica, máscara e silhueta de energia.</desc>
+  <defs>
+    <linearGradient id="male-shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#142536"/>
+      <stop offset="0.48" stop-color="#07111e"/>
+      <stop offset="1" stop-color="#180d24"/>
+    </linearGradient>
+    <linearGradient id="male-plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#31475d"/>
+      <stop offset="0.55" stop-color="#111d2c"/>
+      <stop offset="1" stop-color="#080d18"/>
+    </linearGradient>
+    <linearGradient id="male-energy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#24e8ff"/>
+      <stop offset="0.52" stop-color="#9ff7ff"/>
+      <stop offset="1" stop-color="#ff3fb4"/>
+    </linearGradient>
+    <filter id="male-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="#24e8ff" stroke-linecap="round" opacity=".2">
+    <path d="M39 95C17 137 20 250 52 316"/>
+    <path d="M201 95c22 42 19 155-13 221"/>
+    <path d="M58 31C98 4 151 8 184 37" stroke-dasharray="2 9"/>
+    <path d="M29 181h20M191 181h20M43 286h16M181 286h16"/>
+  </g>
+
+  <g stroke-linejoin="round">
+    <path d="M92 39 75 47l10-23 19 8L120 8l11 25 22-10-5 22 19 9-30 8H99L73 54Z" fill="url(#male-shell)" stroke="url(#male-energy)" stroke-width="2"/>
+    <path d="M91 48q29-18 58 1l-6 35-23 18-23-18Z" fill="url(#male-shell)" stroke="#6cf0ff" stroke-width="1.8"/>
+    <path d="m97 62 19-7 27 8-8 13-17 3-15-3Z" fill="#07101c" stroke="#ff3fb4" stroke-width="1.5" filter="url(#male-glow)"/>
+    <path d="m109 84 11 6 12-7M120 90v12" fill="none" stroke="#32e7ff" stroke-width="1.4"/>
+    <path d="m102 92-3 17 21 14 21-14-4-18-17 11Z" fill="url(#male-plate)" stroke="#36def1" stroke-width="1.4"/>
+
+    <path d="M93 103 57 110 31 132l14 27 29-18 9 70 37 16 38-16 8-70 29 18 14-27-27-22-35-7-27 19Z" fill="url(#male-shell)" stroke="#4ee9fa" stroke-width="2"/>
+    <path d="m80 111-30 5-18 17 14 18 29-17ZM160 111l30 5 18 17-14 18-29-17Z" fill="url(#male-plate)" stroke="#ff3fb4" stroke-width="1.7"/>
+    <path d="m85 116 35 12 35-12 5 46-40 19-40-19Z" fill="url(#male-plate)" stroke="#45e6fb" stroke-width="1.6"/>
+    <path d="m91 126 29 9 29-9-5 26-24 12-24-12Z" fill="#0d1825" stroke="#ff3fb4" stroke-width="1.25"/>
+    <path d="M120 130v80M86 169l34 12 35-12M88 190l32-9 33 9" fill="none" stroke="#42dff1" stroke-width="1.2" opacity=".8"/>
+    <path d="m86 165-6 46 40 16 40-16-6-46-34 16Z" fill="url(#male-shell)" stroke="#35dff3" stroke-width="1.5"/>
+
+    <path d="m45 151-11 13-8 69 18 8 18-66 12-41Z" fill="url(#male-shell)" stroke="#42e4f7" stroke-width="1.8"/>
+    <path d="m195 151 11 13 8 69-18 8-18-66-12-41Z" fill="url(#male-shell)" stroke="#42e4f7" stroke-width="1.8"/>
+    <path d="m27 222-5 37 17 13 14-28-9-11Z" fill="url(#male-plate)" stroke="#ff3fb4" stroke-width="1.4"/>
+    <path d="m213 222 5 37-17 13-14-28 9-11Z" fill="url(#male-plate)" stroke="#ff3fb4" stroke-width="1.4"/>
+    <path d="M37 272v10l-12 13 5 7 17-8 3-21ZM203 272v10l12 13-5 7-17-8-3-21Z" fill="#0a1420" stroke="#37dff2" stroke-width="1.4"/>
+
+    <path d="m80 207-10 39 9 53 25-2 16-70Z" fill="url(#male-plate)" stroke="#4ce7f8" stroke-width="1.8"/>
+    <path d="m160 207 10 39-9 53-25-2-16-70Z" fill="url(#male-plate)" stroke="#4ce7f8" stroke-width="1.8"/>
+    <path d="m80 286-5 50 29 2 3-42ZM160 286l5 50-29 2-3-42Z" fill="url(#male-shell)" stroke="#3be2f5" stroke-width="1.8"/>
+    <path d="m75 325-10 23 40 2-1-15ZM165 325l10 23-40 2 1-15Z" fill="#07101c" stroke="#ff3fb4" stroke-width="1.6"/>
+    <path d="m84 233 20 7M156 233l-20 7M82 270l24 5M158 270l-24 5M79 312l26 4M161 312l-26 4" fill="none" stroke="#ff3fb4" stroke-width="1.15" opacity=".75"/>
+  </g>
+
+  <g fill="#b8fbff" filter="url(#male-glow)">
+    <circle cx="120" cy="144" r="3"/>
+    <circle cx="39" cy="252" r="2"/>
+    <circle cx="201" cy="252" r="2"/>
+  </g>
+</svg>

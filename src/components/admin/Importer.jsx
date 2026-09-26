@@ -1,84 +1,144 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Cpu, Check, AlertTriangle, Loader2, Trash2, RefreshCw, ArrowLeft, FileText, Upload } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Check,
+  FileText,
+  Loader2,
+  Pencil,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { parseWorkoutWithAI } from '../../services/aiService';
+import { getImportConflicts, mergeImportedWorkoutPlan } from '../../utils/importUtils';
+import { inferLegacyLoadMode, LOAD_MODE_OPTIONS } from '../../utils/loadModel';
 
-const steps = [
-  "Analisando dados brutos...",
-  "Decodificando vetores de força...",
-  "Injetando parâmetros de hipertrofia...",
-  "Finalizando extração neural..."
-];
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const MIN_TEXT_LENGTH = 20;
 
-// Adicione o setActiveDay aqui nos parâmetros
-const Importer = ({ setWorkoutData, setView, setActiveDay }) => {
+const Importer = ({ setWorkoutData, setView, setActiveDay, existingWorkoutData = {} }) => {
   const [rawText, setRawText] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null); // 🔥 ESTADO NOVO PARA O PDF
+  const [selectedFile, setSelectedFile] = useState(null);
   const [parsedPreview, setParsedPreview] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState(null);
-  const [step, setStep] = useState(0);
+  const [error, setError] = useState('');
+  const [conflictStrategy, setConflictStrategy] = useState('');
+  const fileInputRef = useRef(null);
 
-  const fileInputRef = useRef(null); // 🔥 REF PARA O INPUT ESCONDIDO
+  const conflicts = useMemo(() => parsedPreview
+    ? getImportConflicts(existingWorkoutData, parsedPreview)
+    : [], [existingWorkoutData, parsedPreview]);
+  const pendingReviews = useMemo(() => parsedPreview
+    ? Object.values(parsedPreview).flatMap((workout) => workout.exercises || [])
+      .filter((exercise) => exercise.uncertain === true).length
+    : 0, [parsedPreview]);
 
-  useEffect(() => {
-    if (!isProcessing) return;
-    const i = setInterval(() => {
-      setStep(s => (s < steps.length - 1 ? s + 1 : s));
-    }, 1000);
-    return () => clearInterval(i);
-  }, [isProcessing]);
-
-  // 🔥 Lida com a seleção do arquivo
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type === "application/pdf") {
-      setSelectedFile(file);
-      setRawText(''); // Limpa o texto se subir um PDF
-      setError(null);
-    } else {
-      setError(new Error("Formato inválido. Apenas documentos PDF são suportados na base neural."));
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      setError('Escolha um arquivo PDF válido. Se sua ficha estiver em outro formato, cole o texto no campo abaixo.');
+      return;
     }
+    if (file.size > MAX_FILE_SIZE) {
+      setError('O PDF ultrapassa 2 MB. Comprima o arquivo ou cole o conteúdo como texto.');
+      return;
+    }
+    setSelectedFile(file);
+    setRawText('');
+    setError('');
   };
 
   const handleProcess = async () => {
     if (!rawText.trim() && !selectedFile) return;
+    if (!selectedFile && rawText.trim().length < MIN_TEXT_LENGTH) {
+      setError('Cole uma ficha com pelo menos 20 caracteres, incluindo um exercício e sua meta de séries.');
+      return;
+    }
     setIsProcessing(true);
-    setError(null);
-    setStep(0);
-
+    setError('');
     try {
-      // 🔥 AGORA ENVIA O ARQUIVO PARA O SEU SERVIÇO DE IA
-      const result = await parseWorkoutWithAI(rawText, selectedFile, true);
+      const result = await parseWorkoutWithAI(rawText, selectedFile, false);
       setParsedPreview(result);
-    } catch (err) {
-      setError(err);
+      setConflictStrategy('');
+    } catch {
+      setError('O serviço de importação não respondeu. Confira sua conexão e tente novamente; seu plano atual não foi alterado.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const updateExercise = (day, i, field, value) => {
-    const updated = { ...parsedPreview };
-    updated[day].exercises[i][field] = value;
-    setParsedPreview(updated);
+  const updateDay = (day, field, value) => {
+    setParsedPreview((current) => ({ ...current, [day]: { ...current[day], [field]: value } }));
+  };
+
+  const updateExercise = (day, index, field, value) => {
+    setParsedPreview((current) => ({
+      ...current,
+      [day]: {
+        ...current[day],
+        exercises: current[day].exercises.map((exercise, exerciseIndex) => (
+          exerciseIndex === index ? { ...exercise, [field]: value } : exercise
+        )),
+      },
+    }));
+  };
+
+  const markExerciseReviewed = (day, index) => {
+    setParsedPreview((current) => ({
+      ...current,
+      [day]: {
+        ...current[day],
+        exercises: current[day].exercises.map((exercise, exerciseIndex) => (
+          exerciseIndex === index
+            ? { ...exercise, uncertain: false, reviewedAt: Date.now() }
+            : exercise
+        )),
+      },
+    }));
+  };
+
+  const removeExercise = (day, index) => {
+    setParsedPreview((current) => ({
+      ...current,
+      [day]: { ...current[day], exercises: current[day].exercises.filter((_, exerciseIndex) => exerciseIndex !== index) },
+    }));
+  };
+
+  const moveExercise = (day, index, direction) => {
+    setParsedPreview((current) => {
+      const exercises = [...current[day].exercises];
+      const target = index + direction;
+      if (target < 0 || target >= exercises.length) return current;
+      [exercises[index], exercises[target]] = [exercises[target], exercises[index]];
+      return { ...current, [day]: { ...current[day], exercises } };
+    });
+  };
+
+  const moveDay = (day, direction) => {
+    setParsedPreview((current) => {
+      const entries = Object.entries(current);
+      const index = entries.findIndex(([key]) => key === day);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= entries.length) return current;
+      [entries[index], entries[target]] = [entries[target], entries[index]];
+      return Object.fromEntries(entries);
+    });
   };
 
   const confirm = () => {
-    setWorkoutData(prev => {
-      const newData = { ...prev, ...parsedPreview };
-      
-      // 🔥 TÁTICO: Aniquila o protocolo "INÍCIO" assim que dados reais entram no sistema
-      if (newData['INÍCIO']) {
-        delete newData['INÍCIO'];
-      }
-      
-      return newData;
-    });
-
-    if (setActiveDay && parsedPreview) {
-      setActiveDay(Object.keys(parsedPreview)[0]);
-    }
-
+    if (pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)) return;
+    const { plan, firstImportedDay } = mergeImportedWorkoutPlan(
+      existingWorkoutData,
+      parsedPreview,
+      conflictStrategy,
+    );
+    setWorkoutData(plan);
+    setActiveDay?.(firstImportedDay);
     setView('workout');
   };
 
@@ -86,176 +146,93 @@ const Importer = ({ setWorkoutData, setView, setActiveDay }) => {
     setParsedPreview(null);
     setRawText('');
     setSelectedFile(null);
-    setError(null);
+    setError('');
+    setConflictStrategy('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 px-4">
-      
-      {/* HEADER DO SCANNER */}
-      <div className="flex items-center justify-between mb-2 mt-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/20 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-            <Cpu className="text-primary animate-pulse" size={24}/>
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-main dark:text-white uppercase tracking-tighter">Scanner Neural</h2>
-            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Extração de Dados via IA</p>
-          </div>
-        </div>
-        <button onClick={() => setView('workout')} className="p-2 bg-input/50 border border-border hover:border-primary/50 hover:bg-input rounded-xl transition-all text-muted hover:text-primary">
-          <ArrowLeft size={20} />
-        </button>
-      </div>
+    <main className="mx-auto max-w-2xl space-y-5 px-1 pb-24">
+      <header className="flex items-start justify-between border-b border-border pb-4">
+        <div><h2 className="text-xl font-black text-main">Importar treino</h2><p className="mt-1 text-sm text-muted">Cole uma ficha ou envie um PDF para organizar os exercícios.</p></div>
+        <button type="button" onClick={() => setView('workout')} aria-label="Voltar ao treino" className="touch-target flex items-center justify-center rounded-xl border border-border text-muted"><ArrowLeft size={21} /></button>
+      </header>
 
-      {/* ÁREA DE INPUT/PROCESSAMENTO */}
-      {!parsedPreview && !isProcessing && (
-        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-          
-          {/* 🔥 BOTÃO DE UPLOAD DE PDF */}
-          <div className="w-full">
-            <input 
-              type="file" 
-              accept="application/pdf" 
-              className="hidden" 
-              ref={fileInputRef}
-              onChange={handleFileChange}
-            />
-            
+      {!parsedPreview && (
+        <>
+          <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-start gap-3"><ShieldCheck className="shrink-0 text-primary" size={22} /><div><h3 className="font-black text-main">Antes de enviar</h3><p className="mt-1 text-sm leading-relaxed text-muted">O texto ou PDF será enviado ao serviço de importação para identificar dias, exercícios e séries. O limite do PDF é 2 MB. Não inclua dados pessoais ou informações de saúde desnecessárias.</p></div></div>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
+            <input ref={fileInputRef} type="file" accept="application/pdf" className="sr-only" onChange={handleFileChange} />
             {selectedFile ? (
-              <div className="bg-primary/10 border-2 border-primary border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-3 relative overflow-hidden">
-                <div className="absolute inset-0 bg-primary/5 animate-pulse"></div>
-                <FileText size={40} className="text-primary" />
-                <div>
-                  <h3 className="font-black uppercase text-primary text-sm tracking-widest">Arquivo Carregado</h3>
-                  <p className="text-xs text-main dark:text-white font-bold opacity-80 mt-1">{selectedFile.name}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedFile(null)}
-                  className="mt-2 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 border border-red-500/30 px-3 py-1 rounded-full bg-red-500/10 z-10"
-                >
-                  Remover Arquivo
-                </button>
-              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-primary/50 bg-primary/5 p-4"><FileText className="text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-main">{selectedFile.name}</p><p className="mt-1 text-xs text-muted">{(selectedFile.size / 1024).toFixed(0)} KB • PDF</p></div><button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="touch-target rounded-xl px-3 text-sm font-bold text-danger">Remover</button></div>
             ) : (
-              <button 
-                onClick={() => fileInputRef.current.click()}
-                className="w-full bg-card hover:bg-input border-2 border-dashed border-primary/50 hover:border-primary text-primary font-black p-6 rounded-2xl transition-all flex flex-col items-center justify-center gap-2 group"
-              >
-                <div className="p-3 bg-primary/10 rounded-full group-hover:scale-110 transition-transform duration-300">
-                  <Upload size={28} />
-                </div>
-                <span className="uppercase tracking-widest text-xs mt-2">Carregar PDF do Treino</span>
-                <span className="text-[9px] text-muted normal-case font-bold opacity-70">A IA lerá o documento automaticamente</span>
-              </button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/50 text-primary"><Upload size={25} /><span className="text-sm font-black">Selecionar PDF</span><span className="text-xs font-normal text-muted">Máximo de 2 MB</span></button>
             )}
-          </div>
-
-          <div className="flex items-center gap-4 py-2">
-            <div className="h-[1px] flex-1 bg-border"></div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted">OU MODO MANUAL</span>
-            <div className="h-[1px] flex-1 bg-border"></div>
-          </div>
-
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition duration-500"></div>
-            <textarea
-              value={rawText}
-              onChange={(e) => {
-                setRawText(e.target.value);
-                if(selectedFile) setSelectedFile(null); // Limpa o arquivo se digitar
-              }}
-              placeholder="Cole aqui o texto do seu treino (ex: Supino 3x10, Agachamento 4x12...)"
-              className="relative w-full h-40 p-5 bg-card border-2 border-border rounded-2xl text-main dark:text-white outline-none focus:border-primary transition-all text-sm leading-relaxed placeholder-muted/50"
-            />
-          </div>
-
-          <button 
-            onClick={handleProcess} 
-            disabled={!rawText.trim() && !selectedFile}
-            className="w-full bg-primary text-black font-black p-5 rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale uppercase tracking-widest mt-6"
-          >
-            <Terminal size={20} /> Iniciar Extração Neural
-          </button>
-        </div>
+            <div className="flex items-center gap-3"><span className="h-px flex-1 bg-border" /><span className="text-xs font-bold text-muted">ou cole o texto</span><span className="h-px flex-1 bg-border" /></div>
+            <label><span className="mb-2 block text-sm font-bold text-main">Texto da ficha</span><textarea value={rawText} onChange={(event) => { setRawText(event.target.value); if (event.target.value) setSelectedFile(null); setError(''); }} placeholder={'Exemplo:\nTreino A — Peito\nSupino reto — 3x10\nCrucifixo — 3x12'} className="min-h-44 w-full rounded-xl border border-border bg-input p-4 text-base leading-relaxed text-main outline-none focus-visible:ring-2 focus-visible:ring-primary" /><span className="mt-1 block text-right text-xs text-muted">Mínimo de {MIN_TEXT_LENGTH} caracteres</span></label>
+            <button type="button" onClick={handleProcess} disabled={isProcessing || (!rawText.trim() && !selectedFile)} className="touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary text-base font-black text-on-primary disabled:opacity-40">{isProcessing ? <><Loader2 className="animate-spin" /> Organizando sua ficha...</> : <><Pencil size={19} /> Gerar prévia</>}</button>
+          </section>
+        </>
       )}
 
-      {/* LOADING STATE CYBER */}
-      {isProcessing && (
-        <div className="flex flex-col items-center justify-center p-12 bg-card border-2 border-primary/30 rounded-3xl relative overflow-hidden h-80">
-          <div className="absolute inset-0 bg-primary/5 animate-pulse"></div>
-          <Loader2 className="animate-[spin_2s_linear_infinite] text-primary mb-6" size={56}/>
-          <h3 className="text-primary font-black uppercase tracking-[0.2em] text-center text-sm z-10">{steps[step]}</h3>
-          <div className="w-48 h-1.5 bg-input mt-6 rounded-full overflow-hidden z-10">
-            <div className="h-full bg-primary" style={{ width: `${((step + 1) / steps.length) * 100}%`, transition: 'width 1s ease-in-out' }}></div>
-          </div>
-        </div>
-      )}
-
-      {/* PREVIEW E EDIÇÃO */}
       {parsedPreview && (
-        <div className="space-y-6 animate-in zoom-in-95 duration-300">
-          <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl flex items-start gap-3">
-             <AlertTriangle size={20} className="text-yellow-500 shrink-0 mt-0.5" />
-             <p className="text-[11px] font-bold text-yellow-500/90 uppercase tracking-wider leading-relaxed">
-               A IA estruturou os dados abaixo. Revise as informações de carga e volume antes de confirmar a injeção no sistema principal.
-             </p>
-          </div>
+        <section className="space-y-5">
+          <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4"><h3 className="font-black text-main">Revise antes de salvar</h3><p className="mt-1 text-sm leading-relaxed text-muted">A importação pode interpretar nomes ou séries incorretamente. Corrija os campos abaixo; nenhuma mudança foi aplicada ao plano ainda.</p>{pendingReviews > 0 && <p role="status" className="mt-3 text-sm font-black text-warning">{pendingReviews} {pendingReviews === 1 ? 'item precisa' : 'itens precisam'} de confirmação manual.</p>}</div>
 
-          {Object.keys(parsedPreview).map(day => (
-            <div key={day} className="bg-card border-2 border-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="bg-input/50 p-4 border-b border-border flex justify-between items-center">
-                <h3 className="font-black text-primary uppercase tracking-widest">{parsedPreview[day].title}</h3>
-                <span className="text-[10px] bg-card px-2 py-1 border border-border rounded font-bold text-muted uppercase tracking-widest">{parsedPreview[day].focus || 'GERAL'}</span>
+          {Object.entries(parsedPreview).map(([day, workout]) => (
+            <article key={day} className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="text-sm font-black text-primary">Identificador: {day}</p><div className="flex gap-1"><button type="button" onClick={() => moveDay(day, -1)} aria-label={`Mover ${day} para cima`} className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-primary"><ArrowUp size={17} /></button><button type="button" onClick={() => moveDay(day, 1)} aria-label={`Mover ${day} para baixo`} className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-primary"><ArrowDown size={17} /></button></div></div>
+              <div className="grid gap-3 border-b border-border bg-input/30 p-4 sm:grid-cols-2">
+                <label><span className="mb-1 block text-xs font-bold text-muted">Nome do treino</span><input value={workout.title || ''} onChange={(event) => updateDay(day, 'title', event.target.value)} className="h-11 w-full rounded-xl border border-border bg-input px-3 text-sm font-black text-main" /></label>
+                <label><span className="mb-1 block text-xs font-bold text-muted">Foco</span><input value={workout.focus || ''} onChange={(event) => updateDay(day, 'focus', event.target.value)} placeholder="Geral" className="h-11 w-full rounded-xl border border-border bg-input px-3 text-sm font-bold text-main" /></label>
               </div>
-              <div className="p-4 space-y-3">
-                {parsedPreview[day].exercises.map((ex, i) => (
-                  <div key={i} className="flex gap-2 items-center group">
-                    <input 
-                      value={ex.name} 
-                      onChange={(e)=>updateExercise(day, i, 'name', e.target.value)} 
-                      className="flex-[2] bg-input border border-border p-3 rounded-lg text-xs font-bold uppercase outline-none focus:border-primary group-hover:border-primary/50 transition-colors"
-                    />
-                    <input 
-                      value={ex.sets} 
-                      onChange={(e)=>updateExercise(day, i, 'sets', e.target.value)} 
-                      className="flex-1 bg-input border border-border p-3 rounded-lg text-xs font-black text-center outline-none focus:border-primary group-hover:border-primary/50 transition-colors"
-                    />
-                  </div>
-                ))}
+              <div className="space-y-3 p-4">
+                {workout.exercises.map((exercise, index) => {
+                  const requiresReview = exercise.uncertain === true || !exercise.name?.trim() || !String(exercise.sets || '').trim();
+                  return (
+                    <div key={`${exercise.name}-${index}`} className={`rounded-xl ${requiresReview ? 'border border-warning/60 bg-warning/5 p-2' : ''}`}>
+                      {requiresReview && <div className="mb-2"><p className="flex items-center gap-1 text-xs font-black text-warning"><AlertTriangle size={14} /> Revisar este item</p>{exercise.reviewReason && <p className="mt-1 text-xs leading-relaxed text-muted">{exercise.reviewReason}</p>}</div>}
+                      <div className="grid grid-cols-[1fr_5.5rem_2.75rem] gap-2">
+                        <input aria-label={`Nome do exercício ${index + 1}`} value={exercise.name || ''} onChange={(event) => updateExercise(day, index, 'name', event.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-input px-3 text-sm font-bold text-main" />
+                        <input aria-label={`Séries do exercício ${index + 1}`} value={exercise.sets || ''} onChange={(event) => updateExercise(day, index, 'sets', event.target.value)} className="h-11 rounded-xl border border-border bg-input px-2 text-center text-sm font-black text-main" />
+                        <button type="button" onClick={() => removeExercise(day, index)} aria-label={`Remover ${exercise.name}`} className="touch-target flex items-center justify-center rounded-xl border border-danger/40 text-danger"><Trash2 size={17} /></button>
+                      </div>
+                      <label className="mt-2 block">
+                        <span className="mb-1 block text-xs font-bold text-muted">Como registrar a carga</span>
+                        <select value={exercise.loadMode || inferLegacyLoadMode(exercise)} onChange={(event) => updateExercise(day, index, 'loadMode', event.target.value)} className="h-11 w-full rounded-xl border border-border bg-input px-3 text-sm font-bold text-main">
+                          {LOAD_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </label>
+                      {exercise.uncertain === true && (
+                        <button type="button" onClick={() => markExerciseReviewed(day, index)} disabled={!exercise.name?.trim() || !String(exercise.sets || '').trim()} className="touch-target mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-warning/60 px-3 text-sm font-black text-warning disabled:opacity-40">
+                          <ShieldCheck size={17} /> Confirmar que revisei
+                        </button>
+                      )}
+                      <div className="mt-1 flex gap-1"><button type="button" onClick={() => moveExercise(day, index, -1)} aria-label={`Mover ${exercise.name || `exercício ${index + 1}`} para cima`} className="touch-target inline-flex items-center gap-1 rounded-xl px-2 text-xs font-bold text-muted hover:text-primary"><ArrowUp size={15} /> Subir</button><button type="button" onClick={() => moveExercise(day, index, 1)} aria-label={`Mover ${exercise.name || `exercício ${index + 1}`} para baixo`} className="touch-target inline-flex items-center gap-1 rounded-xl px-2 text-xs font-bold text-muted hover:text-primary"><ArrowDown size={15} /> Descer</button></div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            </article>
           ))}
 
-          <div className="flex gap-3 pt-4 border-t border-border/50">
-            <button onClick={resetAll} className="flex-1 bg-card border-2 border-border text-muted font-black p-4 rounded-xl hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-center gap-2 active:scale-95 text-xs">
-              <Trash2 size={18}/> DESCARTAR
-            </button>
-            <button onClick={confirm} className="flex-[2] bg-primary text-black font-black p-4 rounded-xl shadow-[0_0_15px_rgba(var(--primary),0.3)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs">
-              <Check size={20} strokeWidth={3} /> CONFIRMAR INJEÇÃO
-            </button>
+          {conflicts.length > 0 && (
+            <fieldset className="rounded-2xl border border-warning/50 bg-warning/5 p-4"><legend className="px-1 font-black text-main">{conflicts.length === 1 ? 'Já existe um treino com este identificador' : 'Alguns treinos já existem'}</legend><p className="mt-1 text-sm text-muted">Conflitos: {conflicts.join(', ')}. Escolha como aplicar a importação.</p><div className="mt-4 space-y-2"><label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm text-main"><input type="radio" name="conflict" checked={conflictStrategy === 'keep'} onChange={() => setConflictStrategy('keep')} /> Manter os atuais e adicionar os importados com outro nome</label><label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm text-main"><input type="radio" name="conflict" checked={conflictStrategy === 'replace'} onChange={() => setConflictStrategy('replace')} /> Substituir os treinos com o mesmo identificador</label></div></fieldset>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button type="button" onClick={resetAll} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-border font-bold text-main"><Trash2 size={17} /> Cancelar</button>
+            <button type="button" onClick={() => setParsedPreview(null)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-primary font-bold text-primary"><RefreshCw size={17} /> Reprocessar</button>
+            <button type="button" onClick={confirm} disabled={pendingReviews > 0 || (conflicts.length > 0 && !conflictStrategy)} className="touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-black text-on-primary disabled:opacity-40"><Check size={19} /> Salvar no plano</button>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* ERROR HANDLER */}
-      {error && (
-        <div className="p-6 bg-red-500/10 border-2 border-red-500 rounded-2xl space-y-4 animate-in bounce-in shadow-[0_0_20px_rgba(239,68,68,0.2)]">
-          <div className="flex items-start gap-4 text-red-500">
-            <div className="bg-red-500/20 p-2 rounded-lg border border-red-500/50">
-              <AlertTriangle size={24} />
-            </div>
-            <div>
-              <h4 className="font-black uppercase tracking-tighter text-sm">Falha na Sincronização Neural</h4>
-              <p className="text-xs opacity-90 font-bold mt-1 uppercase tracking-wider">{error.message || "Erro desconhecido ao processar os dados."}</p>
-            </div>
-          </div>
-          <button onClick={resetAll} className="w-full bg-red-500 text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 active:scale-95 transition-all uppercase tracking-widest text-xs shadow-md">
-            <RefreshCw size={18} /> REINICIAR MÓDULO
-          </button>
-        </div>
-      )}
-    </div>
+      {error && <div role="alert" className="flex items-start gap-3 rounded-2xl border border-danger/50 bg-danger/10 p-4"><AlertTriangle className="shrink-0 text-danger" /><div><p className="font-black text-main">Não foi possível importar</p><p className="mt-1 text-sm leading-relaxed text-muted">{error}</p></div></div>}
+    </main>
   );
 };
 
