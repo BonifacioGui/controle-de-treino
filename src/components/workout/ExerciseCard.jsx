@@ -34,6 +34,7 @@ import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
 import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
 import ExerciseGuide from './ExerciseGuide';
+import ExercisePerformanceSummary from './ExercisePerformanceSummary';
 import ExerciseSearchModal from './ExerciseSearchModal';
 
 const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) => {
@@ -92,7 +93,7 @@ const ExerciseCard = ({
   const expanded = manualExpanded ?? (isCurrent && !isDone);
 
   const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
-  const { lastExercise, lastSummary, lastBestIsPr, pr, prRecord } = performance;
+  const { lastExercise, prRecord } = performance;
   const loadPr = prRecord?.canonicalLoad || 0;
   const currentMaxLoad = getMaxCompletedLoad([{
     ...ex,
@@ -197,20 +198,7 @@ const ExerciseCard = ({
         <div className="space-y-4 border-t border-border px-3 pb-4 pt-3 sm:px-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              {lastSummary ? (
-                <p className="inline-flex flex-wrap items-center gap-x-1 text-xs leading-relaxed text-muted">
-                  <span className="font-bold text-main">Melhor da última:</span> {lastSummary}
-                  {lastBestIsPr && <Trophy aria-label="Recorde histórico" size={13} className="shrink-0 text-gold" />}
-                </p>
-              ) : (
-                <p className="text-xs text-muted">Sem registro anterior para este exercício.</p>
-              )}
-              {pr && !lastBestIsPr && (
-                <p className="mt-1 inline-flex flex-wrap items-center gap-x-1 text-xs font-semibold text-gold">
-                  <Trophy aria-hidden="true" size={13} className="shrink-0" />
-                  <span>PR: {pr.primary}{pr.secondary ? <span className="ml-1 font-normal text-gold">• {pr.secondary}</span> : null}</span>
-                </p>
-              )}
+              <ExercisePerformanceSummary performance={performance} className="text-xs leading-relaxed" />
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <button

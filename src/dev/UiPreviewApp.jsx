@@ -131,7 +131,10 @@ const history = [
     overloadStatus: 'MANUTENÇÃO',
     partial: false,
     syncStatus: 'synced',
-    exercises: [{ name: 'Puxada frontal', loadMode: 'machine', sets: [completedSet(55, 10)] }],
+    exercises: [
+      { name: 'Puxada frontal', loadMode: 'machine', sets: [completedSet(55, 10)] },
+      { name: 'Supino reto', loadMode: 'total', sets: [completedSet(70, 4)] },
+    ],
   },
 ];
 const bodyHistory = [
