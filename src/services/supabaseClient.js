@@ -4,9 +4,15 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Validação de segurança para evitar a tela preta novamente
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("FALHA CRÍTICA: Variáveis de ambiente não carregadas. Verifique o arquivo .env")
-}
+export const supabaseConfigurationError = !supabaseUrl || !supabaseAnonKey
+  ? 'A conexão com o Supabase não foi configurada neste ambiente.'
+  : null
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (supabaseConfigurationError) console.error(supabaseConfigurationError)
+
+// Mantém a interface recuperável mesmo quando o ambiente foi publicado sem secrets.
+// As telas de autenticação exibem a falha em vez de deixar uma splash infinita.
+export const supabase = createClient(
+  supabaseUrl || 'https://configuracao-ausente.supabase.co',
+  supabaseAnonKey || 'configuracao-ausente',
+)

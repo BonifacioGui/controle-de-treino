@@ -7,7 +7,6 @@ const LevelUpModal = ({ level, onClose }) => {
     // Espaço reservado para som de "Level Up"
   }, [level]);
 
-  // 🔥 Paleta restrita: Cores neons industriais
   const cyberColors = ['#00E5FF', '#FF007F', '#FCEE0A', '#FFFFFF'];
 
   return (
@@ -47,7 +46,6 @@ const LevelUpModal = ({ level, onClose }) => {
             LEVEL UP
           </h2>
           
-          {/* 🔥 IMAGEM AMPLIADA AQUI */}
           <div className="relative">
             <div className="absolute inset-0 bg-yellow-500 blur-2xl opacity-20 rounded-full animate-pulse"></div>
             <img 

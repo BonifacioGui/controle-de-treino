@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, User, Camera, Crosshair, Fingerprint } from 'lucide-react';
+import { CircleHelp, Settings, User, Camera, Crosshair, Fingerprint, Shield, Target } from 'lucide-react';
 import UserLevel from '../rpg/UserLevel';
 
 const ProfileHeader = ({ 
@@ -9,16 +9,18 @@ const ProfileHeader = ({
   setIsEditing, 
   goalProgress, 
   isGoalMet, 
-  displayClass, 
-  history,
-  stats
+  classLabel,
+  classDescription,
+  goalLabels,
+  focusLabel,
+  stats,
+  onExplainClass,
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       
-      {/* 🔥 ID CARD CYBERPUNK ADAPTÁVEL */}
       <div 
-        className="bg-card border border-primary/40 p-6 relative shadow-[0_0_20px_rgba(var(--primary),0.1)] mt-2 transition-colors group/profile"
+        className="group/profile relative mt-2 border border-primary/40 bg-card p-4 shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-colors min-[380px]:p-6"
         style={{ clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)' }}
       >
         {/* Scanlines táticas no fundo */}
@@ -31,10 +33,9 @@ const ProfileHeader = ({
         <div className="absolute top-0 left-0 w-8 h-1 bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]"></div>
         <div className="absolute bottom-0 right-0 w-12 h-1 bg-secondary shadow-[0_0_8px_rgba(var(--secondary),0.8)]"></div>
 
-        {/* 🔥 BOTÃO DE CONFIGURAÇÃO CORRIGIDO (Puxa as variáveis do tema e remove o bloco preto) */}
         <button 
           onClick={() => setIsEditing(true)} 
-          className="absolute top-4 right-4 z-30 p-2.5 bg-input border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary transition-all shadow-[0_0_10px_rgba(var(--primary),0.1)] active:scale-95 flex items-center justify-center"
+          className="absolute right-3 top-3 z-30 flex items-center justify-center border border-primary/30 bg-input p-2.5 text-primary shadow-[0_0_10px_rgba(var(--primary),0.1)] transition-all hover:border-primary hover:bg-primary/20 active:scale-95 min-[380px]:right-4 min-[380px]:top-4"
           style={{ clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}
           title="Acessar Configurações"
         >
@@ -42,10 +43,10 @@ const ProfileHeader = ({
         </button>
 
         {/* Info do Usuário */}
-        <div className="flex items-center gap-5 relative z-10 mb-5">
+        <div className="relative z-10 mb-5 flex items-start gap-3 min-[380px]:items-center min-[380px]:gap-5">
           
           {/* Avatar com frame Sci-Fi adaptável */}
-          <div className="relative w-24 h-24 shrink-0 cursor-pointer z-20 group">
+          <div className="group relative z-20 h-20 w-20 shrink-0 cursor-pointer min-[380px]:h-24 min-[380px]:w-24">
             <input type="file" id="avatar-upload" accept="image/*" className="hidden" onChange={handleImageUpload} />
             <label 
               htmlFor="avatar-upload" 
@@ -72,50 +73,64 @@ const ProfileHeader = ({
             <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-secondary pointer-events-none"></div>
           </div>
 
-          <div className="flex-1 min-w-0 pr-12">
+          <div className="min-w-0 flex-1 pr-12 min-[380px]:pr-14">
             <div className="flex items-center gap-1.5 mb-1 opacity-70">
               <Fingerprint size={10} className="text-primary" />
               <span className="text-[8px] font-mono font-black text-primary uppercase tracking-[0.3em]">ID Confirmada</span>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-main dark:text-white drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] truncate leading-none">
+            <h2 className="line-clamp-2 break-all font-cyber text-base font-black uppercase leading-tight tracking-[-0.04em] text-main drop-shadow-[0_0_5px_rgba(var(--text-main),0.1)] min-[360px]:text-lg min-[390px]:text-xl sm:text-2xl dark:text-white dark:drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">
               {userMetadata?.username || 'SOLDADO_X'}
             </h2>
-            
-            {/* Badge da Classe RPG */}
-            <div className="inline-flex items-center mt-2 bg-secondary/10 border border-secondary/40 px-2 py-0.5 shadow-[0_0_10px_rgba(var(--secondary),0.1)]" style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}>
-              <span className="text-secondary text-[10px] font-black uppercase tracking-widest drop-shadow-[0_0_5px_rgba(var(--secondary),0.5)]">
-                {displayClass}
-              </span>
-            </div>
           </div>
         </div>
+
+        <dl className="relative z-10 grid gap-2 border-t border-primary/10 pt-4 text-xs sm:grid-cols-3">
+          <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-secondary"><Shield size={12} /> Classe</dt>
+            <dd className="mt-1 break-words font-black uppercase text-main">{classLabel}</dd>
+            <dd className="mt-1 text-[10px] leading-relaxed text-muted">{classDescription}</dd>
+            <button type="button" onClick={onExplainClass} className="touch-target mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-[10px] font-black uppercase text-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"><CircleHelp size={14} /> Entenda sua classe</button>
+          </div>
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary"><Target size={12} /> Objetivos</dt>
+            <dd className="mt-1 leading-relaxed text-main">{goalLabels.join(' e ')}</dd>
+          </div>
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
+            <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary"><Crosshair size={12} /> Foco atual</dt>
+            <dd className="mt-1 leading-relaxed text-main">{focusLabel}</dd>
+          </div>
+        </dl>
 
         {/* Barra de Operação (Metas) */}
         {userMetadata?.target_weight && (
           <div className="relative z-10 pt-4 mt-2 border-t border-primary/10">
             <div className="flex justify-between items-end mb-1.5">
               <span className="text-[9px] font-black text-muted uppercase tracking-widest flex items-center gap-1.5">
-                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary animate-pulse"} /> 
+                <Crosshair size={12} className={isGoalMet ? "text-success" : "text-primary"} />
                 OBJETIVO: {userMetadata.target_weight}KG
               </span>
-              <span className={`text-xs font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>
-                {goalProgress}%
+              <span className={`text-[9px] font-black font-mono ${isGoalMet ? 'text-success drop-shadow-[0_0_5px_rgba(var(--success),0.6)]' : 'text-primary'}`}>
+                {goalProgress !== null ? `${goalProgress}%` : 'AGUARDANDO PESO'}
               </span>
             </div>
-            
-            <div className="w-full bg-input rounded-sm h-1.5 overflow-hidden border border-primary/20">
-              <div 
-                className={`h-full transition-all duration-1000 relative ${
-                  isGoalMet 
-                    ? 'bg-gradient-to-r from-success/50 to-success shadow-[0_0_15px_rgba(var(--success),0.8)]' 
-                    : 'bg-gradient-to-r from-primary/50 via-primary to-secondary shadow-[0_0_10px_rgba(var(--primary),0.6)]'
-                }`} 
-                style={{ width: `${goalProgress}%` }}
-              >
-                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/50 blur-[2px]"></div>
+
+            {goalProgress !== null ? (
+              <div className="w-full bg-input rounded-sm h-1.5 overflow-hidden border border-primary/20">
+                <div
+                  className={`h-full transition-all duration-1000 relative ${
+                    isGoalMet
+                      ? 'bg-gradient-to-r from-success/50 to-success shadow-[0_0_15px_rgba(var(--success),0.8)]'
+                      : 'bg-gradient-to-r from-primary/50 via-primary to-secondary shadow-[0_0_10px_rgba(var(--primary),0.6)]'
+                  }`}
+                  style={{ width: `${goalProgress}%` }}
+                >
+                  <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/50 blur-[2px]"></div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-[10px] leading-relaxed text-muted">Registre uma medição para calcular o progresso até o peso alvo.</p>
+            )}
           </div>
         )}
       </div>

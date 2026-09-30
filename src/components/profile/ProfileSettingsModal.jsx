@@ -2,6 +2,15 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X, Ruler, Calendar, Target, Save } from 'lucide-react';
 import CyberCalendar from '../dashboard/CyberCalendar';
+import {
+  MAX_PROFILE_GOALS,
+  PROFILE_CLASS_EFFECT_SUMMARY,
+  PROFILE_CLASSES,
+  PROFILE_GOALS,
+  getClassDefinition,
+  getClassLabel,
+  toggleGoalSelection,
+} from '../../utils/profileMetadata';
 
 const formatNumberInput = (value) => value.replace(/[^0-9.]/g, '');
 
@@ -37,7 +46,7 @@ const ProfileSettingsModal = ({
             <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Codinome</label>
             <input 
               type="text" 
-              maxLength={15} // 
+              maxLength={24}
               value={editForm.username} 
               onChange={(e) => setEditForm({...editForm, username: e.target.value})}
               className="w-full bg-input border border-border p-3 rounded-xl text-main dark:text-white font-bold focus:border-primary focus:outline-none placeholder-muted/50 transition-colors"
@@ -106,23 +115,70 @@ const ProfileSettingsModal = ({
             </div>
           </div>
 
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-muted block mb-1">Especialidade (Classe)</label>
-            <select 
-              value={editForm.goal} 
-              onChange={(e) => setEditForm({...editForm, goal: e.target.value})}
-              className="w-full bg-input border border-border p-3 rounded-xl text-main dark:text-white font-bold focus:border-primary focus:outline-none appearance-none cursor-pointer transition-colors"
-            >
-              <option value="hypertrophy">Tank (Foco em Massa/Força)</option>
-              <option value="weight_loss">Assassin (Foco em Definição/Seca)</option>
-              <option value="endurance">Warrior (Foco em Resistência)</option>
-            </select>
+          <fieldset>
+            <legend className="text-[10px] font-black uppercase tracking-widest text-muted">
+              Objetivos ({editForm.goals.length}/{MAX_PROFILE_GOALS})
+            </legend>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">Escolha um ou dois. O primeiro selecionado define o foco atual.</p>
+            <div className="mt-2 grid gap-2">
+              {PROFILE_GOALS.map((goal) => {
+                const selectedIndex = editForm.goals.indexOf(goal.id);
+                const selected = selectedIndex >= 0;
+                const unavailable = !selected && editForm.goals.length >= MAX_PROFILE_GOALS;
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={unavailable}
+                    onClick={() => setEditForm({ ...editForm, goals: toggleGoalSelection(editForm.goals, goal.id) })}
+                    className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border p-3 text-left text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${selected ? 'border-primary bg-primary/10 text-main' : 'border-border bg-input text-muted'}`}
+                  >
+                    <span>{goal.label}</span>
+                    {selected && <span className="shrink-0 rounded-full bg-primary px-2 py-1 text-[9px] font-black uppercase text-on-primary">{selectedIndex === 0 ? 'Foco' : '2º'}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="profile-gender" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Sexo</label>
+              <select
+                id="profile-gender"
+                value={editForm.gender}
+                onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                className="w-full cursor-pointer appearance-none rounded-xl border border-border bg-input p-3 text-xs font-bold text-main transition-colors focus:border-primary focus:outline-none"
+              >
+                <option value="male">Masculino</option>
+                <option value="female">Feminino</option>
+                <option value="neutral">Não informar</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="profile-class" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Classe</label>
+              <select
+                id="profile-class"
+                value={editForm.class}
+                onChange={(e) => setEditForm({ ...editForm, class: e.target.value })}
+                className="w-full cursor-pointer appearance-none rounded-xl border border-border bg-input p-3 text-xs font-bold text-main transition-colors focus:border-primary focus:outline-none"
+              >
+                {PROFILE_CLASSES.map((profileClass) => (
+                  <option key={profileClass.id} value={profileClass.id}>{getClassLabel(profileClass.id, editForm.gender)}</option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          <p className="rounded-xl border border-border bg-input/60 p-3 text-[11px] leading-relaxed text-muted">
+            <strong className="text-main">{getClassLabel(editForm.class, editForm.gender)} — {getClassDefinition(editForm.class).theme}.</strong> {getClassDefinition(editForm.class).description} {PROFILE_CLASS_EFFECT_SUMMARY}
+          </p>
 
           <button 
             onClick={handleSaveProfile}
             disabled={isSaving}
-            className="w-full mt-4 bg-primary text-black font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(var(--primary),0.6)] transition-all disabled:opacity-50 shrink-0 shadow-sm"
+            className="w-full mt-4 bg-primary text-on-primary font-black uppercase tracking-widest p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(var(--primary),0.6)] transition-all disabled:opacity-50 shrink-0 shadow-sm"
           >
             {isSaving ? 'Sincronizando...' : <><Save size={18} /> Salvar Ficha</>}
           </button>
