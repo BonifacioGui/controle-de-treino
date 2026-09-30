@@ -2,9 +2,7 @@ name: Deploy para GitHub Pages
 
 on:
   push:
-    # A branch de revisão publica uma prévia no Pages antes do merge.
-    # Remover agent/revisao-ux-features desta lista antes de concluir o PR.
-    branches: ["main", "agent/revisao-ux-features"]
+    branches: ["main"]
 
 concurrency:
   group: "pages"
