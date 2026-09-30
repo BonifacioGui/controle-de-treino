@@ -22,6 +22,7 @@ import {
 import { countLoadPrs } from '../utils/progressionUtils';
 import { DEFAULT_PLAN_SYNC, markPlanDirty, markPlanSynced, normalizePlanSync } from '../utils/planSync';
 import {
+  appendExerciseToWorkoutSnapshot,
   buildSessionExercises,
   calculateCompletedVolume,
   createSessionId,
@@ -132,6 +133,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   const progressRef = useRef(progress);
   progressRef.current = progress;
   const restoredSessionRef = useRef(null);
+  const appendedExerciseOperationsRef = useRef(new Set());
   const isHydrated = Boolean(userId && hydratedUserId === userId && isSessionHydrated);
   const visibleHistory = useMemo(() => getVisibleHistory(history), [history]);
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
@@ -164,6 +166,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     bossHistory,
     session.workoutName || activeDay,
   ), [activeDay, activeSessionExercises, bossHistory, session.bossEncounter, session.workoutName]);
+
+  useEffect(() => {
+    appendedExerciseOperationsRef.current.clear();
+  }, [session.sessionId]);
 
   const cancelPendingRestHaptic = useCallback(() => {
     const timerId = pendingRestHapticRef.current?.timerId;
@@ -983,6 +989,42 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     }
   }, [activeDay, closeRestTimer, resetSession, selectedDate, session.dateKey, session.editTarget, session.workoutName, userId, workoutData]);
 
+  const addExerciseToActiveSession = useCallback((exercise, options = {}) => {
+    if (!sessionActive) return false;
+    const workoutName = session.workoutName || activeDay;
+    const baseSnapshot = session.workoutSnapshot || workoutData[workoutName];
+    if (!baseSnapshot) return false;
+    const operationId = options.operationId || null;
+    if (operationId && appendedExerciseOperationsRef.current.has(operationId)) return false;
+
+    const nextSnapshot = appendExerciseToWorkoutSnapshot(baseSnapshot, exercise);
+    if (nextSnapshot === baseSnapshot) return false;
+    if (operationId) appendedExerciseOperationsRef.current.add(operationId);
+
+    updateSessionSnapshot((current) => ({
+      workoutSnapshot: appendExerciseToWorkoutSnapshot(current.workoutSnapshot || baseSnapshot, exercise),
+    }));
+
+    if (options.addToPlan) {
+      const exerciseToAdd = nextSnapshot.exercises.at(-1);
+      setWorkoutData((currentPlan) => {
+        const currentWorkout = currentPlan[workoutName];
+        if (!currentWorkout) return currentPlan;
+        return {
+          ...currentPlan,
+          [workoutName]: {
+            ...currentWorkout,
+            exercises: [
+              ...(currentWorkout.exercises || []),
+              { ...exerciseToAdd, alternatives: [...(exerciseToAdd.alternatives || [])] },
+            ],
+          },
+        };
+      });
+    }
+    return true;
+  }, [activeDay, session.workoutName, session.workoutSnapshot, sessionActive, setWorkoutData, updateSessionSnapshot, workoutData]);
+
   const reopenHistoryEntry = useCallback((id) => {
     if (sessionActive) throw new Error('Finalize ou descarte o treino atual antes de corrigir outra sessão.');
     const entry = visibleHistory.find((item) => item.id === id || item.localId === id);
@@ -1046,6 +1088,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     resetWorkoutTimer: abandonSession,
     acknowledgeRecovery,
     restoreAfterFailedFinish,
+    addExerciseToActiveSession,
     reopenHistoryEntry,
     finishWorkout,
     syncPendingSessions: syncPendingChanges,
@@ -1178,6 +1221,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }), [
     activeDay,
     abandonSession,
+    addExerciseToActiveSession,
     acknowledgeRecovery,
     beginSession,
     bodyHistory,

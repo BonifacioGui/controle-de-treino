@@ -92,19 +92,19 @@ const BossSection = ({ encounter, theme = 'dark', experienceMode = 'balanced', u
             </span>
           </div>
 
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full border border-border bg-input" role="progressbar" aria-label="Dano causado ao alvo" aria-valuemin="0" aria-valuemax={encounter.maxHp} aria-valuenow={Math.min(encounter.damage, encounter.maxHp)}>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full border border-border bg-input" role="progressbar" aria-label="Progresso da meta de performance" aria-valuemin="0" aria-valuemax={encounter.maxHp} aria-valuenow={Math.min(encounter.damage, encounter.maxHp)}>
             <div className={`h-full transition-[width] duration-500 ${encounter.defeated ? 'bg-success' : 'bg-gradient-to-r from-secondary to-primary'}`} style={{ width: `${progress}%` }} />
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
-            <span className="font-bold text-main">{Math.round(encounter.damage).toLocaleString('pt-BR')} / {Math.round(encounter.maxHp).toLocaleString('pt-BR')} dano</span>
-            <span className="text-muted">HP restante: {Math.round(encounter.remainingHp).toLocaleString('pt-BR')}</span>
+          <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+            <span className="font-bold text-main">{Math.round(encounter.damage).toLocaleString('pt-BR')} / {Math.round(encounter.maxHp).toLocaleString('pt-BR')}</span>
+            <span className="font-mono font-black text-muted">{Math.round(progress)}%</span>
           </div>
           {criticalBonus > 0 && (
-            <p className="mt-2 flex items-center gap-1 text-xs font-bold text-gold"><Sparkles size={14} /> {criticalHits} {criticalHits === 1 ? 'CRITICAL HIT' : 'CRITICAL HITS'} • +{Math.round(criticalBonus).toLocaleString('pt-BR')} dano</p>
+            <p className="mt-2 flex items-center gap-1 text-xs font-bold text-gold"><Sparkles size={14} /> {criticalHits} {criticalHits === 1 ? 'CRITICAL HIT' : 'CRITICAL HITS'} • bônus +{Math.round(criticalBonus).toLocaleString('pt-BR')}</p>
           )}
           {powerBonus > 0 && (
-            <p className="mt-1 flex items-center gap-1 text-xs font-bold text-primary"><Zap size={14} /> {powerHits} {powerHits === 1 ? 'POWER HIT' : 'POWER HITS'} • +{Math.round(powerBonus).toLocaleString('pt-BR')} dano</p>
+            <p className="mt-1 flex items-center gap-1 text-xs font-bold text-primary"><Zap size={14} /> {powerHits} {powerHits === 1 ? 'POWER HIT' : 'POWER HITS'} • bônus +{Math.round(powerBonus).toLocaleString('pt-BR')}</p>
           )}
           {encounter.overkill > 0 && <p className="mt-1 text-xs font-bold text-success">Overkill: {Math.round(encounter.overkill).toLocaleString('pt-BR')}</p>}
         </div>

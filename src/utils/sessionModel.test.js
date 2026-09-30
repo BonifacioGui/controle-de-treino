@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeHistoryEntry } from './historyModel';
 import {
+  appendExerciseToWorkoutSnapshot,
   buildSessionExercises,
   calculateCompletedVolume,
   getActiveSessionSets,
@@ -114,5 +115,30 @@ describe('conclusão de treino', () => {
     expect(normalizeHistoryEntry({
       dateKey: '2026-08-20', workoutName: 'A', exercises: [serialized],
     }).partial).toBe(false);
+  });
+
+  it('anexa exercício ao snapshot sem deslocar exercícios ou progresso existentes', () => {
+    const snapshot = {
+      title: 'Treino A',
+      exercises: [
+        { name: 'Supino', sets: '3x10' },
+        { name: 'Remada', sets: '3x10' },
+      ],
+    };
+    const progress = {
+      '2026-09-29-A-0': { sets: [{ weight: '40', reps: '10', completed: true }] },
+      '2026-09-29-A-1': { sets: [{ weight: '50', reps: '8', completed: true }] },
+    };
+
+    const next = appendExerciseToWorkoutSnapshot(snapshot, 'Face Pull');
+
+    expect(next).not.toBe(snapshot);
+    expect(snapshot.exercises).toHaveLength(2);
+    expect(next.exercises.map((exercise) => exercise.name)).toEqual(['Supino', 'Remada', 'Face Pull']);
+    expect(next.exercises[2]).toMatchObject({ sets: '3x10', loadMode: 'total' });
+    expect(buildSessionExercises(next, progress, '2026-09-29', 'A').slice(0, 2)).toMatchObject([
+      { name: 'Supino', sets: [{ weight: '40', reps: '10', completed: true }] },
+      { name: 'Remada', sets: [{ weight: '50', reps: '8', completed: true }] },
+    ]);
   });
 });

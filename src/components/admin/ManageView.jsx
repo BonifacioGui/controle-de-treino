@@ -6,7 +6,7 @@ import { ALL_EXERCISES, EXERCISE_CATALOG } from '../../data/exerciseCatalog';
 
 const ManageView = ({ 
   activeDay, setActiveDay, addDay, removeDay, workoutData, addExercise, 
-  removeExercise, editExerciseBase, setView, addFromCatalog 
+  removeExercise, editExerciseBase, setView, addFromCatalog, sessionActive = false,
 }) => {
   
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -90,6 +90,13 @@ const ManageView = ({
           <Plus size={16} /> NOVO
         </button>
       </div>
+
+      {sessionActive && (
+        <div role="status" className="mx-1 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-wider text-primary">Treino em andamento</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">Alterações feitas aqui serão aplicadas aos próximos treinos. A sessão atual permanece como foi iniciada.</p>
+        </div>
+      )}
 
       {/* Header de Configuração */}
       <div className="flex justify-between items-center pb-1 px-1">

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -8,6 +8,7 @@ import {
   Dumbbell,
   Loader2,
   Play,
+  Plus,
   RotateCcw,
 } from 'lucide-react';
 import WorkoutHeader from './WorkoutHeader';
@@ -15,6 +16,7 @@ import BossSection from './BossSection';
 import ExerciseCard from './ExerciseCard';
 import ExerciseGuide from './ExerciseGuide';
 import ExercisePerformanceSummary from './ExercisePerformanceSummary';
+import ExerciseSearchModal from './ExerciseSearchModal';
 import WorkoutQuestSummary from './WorkoutQuestSummary';
 import { daysBetweenLocalDates, formatLocalDate } from '../../utils/dateUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
@@ -48,6 +50,12 @@ const WorkoutView = ({
   const [finishConfirmation, setFinishConfirmation] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [guideExercise, setGuideExercise] = useState(null);
+  const [isExerciseSearchOpen, setIsExerciseSearchOpen] = useState(false);
+  const [pendingExercise, setPendingExercise] = useState('');
+  const [addExerciseToPlan, setAddExerciseToPlan] = useState(false);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const addExerciseOperationRef = useRef(null);
+  const addExerciseHandledRef = useRef(false);
   const currentWorkout = activeWorkout || workoutData[activeDay];
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(workoutTimer.status);
@@ -72,6 +80,35 @@ const WorkoutView = ({
     const id = `${selectedDate}-${activeDay}-${index}`;
     return !isExerciseCompleted(exercise, progress[id] || {});
   }) ?? -1;
+  const completionPercent = completion.totalSets > 0
+    ? Math.round((completion.completedSets / completion.totalSets) * 100)
+    : 0;
+
+  const selectExerciseToAdd = (exerciseName) => {
+    setPendingExercise(exerciseName);
+    setAddExerciseToPlan(false);
+    addExerciseHandledRef.current = false;
+    addExerciseOperationRef.current = globalThis.crypto?.randomUUID?.()
+      || `append-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  const confirmExerciseAddition = () => {
+    if (!pendingExercise || addExerciseHandledRef.current) return;
+    addExerciseHandledRef.current = true;
+    setIsAddingExercise(true);
+    const added = actions.addExerciseToActiveSession?.(pendingExercise, {
+      addToPlan: addExerciseToPlan,
+      operationId: addExerciseOperationRef.current,
+    });
+    if (!added) {
+      addExerciseHandledRef.current = false;
+      setErrorMessage('Não foi possível adicionar o exercício à sessão atual. Tente novamente.');
+      setIsAddingExercise(false);
+      return;
+    }
+    setPendingExercise('');
+    setIsAddingExercise(false);
+  };
   const handleFinish = async (allowPartial = false) => {
     if (isFinishing) return;
     setErrorMessage('');
@@ -118,9 +155,14 @@ const WorkoutView = ({
         />
 
         <section className="solo-workout-hero rounded-2xl border border-primary/35 bg-card p-4 shadow-sm">
-          <div className="min-w-0">
-            <h1 className="text-xl font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
-            <p className="mt-1 text-sm font-medium text-muted">{currentWorkout.focus || 'Foco geral'} <span aria-hidden="true">·</span> {currentWorkout.exercises?.length || 0} exercícios</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
+              <p className="mt-1 text-sm font-medium text-muted">{currentWorkout.focus || 'Foco geral'} <span aria-hidden="true">·</span> {currentWorkout.exercises?.length || 0} exercícios</p>
+            </div>
+            {sessionActive && (
+              <span className="shrink-0 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-primary">Em andamento</span>
+            )}
           </div>
           {lastSession && !sessionActive && (
             <p className="mt-2 text-xs text-muted">
@@ -138,6 +180,17 @@ const WorkoutView = ({
               </button>
             </>
           )}
+          {sessionActive && (
+            <div className="mt-4 border-t border-border/70 pt-3">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold text-muted"><strong className="text-main">{completion.completedSets}/{completion.totalSets}</strong> séries</span>
+                <span className="font-mono font-black text-main">{completionPercent}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-input" role="progressbar" aria-label="Progresso do treino" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completionPercent}>
+                <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-300" style={{ width: `${completionPercent}%` }} />
+              </div>
+            </div>
+          )}
         </section>
 
         {!sessionActive && !isTutorialDay && (
@@ -146,14 +199,6 @@ const WorkoutView = ({
 
         {sessionActive && (
           <>
-            <div className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-primary">Treino em andamento</p>
-                <p className="mt-1 text-sm text-muted">{completion.completedSets}/{completion.totalSets} séries concluídas</p>
-              </div>
-              <p className="font-mono text-xl font-black text-main">{completion.totalSets > 0 ? Math.round((completion.completedSets / completion.totalSets) * 100) : 0}%</p>
-            </div>
-
             <BossSection key={userId} encounter={bossEncounter} theme={theme} experienceMode={experienceMode} userId={userId} />
 
             <div className="space-y-3">
@@ -178,6 +223,15 @@ const WorkoutView = ({
                 );
               })}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsExerciseSearchOpen(true)}
+              disabled={isFinishing}
+              className="touch-target flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 text-sm font-black text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus aria-hidden="true" size={18} /> Adicionar exercício
+            </button>
 
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-main">Nota da sessão <span className="font-normal text-muted">(opcional)</span></span>
@@ -221,7 +275,7 @@ const WorkoutView = ({
                         <ExercisePerformanceSummary
                           performance={performance}
                           className="text-[11px] leading-relaxed"
-                          emptyText="Sem sessão anterior registrada"
+                          emptyText="Sem referência anterior"
                         />
                       </div>
                       <button
@@ -254,13 +308,38 @@ const WorkoutView = ({
         {errorMessage && (
           <div role="alert" className="flex items-start gap-3 rounded-xl border border-danger/50 bg-danger/10 p-4 text-sm text-main">
             <AlertTriangle className="shrink-0 text-danger" />
-            <div><p className="font-bold">Não foi possível concluir.</p><p className="mt-1 text-muted">{errorMessage}</p></div>
+            <div><p className="font-bold">Não foi possível concluir a ação.</p><p className="mt-1 text-muted">{errorMessage}</p></div>
           </div>
         )}
       </main>
 
       {guideExercise && (
         <ExerciseGuide exerciseName={guideExercise} onClose={() => setGuideExercise(null)} />
+      )}
+
+      {isExerciseSearchOpen && (
+        <ExerciseSearchModal
+          onSelect={selectExerciseToAdd}
+          onClose={() => setIsExerciseSearchOpen(false)}
+        />
+      )}
+
+      {pendingExercise && createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby="append-exercise-title" className="fixed inset-0 z-[1150] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center" onClick={() => !isAddingExercise && setPendingExercise('')}>
+          <div className="w-full max-w-sm rounded-2xl border border-primary/40 bg-card p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <h2 id="append-exercise-title" className="text-lg font-black text-main">Adicionar à sessão atual?</h2>
+            <p className="mt-2 text-sm text-muted"><strong className="text-main">{pendingExercise}</strong> será incluído ao final, sem alterar as séries já registradas.</p>
+            <p className="mt-3 text-xs font-bold text-primary">Padrão seguro: adicionar apenas neste treino.</p>
+            <label className="mt-4 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-input/40 px-3 text-sm text-main">
+              <input type="checkbox" checked={addExerciseToPlan} disabled={isAddingExercise || isFinishing} onChange={(event) => setAddExerciseToPlan(event.target.checked)} className="h-5 w-5 accent-primary" />
+              <span><strong className="block">Adicionar também à ficha</strong><span className="text-xs text-muted">Desmarcado: vale apenas para este treino.</span></span>
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" disabled={isAddingExercise} onClick={() => setPendingExercise('')} className="touch-target rounded-xl border border-border font-bold text-main disabled:opacity-50">Cancelar</button>
+              <button type="button" disabled={isAddingExercise || isFinishing} onClick={confirmExerciseAddition} className="touch-target rounded-xl bg-primary font-black text-on-primary disabled:opacity-50">{isAddingExercise ? 'Adicionando...' : 'Adicionar'}</button>
+            </div>
+          </div>
+        </div>, document.body,
       )}
 
       {finishConfirmation && createPortal(

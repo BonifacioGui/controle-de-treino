@@ -25,6 +25,32 @@ export const SESSION_STATUS = Object.freeze({
   completed: 'completed',
 });
 
+export const createSessionExercise = (exercise) => {
+  const source = typeof exercise === 'string' ? { name: exercise } : (exercise || {});
+  const name = String(source.name || '').trim();
+  if (!name) return null;
+  return {
+    ...source,
+    name,
+    sets: source.sets || '3x10',
+    note: source.note || '',
+    alternatives: Array.isArray(source.alternatives) ? [...source.alternatives] : [],
+    loadMode: source.loadMode || 'total',
+  };
+};
+
+export const appendExerciseToWorkoutSnapshot = (workoutSnapshot, exercise) => {
+  const normalizedExercise = createSessionExercise(exercise);
+  if (!workoutSnapshot || !normalizedExercise) return workoutSnapshot;
+  return {
+    ...workoutSnapshot,
+    exercises: [
+      ...(workoutSnapshot.exercises || []),
+      normalizedExercise,
+    ],
+  };
+};
+
 export const getExerciseMode = (exercise = {}) => {
   const loadMode = getSetLoadMode({}, exercise);
   if (loadMode === LOAD_MODES.distance) return 'distance';
