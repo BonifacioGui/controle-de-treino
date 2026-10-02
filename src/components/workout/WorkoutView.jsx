@@ -133,10 +133,10 @@ const WorkoutView = ({
         {workoutTimer.recovered && sessionActive && (
           <div className="flex flex-col gap-3 rounded-2xl border border-primary/50 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-black text-primary">Treino em andamento encontrado</p>
+              <p className="font-bold text-primary">Treino em andamento encontrado</p>
               <p className="mt-1 text-sm text-muted">Seu progresso e cronômetro foram recuperados neste dispositivo.</p>
             </div>
-            <button type="button" onClick={actions.acknowledgeRecovery} className="touch-target rounded-xl bg-primary px-4 text-sm font-black text-on-primary">
+            <button type="button" onClick={actions.acknowledgeRecovery} className="touch-target rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary">
               Continuar treino
             </button>
           </div>
@@ -157,11 +157,11 @@ const WorkoutView = ({
         <section className="solo-workout-hero rounded-2xl border border-primary/35 bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl font-black leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
+              <h1 className="text-xl font-bold leading-tight text-main sm:text-2xl">{currentWorkout.title || `Treino ${activeDay}`}</h1>
               <p className="mt-1 text-sm font-medium text-muted">{currentWorkout.focus || 'Foco geral'} <span aria-hidden="true">·</span> {currentWorkout.exercises?.length || 0} exercícios</p>
             </div>
             {sessionActive && (
-              <span className="shrink-0 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-primary">Em andamento</span>
+              <span className="shrink-0 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-primary">Em andamento</span>
             )}
           </div>
           {lastSession && !sessionActive && (
@@ -175,7 +175,7 @@ const WorkoutView = ({
               {completedToday && (
                 <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-success"><CheckCircle2 aria-hidden="true" size={13} /> Registrado hoje · você ainda pode repetir</p>
               )}
-              <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target mt-3 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
+              <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target mt-3 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-semibold text-on-primary">
                 <Play fill="currentColor" /> Iniciar treino
               </button>
             </>
@@ -184,7 +184,7 @@ const WorkoutView = ({
             <div className="mt-4 border-t border-border/70 pt-3">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold text-muted"><strong className="text-main">{completion.completedSets}/{completion.totalSets}</strong> séries</span>
-                <span className="font-mono font-black text-main">{completionPercent}%</span>
+                <span className="font-mono font-bold text-main">{completionPercent}%</span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-input" role="progressbar" aria-label="Progresso do treino" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completionPercent}>
                 <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-300" style={{ width: `${completionPercent}%` }} />
@@ -228,7 +228,7 @@ const WorkoutView = ({
               type="button"
               onClick={() => setIsExerciseSearchOpen(true)}
               disabled={isFinishing}
-              className="touch-target flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 text-sm font-black text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="touch-target flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 text-sm font-semibold text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus aria-hidden="true" size={18} /> Adicionar exercício
             </button>
@@ -245,12 +245,12 @@ const WorkoutView = ({
 
             {completion.incompleteSets === 0 && (
               <div role="status" className="rounded-2xl border border-success/40 bg-success/10 p-4 text-center">
-                <p className="font-black text-success">Todas as séries foram concluídas</p>
+                <p className="font-bold text-success">Todas as séries foram concluídas</p>
                 <p className="mt-1 text-sm text-muted">Nenhum novo descanso será iniciado. Finalize quando estiver pronto.</p>
               </div>
             )}
 
-            <button type="button" onClick={() => handleFinish(false)} disabled={isFinishing} className="workout-finish-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-base font-black text-on-primary shadow-[0_0_20px_rgba(var(--primary),0.25)] disabled:opacity-50">
+            <button type="button" onClick={() => handleFinish(false)} disabled={isFinishing} className="workout-finish-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-base font-semibold text-on-primary shadow-[0_0_20px_rgba(var(--primary),0.25)] disabled:opacity-50">
               {isFinishing ? <><Loader2 className="animate-spin" /> Salvando treino...</> : <><CheckCircle2 /> Finalizar treino</>}
             </button>
           </>
@@ -259,7 +259,7 @@ const WorkoutView = ({
         {!sessionActive && !isTutorialDay && (
           <section className="space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
             <div className="px-1">
-              <h2 className="flex items-center gap-2 text-base font-black text-main"><Dumbbell className="text-primary" /> Exercícios</h2>
+              <h2 className="flex items-center gap-2 text-base font-bold text-main"><Dumbbell className="text-primary" /> Exercícios</h2>
             </div>
             <ol className="space-y-2">
               {currentWorkout.exercises.map((exercise, index) => {
@@ -267,8 +267,8 @@ const WorkoutView = ({
                 return (
                   <li key={`${exercise.name}-${index}`} className="rounded-xl border border-border bg-input/35 px-3 py-2.5">
                     <div className="flex min-w-0 items-baseline gap-2">
-                      <p className="min-w-0 flex-1 text-sm font-black leading-snug text-main">{index + 1}. {exercise.name}</p>
-                      <span className="shrink-0 text-xs font-black text-primary">{exercise.sets}</span>
+                      <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-main">{index + 1}. {exercise.name}</p>
+                      <span className="shrink-0 text-xs font-semibold text-primary">{exercise.sets}</span>
                     </div>
                     <div className="mt-0.5 flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -293,7 +293,7 @@ const WorkoutView = ({
                 );
               })}
             </ol>
-            <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-on-primary">
+            <button type="button" onClick={actions.startSession} className="solo-primary-action touch-target flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl text-base font-semibold text-on-primary">
               <Play fill="currentColor" /> Iniciar treino
             </button>
           </section>
@@ -327,7 +327,7 @@ const WorkoutView = ({
       {pendingExercise && createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="append-exercise-title" className="fixed inset-0 z-[1150] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center" onClick={() => !isAddingExercise && setPendingExercise('')}>
           <div className="w-full max-w-sm rounded-2xl border border-primary/40 bg-card p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <h2 id="append-exercise-title" className="text-lg font-black text-main">Adicionar à sessão atual?</h2>
+            <h2 id="append-exercise-title" className="text-lg font-bold text-main">Adicionar à sessão atual?</h2>
             <p className="mt-2 text-sm text-muted"><strong className="text-main">{pendingExercise}</strong> será incluído ao final, sem alterar as séries já registradas.</p>
             <p className="mt-3 text-xs font-bold text-primary">Padrão seguro: adicionar apenas neste treino.</p>
             <label className="mt-4 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-input/40 px-3 text-sm text-main">
@@ -336,7 +336,7 @@ const WorkoutView = ({
             </label>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" disabled={isAddingExercise} onClick={() => setPendingExercise('')} className="touch-target rounded-xl border border-border font-bold text-main disabled:opacity-50">Cancelar</button>
-              <button type="button" disabled={isAddingExercise || isFinishing} onClick={confirmExerciseAddition} className="touch-target rounded-xl bg-primary font-black text-on-primary disabled:opacity-50">{isAddingExercise ? 'Adicionando...' : 'Adicionar'}</button>
+              <button type="button" disabled={isAddingExercise || isFinishing} onClick={confirmExerciseAddition} className="touch-target rounded-xl bg-primary font-semibold text-on-primary disabled:opacity-50">{isAddingExercise ? 'Adicionando...' : 'Adicionar'}</button>
             </div>
           </div>
         </div>, document.body,
@@ -346,11 +346,11 @@ const WorkoutView = ({
         <div role="dialog" aria-modal="true" aria-labelledby="finish-partial-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-warning/50 bg-card p-6">
             <AlertTriangle className="mb-4 text-warning" size={32} />
-            <h2 id="finish-partial-title" className="text-lg font-black text-main">Ainda existem {finishConfirmation.incompleteSets} séries não concluídas.</h2>
+            <h2 id="finish-partial-title" className="text-lg font-bold text-main">Ainda existem {finishConfirmation.incompleteSets} séries não concluídas.</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">Você pode voltar e completar o treino ou salvar esta sessão como parcial. Somente séries confirmadas contam para volume, XP e recordes.</p>
             <div className="mt-6 space-y-3">
-              <button type="button" onClick={() => setFinishConfirmation(null)} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Voltar ao treino</button>
-              <button type="button" onClick={() => handleFinish(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-warning font-black text-on-warning"><RotateCcw size={17} /> Finalizar mesmo assim</button>
+              <button type="button" onClick={() => setFinishConfirmation(null)} className="touch-target w-full rounded-xl border border-primary font-semibold text-primary">Voltar ao treino</button>
+              <button type="button" onClick={() => handleFinish(true)} className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-warning font-semibold text-on-warning"><RotateCcw size={17} /> Finalizar mesmo assim</button>
             </div>
           </div>
         </div>, document.body,

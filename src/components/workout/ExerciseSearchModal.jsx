@@ -25,7 +25,7 @@ const ExerciseSearchModal = ({ exercises = ALL_EXERCISES, onSelect, onClose, all
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border bg-input/50 p-4">
-          <div><h3 id="exercise-search-title" className="text-sm font-black text-main">Buscar exercício</h3><p className="mt-1 text-xs text-muted">Catálogo SOLO e exercício personalizado</p></div>
+          <div><h3 id="exercise-search-title" className="text-sm font-bold text-main">Buscar exercício</h3><p className="mt-1 text-xs text-muted">Catálogo SOLO e exercício personalizado</p></div>
           <button type="button" onClick={onClose} aria-label="Fechar busca" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main">
             <X size={20} />
           </button>
@@ -37,7 +37,7 @@ const ExerciseSearchModal = ({ exercises = ALL_EXERCISES, onSelect, onClose, all
             type="search"
             aria-label="Buscar no catálogo de exercícios"
             placeholder="Ex.: Remada Baixa"
-            className="h-12 w-full rounded-xl border border-border bg-input pl-11 pr-3 text-sm font-bold text-main outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="h-12 w-full rounded-xl border border-border bg-input pl-11 pr-3 text-sm font-medium text-main outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             autoFocus
@@ -46,7 +46,7 @@ const ExerciseSearchModal = ({ exercises = ALL_EXERCISES, onSelect, onClose, all
 
         <div className="flex-1 space-y-1 overflow-y-auto p-2">
           {allowCustom && normalizedTerm && !exactMatch && (
-            <button type="button" onClick={() => selectExercise(searchTerm.trim())} className="mb-2 min-h-12 w-full rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 text-left text-sm font-black text-primary">
+            <button type="button" onClick={() => selectExercise(searchTerm.trim())} className="mb-2 min-h-12 w-full rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 text-left text-sm font-semibold text-primary">
               Usar “{searchTerm.trim()}”
             </button>
           )}

@@ -68,7 +68,7 @@ const AuthRecoveryScreen = ({ message, onRetry }) => (
     <section role="alert" className="w-full max-w-md rounded-3xl border border-warning/50 bg-card p-6 text-center shadow-2xl">
       <img src={logoSolo} alt="SOLO" className="mx-auto h-12 w-auto" />
       <AlertTriangle aria-hidden="true" className="mx-auto mt-6 text-warning" size={34} />
-      <h1 className="mt-4 font-cyber text-lg font-black uppercase tracking-wider">Falha ao iniciar a sessão</h1>
+      <h1 className="mt-4 text-lg font-bold">Falha ao iniciar a sessão</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">{message}</p>
       <button type="button" onClick={onRetry} className="touch-target mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-black uppercase text-on-primary">
         <RefreshCw aria-hidden="true" size={18} /> Tentar novamente

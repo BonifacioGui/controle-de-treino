@@ -47,12 +47,12 @@ const WorkoutSelector = ({ workoutData, activeDay, sessionActive, workoutStatuse
             data-workout-state={isActive ? 'selected' : locked ? 'locked' : status?.completedOnDate ? 'completed' : 'available'}
             className={`relative min-h-14 w-[168px] shrink-0 rounded-xl border px-3 py-2 text-left transition-all disabled:cursor-not-allowed sm:w-[210px] ${isActive ? 'border-primary bg-primary/10 text-main shadow-[0_0_14px_rgba(var(--primary),0.14)]' : locked ? 'border-warning/30 bg-card/80 text-main opacity-75 saturate-50' : 'border-border bg-card text-main'}`}
           >
-            <span className="block truncate text-sm font-black">{title}</span>
-            <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px]">
+            <span className="block truncate text-sm font-bold">{title}</span>
+            <span className="mt-0.5 flex items-center justify-between gap-2 text-xs">
               <span className="truncate text-muted">{workout.focus || 'Foco geral'}</span>
-              {isActive && <span className="shrink-0 font-black text-primary">Selecionado</span>}
-              {locked && <span className="flex shrink-0 items-center gap-1 font-black text-warning"><Lock aria-hidden="true" size={11} /> Bloqueado</span>}
-              {!isActive && !locked && status?.completedOnDate && <span className="flex shrink-0 items-center gap-0.5 font-black text-success"><Check aria-hidden="true" size={11} /> Feito</span>}
+              {isActive && <span className="shrink-0 font-semibold text-primary">Selecionado</span>}
+              {locked && <span className="flex shrink-0 items-center gap-1 font-semibold text-warning"><Lock aria-hidden="true" size={11} /> Bloqueado</span>}
+              {!isActive && !locked && status?.completedOnDate && <span className="flex shrink-0 items-center gap-0.5 font-semibold text-success"><Check aria-hidden="true" size={11} /> Feito</span>}
             </span>
           </button>
         );

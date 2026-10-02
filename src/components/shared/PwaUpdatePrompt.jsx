@@ -45,7 +45,7 @@ const PwaUpdatePrompt = () => {
           <RefreshCw aria-hidden="true" size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 id="pwa-update-title" className="font-cyber text-sm font-black tracking-wide text-main">
+          <h2 id="pwa-update-title" className="text-sm font-bold text-main">
             Nova versão disponível
           </h2>
           <p id="pwa-update-description" className="mt-1 text-xs leading-relaxed text-muted">

@@ -56,7 +56,7 @@ const PasswordResetPanel = ({ onComplete }) => {
       <section className="space-y-5 text-center" aria-labelledby="password-updated-title">
         <CheckCircle2 aria-hidden="true" className="mx-auto text-success" size={40} />
         <div>
-          <h1 id="password-updated-title" className="font-cyber text-xl font-black uppercase tracking-wide text-main">Senha atualizada</h1>
+          <h1 id="password-updated-title" className="text-xl font-bold text-main">Senha atualizada</h1>
           <p role="status" className="mt-3 text-sm leading-relaxed text-muted">Sua nova senha foi salva com segurança. Você já pode entrar novamente.</p>
         </div>
         <button type="button" onClick={returnToLogin} disabled={loading} className="auth-primary-action touch-target flex w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black uppercase tracking-widest disabled:opacity-40">
@@ -71,7 +71,7 @@ const PasswordResetPanel = ({ onComplete }) => {
     <form onSubmit={handleSubmit} className="space-y-5" aria-labelledby="password-reset-title">
       <div className="text-center">
         <KeyRound aria-hidden="true" className="mx-auto text-primary" size={36} />
-        <h1 id="password-reset-title" className="mt-3 font-cyber text-xl font-black uppercase tracking-wide text-main">Criar nova senha</h1>
+        <h1 id="password-reset-title" className="mt-3 text-xl font-bold text-main">Criar nova senha</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">Defina uma senha com pelo menos 8 caracteres.</p>
       </div>
 

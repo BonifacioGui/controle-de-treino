@@ -102,7 +102,7 @@ const ManageView = ({
       <div className="flex justify-between items-center pb-1 px-1">
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-secondary" />
-          <h2 className="font-cyber text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+          <h2 className="text-lg font-bold neon-text-cyan text-primary">
             {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
         </div>

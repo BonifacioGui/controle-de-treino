@@ -43,7 +43,7 @@ const PasswordRecoveryRequest = ({ initialEmail = '', onBack }) => {
       <section className="space-y-5 text-center" aria-labelledby="recovery-sent-title">
         <CheckCircle2 aria-hidden="true" className="mx-auto text-success" size={38} />
         <div>
-          <h1 id="recovery-sent-title" className="font-cyber text-xl font-black uppercase tracking-wide text-main">Confira seu e-mail</h1>
+          <h1 id="recovery-sent-title" className="text-xl font-bold text-main">Confira seu e-mail</h1>
           <p role="status" className="mt-3 text-sm leading-relaxed text-muted">{PASSWORD_RECOVERY_SENT_MESSAGE}</p>
           <p className="mt-2 text-xs leading-relaxed text-muted">Verifique também a pasta de spam. O link precisa abrir neste dispositivo para você definir a nova senha.</p>
         </div>
@@ -58,7 +58,7 @@ const PasswordRecoveryRequest = ({ initialEmail = '', onBack }) => {
     <form onSubmit={handleSubmit} className="space-y-5" aria-labelledby="recovery-request-title">
       <div className="text-center">
         <Mail aria-hidden="true" className="mx-auto text-primary" size={34} />
-        <h1 id="recovery-request-title" className="mt-3 font-cyber text-xl font-black uppercase tracking-wide text-main">Redefinir senha</h1>
+        <h1 id="recovery-request-title" className="mt-3 text-xl font-bold text-main">Redefinir senha</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">Informe seu e-mail para receber um link seguro de recuperação.</p>
       </div>
 

@@ -55,7 +55,7 @@ const EmailConfirmationPanel = ({ email, onBack }) => {
         <Mail aria-hidden="true" size={44} />
       </div>
       <div>
-        <h2 id="confirmation-title" className="font-cyber text-xl font-black uppercase tracking-[0.1em] text-primary">Verifique seu e-mail</h2>
+        <h2 id="confirmation-title" className="text-xl font-bold text-primary">Verifique seu e-mail</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           Se este endereço estiver apto para cadastro, enviaremos um link de confirmação para{' '}
           <strong className="break-all text-main">{email}</strong>.

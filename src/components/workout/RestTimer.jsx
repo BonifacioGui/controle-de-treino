@@ -23,10 +23,10 @@ const RestTimer = ({ endTime, onAdjust, onSkip }) => {
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/10 text-secondary"><Timer size={22} /></span>
             <div>
               <p className="text-xs font-bold text-muted">Descanso</p>
-              <p className="font-mono text-3xl font-black text-main">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</p>
+              <p className="font-mono text-3xl font-bold text-main">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</p>
             </div>
           </div>
-          <button type="button" onClick={onSkip} className="touch-target rounded-xl border border-border px-4 text-sm font-black text-main">Pular</button>
+          <button type="button" onClick={onSkip} className="touch-target rounded-xl border border-border px-4 text-sm font-semibold text-main">Pular</button>
         </div>
         <div className="mt-3 grid grid-cols-4 gap-2">
           <button type="button" onClick={() => onAdjust(-30)} className="touch-target rounded-xl bg-input text-sm font-bold text-main">−30 s</button>

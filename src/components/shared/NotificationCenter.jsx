@@ -33,7 +33,7 @@ const NotificationCenter = ({
       <aside aria-label="Central de notificações" className="relative flex h-full w-full max-w-md flex-col border-l border-primary/40 bg-card text-main shadow-2xl">
         <header className="flex items-start justify-between gap-3 border-b border-border p-5">
           <div>
-            <p className="flex items-center gap-2 font-cyber text-lg font-black uppercase"><Bell className="text-primary" size={20} /> Notificações</p>
+            <p className="flex items-center gap-2 text-lg font-bold"><Bell className="text-primary" size={20} /> Notificações</p>
             <p className="mt-1 text-xs text-muted">{unreadCount > 0 ? `${unreadCount} não ${unreadCount === 1 ? 'lida' : 'lidas'}` : 'Tudo em dia'}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar" className="touch-target -m-2 flex items-center justify-center rounded-xl text-muted hover:text-main"><X size={23} /></button>

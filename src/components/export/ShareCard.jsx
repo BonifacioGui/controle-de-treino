@@ -188,14 +188,14 @@ const ShareCard = ({
 
   return (
     <div aria-hidden="true" className="fixed left-[-9999px] top-0 pointer-events-none">
-      <div ref={cardRef} style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} className="relative overflow-hidden bg-[#05070d] font-cyber">
+      <div ref={cardRef} style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} className="relative overflow-hidden bg-[#05070d] font-sans">
         <ShareCardBackground photo={selfieUrl} />
         <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
           <ShareCardHeader sessionDate={displayDate} />
           <main className={`flex flex-1 flex-col justify-center gap-14 pb-12 ${selfieUrl ? 'pt-[360px]' : 'pt-16'}`}>
             <section>
-              <p className="mb-6 text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
-              <h1 className="max-w-[900px] text-[82px] font-black uppercase leading-[0.94] tracking-[-0.035em] text-white">{workoutTitle || 'Treino'}</h1>
+              <p className="mb-6 font-cyber text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
+              <h1 className="max-w-[900px] text-[82px] font-bold leading-[0.94] tracking-[-0.035em] text-white">{workoutTitle || 'Treino'}</h1>
             </section>
             <MainResult volume={formatShareVolume(stats.volume)} />
             {metrics.length > 0 && (

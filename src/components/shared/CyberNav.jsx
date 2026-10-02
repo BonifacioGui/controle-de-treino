@@ -38,7 +38,7 @@ const CyberNav = ({ currentView, setView }) => {
                 />
               </div>
               
-              <span className={`text-[11px] font-bold transition-colors duration-300 ${
+              <span className={`text-xs font-semibold transition-colors duration-300 ${
                 isActive ? 'text-primary' : 'text-muted'
               }`}>
                 {item.label}
