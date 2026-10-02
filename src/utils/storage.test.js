@@ -36,7 +36,10 @@ describe('armazenamento privado por usuário', () => {
     expect(readUserStoredJSON('user-1', STORAGE_KEYS.workoutPlan, {}, storage)).toEqual({ A: { exercises: [] } });
     expect(storage.getItem('workout_plan')).toBeNull();
     expect(storage.getItem('outro-projeto:preferencias')).toBe('não remover');
-    expect(readUserStoredJSON('user-1', STORAGE_KEYS.planSync, {}, storage).dirty).toBe(true);
+    expect(readUserStoredJSON('user-1', STORAGE_KEYS.planSync, {}, storage)).toMatchObject({
+      dirty: false,
+      status: 'legacy',
+    });
   });
 
   it('faz merge, normaliza e deduplica as duas origens antigas de histórico', () => {
@@ -60,7 +63,7 @@ describe('armazenamento privado por usuário', () => {
     storage.setItem('sb-token', 'segredo');
     const backup = getSoloBackup('user-a', storage, '2026-08-20T12:00:00.000Z');
 
-    expect(backup.version).toBe(3);
+    expect(backup.version).toBe(4);
     expect(backup.data.workoutPlan).toEqual({ A: { exercises: [] } });
     expect(JSON.stringify(backup)).not.toContain('segredo');
     expect(JSON.stringify(backup)).not.toContain('"B"');

@@ -24,6 +24,7 @@ import LoadingScreen from '../components/shared/LoadingScreen';
 import AuthLayout from '../components/auth/AuthLayout';
 import WorkoutView from '../components/workout/WorkoutView';
 import RestTimer from '../components/workout/RestTimer';
+import PlanConflictDialog from '../components/admin/PlanConflictDialog';
 import WorkoutSelector from '../components/workout/WorkoutSelector';
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import { getFlameStyle } from '../utils/rpgSystem';
@@ -83,6 +84,8 @@ const SYNC_COPY = {
   syncing: { label: 'Sincronizando...', Icon: RefreshCw, className: 'text-primary' },
   offline: { label: 'Salvo neste dispositivo', Icon: CloudOff, className: 'text-warning' },
   error: { label: 'Sincronização pendente', Icon: CloudOff, className: 'text-warning' },
+  conflict: { label: 'Escolha uma versão', Icon: AlertTriangle, className: 'text-warning' },
+  'migration-required': { label: 'Atualização do banco necessária', Icon: AlertTriangle, className: 'text-warning' },
 };
 
 const normalizeTheme = (value) => value === 'light' ? 'light' : 'dark';
@@ -184,7 +187,7 @@ const WorkoutApp = () => {
     && state.timerState?.timerId === restAlert.timerId
     ? restAlert
     : null;
-  const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen || isNotificationCenterOpen;
+  const isAnyModalOpen = showCurrentCelebration || showCurrentLevelUp || showCurrentBadgeAlert || isMenuOpen || isNotificationCenterOpen || Boolean(state.planSync?.conflict);
   const syncCopy = SYNC_COPY[state.syncStatus] || SYNC_COPY.error;
   const SyncIcon = syncCopy.Icon;
 
@@ -364,7 +367,7 @@ const WorkoutApp = () => {
           <button
             type="button"
             onClick={() => state.hasPendingChanges && actions.syncPendingChanges()}
-            disabled={!state.hasPendingChanges || state.syncStatus === 'syncing'}
+            disabled={!state.hasPendingChanges || state.syncStatus === 'syncing' || state.syncStatus === 'migration-required' || state.syncStatus === 'conflict'}
             aria-label={syncCopy.label}
             className={`hidden min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold sm:flex ${syncCopy.className}`}
           >
@@ -384,6 +387,13 @@ const WorkoutApp = () => {
         <div role={authNotice.type === 'error' ? 'alert' : 'status'} className={`relative z-20 mx-4 mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${authNotice.type === 'error' ? 'border-danger/50 bg-danger/10 text-danger' : 'border-success/50 bg-success/10 text-success'}`}>
           <span className="min-w-0 flex-1 font-bold">{authNotice.message}</span>
           <button type="button" onClick={() => setAuthNotice(null)} aria-label="Fechar aviso" className="touch-target -m-2 flex shrink-0 items-center justify-center rounded-lg"><X size={18} /></button>
+        </div>
+      )}
+
+      {state.syncStatus === 'migration-required' && (
+        <div role="alert" className="relative z-20 mx-4 mb-4 rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">
+          <p className="font-black">Atualização de sincronização necessária</p>
+          <p className="mt-1 leading-relaxed">A ficha continua salva neste dispositivo e nenhum plano será sobrescrito. Execute a migration de versionamento no Supabase para liberar o envio seguro.</p>
         </div>
       )}
 
@@ -434,7 +444,7 @@ const WorkoutApp = () => {
             <Importer setWorkoutData={setters.setWorkoutData} setView={setters.setView} setActiveDay={setters.setActiveDay} existingWorkoutData={state.workoutData} />
           )}
           {state.view === 'manage' && (
-            <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay} addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} sessionActive={sessionActive} />
+            <ManageView activeDay={state.activeDay} workoutData={state.workoutData} setActiveDay={setters.setActiveDay} addDay={actions.manageData.addDay} removeDay={actions.manageData.removeDay} setWorkoutData={setters.setWorkoutData} addExercise={actions.manageData.add} removeExercise={actions.manageData.remove} editExerciseBase={actions.manageData.edit} setView={setters.setView} addFromCatalog={actions.manageData.addFromCatalog} sessionActive={sessionActive} recoverWorkoutPlan={actions.recoverWorkoutPlan} />
           )}
           {state.view === 'history' && <HistoryView history={state.history} bodyHistory={state.bodyHistory} deleteEntry={actions.deleteEntry} updateEntry={actions.updateHistoryEntry} reopenEntry={actions.reopenHistoryEntry} setView={setters.setView} />}
           {state.view === 'stats' && <StatsView bodyHistory={state.bodyHistory} history={state.history} workoutData={state.workoutData} setView={setters.setView} gender={authSession.user?.user_metadata?.gender} />}
@@ -513,6 +523,13 @@ const WorkoutApp = () => {
         onCategoryChange={notificationCenter.setCategoryEnabled}
         onPause={notificationCenter.pauseForDays}
         onAction={handleNotificationAction}
+      />
+
+      <PlanConflictDialog
+        conflict={state.planSync?.conflict}
+        schemaReady={state.planSchemaReady}
+        onKeepLocal={() => actions.resolveWorkoutPlanConflict('local')}
+        onKeepRemote={() => actions.resolveWorkoutPlanConflict('remote')}
       />
 
       <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} setTheme={setTheme} experienceMode={experienceMode} setExperienceMode={setExperienceMode} hapticFeedback={hapticFeedback} setHapticFeedback={setHapticFeedback} restSoundEnabled={restSoundEnabled} setRestSoundEnabled={setRestSoundEnabled} restNotificationEnabled={restNotificationEnabled} setRestNotificationEnabled={setRestNotificationEnabled} restSoundVolume={restSoundVolume} setRestSoundVolume={setRestSoundVolume} restSoundType={restSoundType} setRestSoundType={setRestSoundType} setView={setters.setView} hasPendingChanges={state.hasPendingChanges} syncStatus={state.syncStatus} onSync={actions.syncPendingChanges} userId={userId} />

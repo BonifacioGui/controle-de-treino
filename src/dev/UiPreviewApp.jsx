@@ -11,6 +11,7 @@ import WorkoutSelector from '../components/workout/WorkoutSelector';
 import StatsView from '../components/stats/StatsView';
 import ProfileView from '../components/profile/ProfileView';
 import ManageView from '../components/admin/ManageView';
+import PlanConflictDialog from '../components/admin/PlanConflictDialog';
 import Importer from '../components/admin/Importer';
 import LevelUpModal from '../components/rpg/LevelUpModal';
 import NotificationCenter from '../components/shared/NotificationCenter';
@@ -217,9 +218,10 @@ const UiPreviewApp = () => {
         {screen === 'history' && <HistoryView history={history} bodyHistory={bodyHistory} deleteEntry={noop} updateEntry={noop} reopenEntry={noop} setView={noop} />}
         {screen === 'stats' && <StatsView history={history} bodyHistory={bodyHistory} workoutData={workouts} setView={noop} setIsModalOpen={noop} gender="female" />}
         {screen === 'profile' && <ProfileView userId="dev-preview" userMetadata={{ username: 'OPERADORA_SPECTRAL_2049', height: '178', target_weight: '76', goals: ['weight_loss', 'strength'], goal: 'weight_loss', gender: 'female', class: 'assassin' }} stats={{ streak: 4, title: 'OPERADOR EM TREINAMENTO', level: 12, xp: 18420, progress: 62, xpRemaining: 1180 }} history={history} bodyHistory={bodyHistory} deleteEntry={noop} />}
-        {screen === 'manage' && <ManageView activeDay="A" setActiveDay={noop} addDay={noop} removeDay={noop} workoutData={workouts} addExercise={noop} removeExercise={noop} editExerciseBase={noop} setView={noop} addFromCatalog={noop} />}
+        {screen === 'manage' && <ManageView activeDay="A" setActiveDay={noop} addDay={noop} removeDay={noop} workoutData={workouts} addExercise={noop} removeExercise={noop} editExerciseBase={noop} setView={noop} addFromCatalog={noop} recoverWorkoutPlan={noop} />}
+        {screen === 'plan-conflict' && <PlanConflictDialog conflict={{ localPlan: workouts, remotePlan: { A: workoutA, B: workoutB }, remoteUpdatedAt: '2026-10-02T12:00:00.000Z' }} schemaReady onKeepLocal={noop} onKeepRemote={noop} />}
         {screen === 'importer' && <Importer setWorkoutData={noop} setView={noop} setActiveDay={noop} existingWorkoutData={workouts} />}
-        {!['history', 'stats', 'profile', 'manage', 'importer', 'level'].includes(screen) && (
+        {!['history', 'stats', 'profile', 'manage', 'plan-conflict', 'importer', 'level'].includes(screen) && (
           <>
             <div className="-mx-4">
               <WorkoutSelector

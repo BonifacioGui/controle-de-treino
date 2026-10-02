@@ -3,10 +3,12 @@ import { createPortal } from 'react-dom';
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
 import { inferLegacyLoadMode, LOAD_MODE_OPTIONS, LOAD_MODES } from '../../utils/loadModel';
 import { ALL_EXERCISES, EXERCISE_CATALOG } from '../../data/exerciseCatalog';
+import PlanRecoveryPreview from './PlanRecoveryPreview';
 
 const ManageView = ({ 
   activeDay, setActiveDay, addDay, removeDay, workoutData, addExercise, 
   removeExercise, editExerciseBase, setView, addFromCatalog, sessionActive = false,
+  recoverWorkoutPlan,
 }) => {
   
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -71,6 +73,7 @@ const ManageView = ({
 
   return (
     <main className="space-y-6 animate-in slide-in-from-right duration-500 font-sans pb-24 relative">
+      {recoverWorkoutPlan && <PlanRecoveryPreview onRecover={recoverWorkoutPlan} />}
       
       {/* SELETOR DE PROTOCOLOS */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">

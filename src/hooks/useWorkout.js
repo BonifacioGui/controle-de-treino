@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
+import { createRecoveredWorkoutPlan } from '../data/recoveredWorkoutPlan';
 import { calculateStats, calculateStreak } from '../utils/rpgSystem';
 import { getUnlockedBadges } from '../utils/gameLogic';
 import { getLocalDateKey, isSameLocalDay, normalizeLocalDateKey } from '../utils/dateUtils';
@@ -20,7 +21,15 @@ import {
   sessionFingerprint,
 } from '../utils/historySync';
 import { countLoadPrs } from '../utils/progressionUtils';
-import { DEFAULT_PLAN_SYNC, markPlanDirty, markPlanSynced, normalizePlanSync } from '../utils/planSync';
+import {
+  canAutoSyncPlan,
+  DEFAULT_PLAN_SYNC,
+  markPlanDirty,
+  markPlanSynced,
+  normalizePlanSync,
+  reconcileWorkoutPlan,
+  resolvePlanConflict,
+} from '../utils/planSync';
 import {
   appendExerciseToWorkoutSnapshot,
   buildSessionExercises,
@@ -43,6 +52,8 @@ import {
 import { QUEST_RULES } from '../utils/questRules';
 import {
   migrateLegacyStorage,
+  appendUserPlanBackup,
+  getOrCreateDeviceId,
   readUserStoredJSON,
   readUserStoredText,
   removeUserStoredItem,
@@ -76,6 +87,18 @@ const normalizeWorkoutPlan = (plan) => {
 const normalizeBodyHistory = (entries) => Array.isArray(entries)
   ? entries.map((entry) => ({ ...entry, date: normalizeLocalDateKey(entry.date) })).filter((entry) => entry.date)
   : [];
+
+const isPlanVersioningSchemaError = (error) => {
+  const message = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+  return error?.code === '42703'
+    || error?.code === 'PGRST204'
+    || message.includes('version_id')
+    || message.includes('updated_by_device');
+};
+
+const isPlanConflictError = (error) => (
+  error?.code === '40001' || String(error?.message || '').includes('PLAN_CONFLICT')
+);
 
 const writeHistoryWithSchemaFallback = async (operation, entry, userId) => {
   let result = await operation(toSupabaseHistoryRow(entry, userId));
@@ -114,6 +137,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   const [view, setView] = useState('workout');
   const [syncStatus, setSyncStatus] = useState(navigator.onLine ? 'synced' : 'offline');
   const [isCloudSyncReady, setIsCloudSyncReady] = useState(false);
+  const [planSchemaReady, setPlanSchemaReady] = useState(true);
   const [lastSessionStats, setLastSessionStats] = useState({ duration: 0, volume: 0, xp: 0 });
   const syncInFlight = useRef(false);
   const activeUserRef = useRef(userId);
@@ -233,6 +257,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
       setView('workout');
       setIsCloudSyncReady(false);
+      setPlanSchemaReady(true);
       return;
     }
 
@@ -261,6 +286,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     setLastSessionStats({ duration: 0, volume: 0, xp: 0 });
     setView('workout');
     setIsCloudSyncReady(false);
+    setPlanSchemaReady(true);
     setHydratedUserId(userId);
   }, [userId]);
 
@@ -320,15 +346,30 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
 
     try {
       setSyncStatus(navigator.onLine ? 'syncing' : 'offline');
-      const [bodyResult, historyResult, planResult] = await Promise.all([
+      const [bodyResult, historyResult] = await Promise.all([
         supabase.from('body_stats').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('workout_history').select('*').eq('user_id', userId).order('workout_date', { ascending: false }),
-        supabase.from('workout_plans').select('plan_data').eq('user_id', userId).limit(1),
       ]);
       if (activeUserRef.current !== userId) return;
       if (bodyResult.error) throw bodyResult.error;
       if (historyResult.error) throw historyResult.error;
+
+      let schemaReady = true;
+      let planResult = await supabase
+        .from('workout_plans')
+        .select('plan_data, version_id, revision, updated_at, updated_by_device')
+        .eq('user_id', userId)
+        .limit(1);
+      if (planResult.error && isPlanVersioningSchemaError(planResult.error)) {
+        schemaReady = false;
+        planResult = await supabase
+          .from('workout_plans')
+          .select('plan_data')
+          .eq('user_id', userId)
+          .limit(1);
+      }
       if (planResult.error) throw planResult.error;
+      setPlanSchemaReady(schemaReady);
 
       if (bodyResult.data) {
         setBodyHistory(normalizeBodyHistory(bodyResult.data));
@@ -338,31 +379,57 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       setHistory((current) => mergeCloudAndLocalHistory(cloudHistory, current));
 
       const planRow = planResult.data?.[0];
-      if (planRow?.plan_data && !planSync.dirty) {
-        const parsedPlan = normalizeWorkoutPlan(typeof planRow.plan_data === 'string'
+      const parsedRemotePlan = planRow?.plan_data
+        ? normalizeWorkoutPlan(typeof planRow.plan_data === 'string'
           ? JSON.parse(planRow.plan_data)
-          : planRow.plan_data);
-        setWorkoutDataState(parsedPlan);
-        const latestSession = cloudHistory[0];
+          : planRow.plan_data)
+        : null;
+      const remotePlan = parsedRemotePlan ? {
+        planData: parsedRemotePlan,
+        versionId: planRow.version_id || null,
+        revision: planRow.revision || 0,
+        updatedAt: planRow.updated_at || null,
+        updatedByDevice: planRow.updated_by_device || null,
+      } : null;
+      if (remotePlan) {
+        appendUserPlanBackup(userId, remotePlan.planData, {
+          source: 'cloud',
+          versionId: remotePlan.versionId,
+          revision: remotePlan.revision,
+          updatedAt: remotePlan.updatedAt,
+        });
+      }
 
+      const reconciliation = reconcileWorkoutPlan({
+        localPlan: Object.keys(workoutData).length > 0 ? workoutData : null,
+        syncState: planSync,
+        remote: remotePlan,
+        schemaReady,
+      });
+      setPlanSync(reconciliation.sync);
+
+      if (reconciliation.action === 'remote' && reconciliation.plan) {
+        setWorkoutDataState(reconciliation.plan);
+        const latestSession = cloudHistory[0];
         setActiveDay((current) => resolveSelectedWorkoutDay({
-          plan: parsedPlan,
+          plan: reconciliation.plan,
           currentDay: current,
           sessionStatus: session.status,
           sessionWorkoutName: session.workoutName,
           latestSession,
         }));
         if (session.status !== SESSION_STATUS.idle && session.dateKey) setSelectedDate(session.dateKey);
-      } else if (!planRow?.plan_data && Object.keys(workoutData).length > 0 && !planSync.dirty) {
-        setPlanSync(markPlanDirty);
       }
-      setSyncStatus('synced');
+      if (!schemaReady) setSyncStatus('migration-required');
+      else if (reconciliation.action === 'conflict') setSyncStatus('conflict');
+      else if (reconciliation.action === 'upload') setSyncStatus('syncing');
+      else setSyncStatus('synced');
     } catch {
       if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
     } finally {
       if (activeUserRef.current === userId) setIsCloudSyncReady(true);
     }
-  }, [isHydrated, planSync.dirty, session.dateKey, session.status, session.workoutName, userId, workoutData]);
+  }, [isHydrated, planSync, session.dateKey, session.status, session.workoutName, userId, workoutData]);
 
   useEffect(() => {
     if (isHydrated && !isCloudSyncReady) fetchCloudData();
@@ -441,16 +508,33 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, [timerState.active, timerState.endTime, timerState.timerId]);
 
   const syncPendingWorkoutPlan = useCallback(async () => {
-    if (!planSync.dirty) return;
+    if (!planSchemaReady || !canAutoSyncPlan(planSync)) return;
     const revision = planSync.revision;
     const planSnapshot = workoutData;
-    const { error } = await supabase
-      .from('workout_plans')
-      .upsert({ user_id: userId, plan_data: planSnapshot }, { onConflict: 'user_id' });
-    if (error) throw error;
+    const { data, error } = await supabase.rpc('save_workout_plan', {
+      p_plan_data: planSnapshot,
+      p_expected_version_id: planSync.baseVersionId,
+      p_device_id: getOrCreateDeviceId(),
+      p_source: planSync.pendingSource || 'user-edit',
+    });
+    if (error) {
+      if (isPlanConflictError(error)) setIsCloudSyncReady(false);
+      throw error;
+    }
     if (activeUserRef.current !== userId) return;
-    setPlanSync((current) => markPlanSynced(current, revision));
-  }, [planSync, userId, workoutData]);
+    const saved = Array.isArray(data) ? data[0] : data;
+    setPlanSync((current) => markPlanSynced(current, revision, {
+      versionId: saved?.version_id,
+      revision: saved?.revision,
+      updatedAt: saved?.updated_at,
+    }));
+    appendUserPlanBackup(userId, planSnapshot, {
+      source: 'cloud-synced',
+      versionId: saved?.version_id,
+      revision: saved?.revision,
+      updatedAt: saved?.updated_at,
+    });
+  }, [planSchemaReady, planSync, userId, workoutData]);
 
   const syncPendingHistory = useCallback(async () => {
     const pending = history.filter(isPendingHistoryEntry);
@@ -570,19 +654,22 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, [history, userId]);
 
   const hasPendingChanges = planSync.dirty || history.some(isPendingHistoryEntry);
+  const hasAutoSyncChanges = canAutoSyncPlan(planSync) || history.some(isPendingHistoryEntry);
 
   const syncPendingChanges = useCallback(async () => {
     if (!isCloudSyncReady || !isHydrated || !userId || !navigator.onLine || syncInFlight.current) return;
-    if (!planSync.dirty && !history.some(isPendingHistoryEntry)) {
-      setSyncStatus('synced');
+    if (!canAutoSyncPlan(planSync) && !history.some(isPendingHistoryEntry)) {
+      if (!planSchemaReady) setSyncStatus('migration-required');
+      else if (planSync.conflict) setSyncStatus('conflict');
+      else setSyncStatus('synced');
       return;
     }
 
     syncInFlight.current = true;
     setSyncStatus('syncing');
     try {
-      await syncPendingWorkoutPlan();
       await syncPendingHistory();
+      await syncPendingWorkoutPlan();
       if (activeUserRef.current === userId) setSyncStatus('synced');
     } catch {
       if (activeUserRef.current === userId) setSyncStatus(navigator.onLine ? 'error' : 'offline');
@@ -590,7 +677,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       syncInFlight.current = false;
       if (activeUserRef.current !== userId) setIsCloudSyncReady(false);
     }
-  }, [history, isCloudSyncReady, isHydrated, planSync.dirty, syncPendingHistory, syncPendingWorkoutPlan, userId]);
+  }, [history, isCloudSyncReady, isHydrated, planSchemaReady, planSync, syncPendingHistory, syncPendingWorkoutPlan, userId]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -607,10 +694,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, []);
 
   useEffect(() => {
-    if (hasPendingChanges && navigator.onLine && syncStatus !== 'error') {
+    if (hasAutoSyncChanges && navigator.onLine && syncStatus !== 'error') {
       syncPendingChanges();
     }
-  }, [hasPendingChanges, syncPendingChanges, syncStatus]);
+  }, [hasAutoSyncChanges, syncPendingChanges, syncStatus]);
 
   const streak = useMemo(() => calculateStreak(visibleHistory), [visibleHistory]);
   const globalRPG = useMemo(() => calculateStats(visibleHistory), [visibleHistory]);
@@ -1078,6 +1165,41 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     return true;
   }, [activeDay, closeRestTimer, reopenSession, sessionActive, visibleHistory]);
 
+  const recoverWorkoutPlan = useCallback(() => {
+    appendUserPlanBackup(userId, workoutData, { source: 'before-recovery' });
+    const recovered = createRecoveredWorkoutPlan();
+    setWorkoutDataState(recovered);
+    setActiveDay('A');
+    setPlanSync((current) => {
+      const normalized = normalizePlanSync(current);
+      const conflictRemote = normalized.conflict;
+      const base = conflictRemote ? {
+        ...normalized,
+        baseVersionId: conflictRemote.remoteVersionId,
+        remoteRevision: conflictRemote.remoteRevision,
+        remoteUpdatedAt: conflictRemote.remoteUpdatedAt,
+      } : normalized;
+      return markPlanDirty(base, 'recovered-abc-plan');
+    });
+    setSyncStatus(planSchemaReady && navigator.onLine ? 'syncing' : 'migration-required');
+  }, [planSchemaReady, userId, workoutData]);
+
+  const resolveWorkoutPlanConflict = useCallback((choice) => {
+    const resolution = resolvePlanConflict(planSync, choice);
+    if (!resolution.plan) return false;
+    const discardedPlan = choice === 'remote'
+      ? planSync.conflict?.localPlan
+      : planSync.conflict?.remotePlan;
+    appendUserPlanBackup(userId, discardedPlan, { source: `conflict-discarded-${choice}` });
+    setWorkoutDataState(resolution.plan);
+    setPlanSync(resolution.sync);
+    setActiveDay((current) => (resolution.plan[current] ? current : getInitialWorkout(resolution.plan)));
+    setSyncStatus(choice === 'local'
+      ? (planSchemaReady && navigator.onLine ? 'syncing' : 'migration-required')
+      : (planSchemaReady ? 'synced' : 'migration-required'));
+    return true;
+  }, [planSchemaReady, planSync, userId]);
+
   const actions = useMemo(() => ({
     updateSetData,
     toggleSetComplete,
@@ -1094,6 +1216,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     syncPendingSessions: syncPendingChanges,
     syncPendingChanges,
     syncPendingWorkoutPlan,
+    recoverWorkoutPlan,
+    resolveWorkoutPlanConflict,
     updateSessionSets: (id, value) => setProgress((current) => {
       const next = { ...current, [id]: { ...current[id], actualSets: value } };
       progressRef.current = next;
@@ -1230,6 +1354,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     finishWorkout,
     pauseSession,
     reopenHistoryEntry,
+    recoverWorkoutPlan,
+    resolveWorkoutPlanConflict,
     restoreAfterFailedFinish,
     resumeSession,
     setSessionNote,
@@ -1261,6 +1387,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       workoutTimer,
       session,
       syncStatus,
+      planSync,
+      planSchemaReady,
       hasPendingChanges,
       isHydrated,
       userId,
