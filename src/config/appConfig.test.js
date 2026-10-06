@@ -3,6 +3,7 @@ import {
   getEmailConfirmationRedirectUrl,
   getPasswordRecoveryRedirectUrl,
   getPublicAppUrl,
+  isPersonalPlanRecoveryUser,
   OFFICIAL_PUBLIC_APP_URL,
 } from './appConfig';
 
@@ -82,5 +83,16 @@ describe('configuração central da URL pública', () => {
       configuredUrl: 'https://bonifaciogui.github.io/controle-de-treino?preview=old#section',
       isProduction: true,
     })).toBe(OFFICIAL_PUBLIC_APP_URL);
+  });
+});
+
+describe('recuperação pessoal de ficha', () => {
+  it('fica indisponível por padrão e para qualquer outra conta', () => {
+    expect(isPersonalPlanRecoveryUser('owner-id', '')).toBe(false);
+    expect(isPersonalPlanRecoveryUser('participant-id', 'owner-id')).toBe(false);
+  });
+
+  it('é liberada somente para o usuário autenticado configurado', () => {
+    expect(isPersonalPlanRecoveryUser('owner-id', 'owner-id')).toBe(true);
   });
 });

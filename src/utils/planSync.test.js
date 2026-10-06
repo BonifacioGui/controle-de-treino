@@ -82,6 +82,18 @@ describe('sincronização segura do plano de treino', () => {
     expect(result.sync.conflict.reason).toBe('legacy-local-plan');
   });
 
+  it('transforma edição pendente de cliente antigo sem versão-base em conflito explícito', () => {
+    const result = reconcileWorkoutPlan({
+      localPlan: local,
+      syncState: { dirty: true, revision: 7 },
+      remote,
+    });
+    expect(result.action).toBe('conflict');
+    expect(result.sync.conflict.localPlan).toEqual(local);
+    expect(result.sync.conflict.remotePlan).toEqual(remotePlan);
+    expect(canAutoSyncPlan(result.sync)).toBe(false);
+  });
+
   it('exige escolha explícita no conflito e usa CAS ao manter a cópia local', () => {
     const conflicted = reconcileWorkoutPlan({
       localPlan: local,

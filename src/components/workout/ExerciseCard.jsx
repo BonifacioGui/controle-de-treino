@@ -32,7 +32,7 @@ import {
 } from '../../utils/loadModel';
 import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
-import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
+import { hasRecordedExerciseData } from '../../utils/substitutionModel';
 import ExerciseGuide from './ExerciseGuide';
 import ExercisePerformanceSummary from './ExercisePerformanceSummary';
 import ExerciseSearchModal from './ExerciseSearchModal';
@@ -103,7 +103,7 @@ const ExerciseCard = ({
   }], displayName, loadMode);
   const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
   const volume = calculateCompletedVolume(activeSets, { ...ex, loadMode });
-  const hasCompletedSets = hasCompletedExerciseSets(exerciseProgress);
+  const hasRecordedSets = hasRecordedExerciseData(exerciseProgress);
 
   const usePreviousValues = () => {
     const previousSets = (lastExercise?.sets || []).filter((set) => set.completed === true);
@@ -124,11 +124,15 @@ const ExerciseCard = ({
       setShowSwap(false);
       return;
     }
-    if (hasCompletedSets) {
-      setSwapWarning('Conclua este exercício com o nome atual. A troca é bloqueada após a primeira série para não misturar históricos diferentes.');
+    if (hasRecordedSets) {
+      setSwapWarning('Há dados registrados neste exercício. A troca foi bloqueada para não atribuir séries a outro movimento.');
       return;
     }
-    onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    const applied = onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    if (applied === false) {
+      setSwapWarning('A troca não foi aplicada porque este exercício já possui dados registrados.');
+      return;
+    }
     setSwapWarning('');
     setShowSwap(false);
   };
@@ -340,7 +344,7 @@ const ExerciseCard = ({
             <p className="mt-5 text-sm text-muted">Onde deseja aplicar esta troca?</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <button type="button" onClick={() => applySwap('session')} className="touch-target rounded-xl border border-primary px-3 text-sm font-semibold text-primary">Somente nesta sessão</button>
-              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-semibold text-on-warning">Adicionar como alternativa</button>
+              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-semibold text-on-warning">Usar agora e salvar na ficha</button>
             </div>
           </div>
         </div>,

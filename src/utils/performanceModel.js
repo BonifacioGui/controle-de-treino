@@ -92,12 +92,17 @@ export const getBestCompletedSet = (exercise = {}) => {
 };
 
 export const getExercisePerformance = (history = [], exerciseName, plannedExercise = {}) => {
+  const requiredMode = getSetLoadMode({}, plannedExercise);
   const exercises = history
     .flatMap((session) => (session.exercises || []).map((exercise) => ({
       ...exercise,
       dateKey: session.dateKey,
     })))
-    .filter((exercise) => isSameExercise(exerciseName, exercise.name))
+    .filter((exercise) => {
+      if (!isSameExercise(exerciseName, exercise.name)) return false;
+      const bestSet = getBestCompletedSet(exercise);
+      return !bestSet || bestSet.mode === requiredMode;
+    })
     .sort((left, right) => String(right.dateKey || '').localeCompare(String(left.dateKey || '')));
   const lastExercise = exercises.find((exercise) => getBestCompletedSet(exercise)) || null;
   const lastSets = (lastExercise?.sets || [])
@@ -108,7 +113,6 @@ export const getExercisePerformance = (history = [], exerciseName, plannedExerci
   const lastBestSummary = lastBestRecord
     ? formatPerformanceSet(lastBestRecord.set, lastBestRecord.exercise)
     : null;
-  const requiredMode = getSetLoadMode({}, plannedExercise);
   const prRecord = isCanonicalLoadMode(requiredMode)
     ? getMaxCompletedLoadRecord(exercises, exerciseName, requiredMode)
     : null;

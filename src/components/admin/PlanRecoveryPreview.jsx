@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArchiveRestore, ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react';
-import { RECOVERED_PLAN_EVIDENCE, RECOVERED_WORKOUT_PLAN } from '../../data/recoveredWorkoutPlan';
+import { ArchiveRestore, ChevronDown, ChevronUp } from 'lucide-react';
+import { RECOVERED_WORKOUT_PLAN } from '../../data/recoveredWorkoutPlan';
 
 const PlanRecoveryPreview = ({ onRecover }) => {
   const [expanded, setExpanded] = useState(false);
@@ -37,10 +37,7 @@ const PlanRecoveryPreview = ({ onRecover }) => {
             </article>
           ))}
 
-          <div className="flex gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-            <TriangleAlert aria-hidden="true" className="mt-0.5 shrink-0" size={18} />
-            <div><p className="font-black">Confirmação necessária</p><p className="mt-1 leading-relaxed">{RECOVERED_PLAN_EVIDENCE.uncertainties[0]}</p></div>
-          </div>
+          <p className="rounded-xl border border-border bg-input/60 p-3 text-sm leading-relaxed text-muted">As metas são valores iniciais e continuam editáveis depois da recuperação.</p>
 
           {!confirming ? (
             <button type="button" onClick={() => setConfirming(true)} className="touch-target w-full rounded-xl bg-primary font-black text-on-primary">Quero usar esta ficha</button>

@@ -49,7 +49,7 @@ const PwaUpdatePrompt = () => {
             Nova versão disponível
           </h2>
           <p id="pwa-update-description" className="mt-1 text-xs leading-relaxed text-muted">
-            Atualize quando estiver pronto. O treino em andamento continuará salvo neste dispositivo.
+            Atualize quando estiver pronto. Treinos e alterações pendentes continuarão salvos neste dispositivo e serão reconciliados na nova versão.
           </p>
         </div>
         <button

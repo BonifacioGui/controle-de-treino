@@ -2,6 +2,15 @@ const ensureTrailingSlash = (value) => value.endsWith('/') ? value : `${value}/`
 
 export const OFFICIAL_PUBLIC_APP_URL = 'https://bonifaciogui.github.io/controle-de-treino/';
 
+export const isPersonalPlanRecoveryUser = (
+  userId,
+  configuredUserId = import.meta.env.VITE_PERSONAL_PLAN_RECOVERY_USER_ID,
+) => {
+  const authenticatedId = String(userId || '').trim();
+  const allowedId = String(configuredUserId || '').trim();
+  return Boolean(authenticatedId && allowedId && authenticatedId === allowedId);
+};
+
 const parseAbsoluteHttpUrl = (value) => {
   try {
     const url = new URL(String(value || '').trim());

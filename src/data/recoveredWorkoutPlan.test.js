@@ -13,12 +13,11 @@ describe('ficha A/B/C recuperada', () => {
     expect(second.A.focus).toBe('PEITO, OMBROS E TRÍCEPS');
   });
 
-  it('mantém explícita a única meta que o histórico não permite deduzir', () => {
+  it('usa uma meta padrão editável para Panturrilha Sentada', () => {
     const plan = createRecoveredWorkoutPlan();
     expect(plan.C.exercises.find((exercise) => exercise.name === 'Panturrilha Sentada')).toMatchObject({
-      sets: '3x?',
-      recoveryNote: expect.stringContaining('não recuperada'),
+      sets: '3x12-15',
     });
-    expect(RECOVERED_PLAN_EVIDENCE.uncertainties).toHaveLength(1);
+    expect(RECOVERED_PLAN_EVIDENCE.note).toContain('editáveis');
   });
 });

@@ -30,6 +30,29 @@ describe('resumo de performance do exercício', () => {
     expect(getExercisePerformance([], 'Supino', { loadMode: 'total' })).toMatchObject({ lastSummary: '', pr: null });
   });
 
+  it('mantém referência e PR com pequenas diferenças no nome', () => {
+    const performance = getExercisePerformance([{
+      dateKey: '2026-09-20',
+      exercises: [{
+        name: 'Supino reto (barra)',
+        loadMode: 'total',
+        sets: [{ weight: 70, reps: 8, completed: true }],
+      }],
+    }], 'SUPINO RETO', { loadMode: 'total' });
+    expect(performance.lastSummary).toBe('70 kg total × 8');
+    expect(performance.pr.primary).toBe('70 kg total');
+  });
+
+  it('não mistura referências de mesmo nome com modos de carga incompatíveis', () => {
+    const performance = getExercisePerformance([
+      { dateKey: '2026-09-21', exercises: [{ name: 'Rosca Direta', loadMode: 'total', sets: [{ weight: 40, reps: 8, completed: true }] }] },
+      { dateKey: '2026-09-20', exercises: [{ name: 'Rosca Direta', loadMode: 'per_hand', sets: [{ weight: 16, reps: 10, completed: true }] }] },
+    ], 'Rosca Direta', { loadMode: 'per_hand' });
+    expect(performance.lastSummary).toBe('16 kg por halter × 10');
+    expect(performance.pr.primary).toBe('16 kg por halter');
+    expect(performance.exercises).toHaveLength(1);
+  });
+
   it('em empate de carga escolhe a série com mais repetições', () => {
     const record = getBestCompletedSet({
       name: 'Supino',

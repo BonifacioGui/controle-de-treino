@@ -3,9 +3,7 @@ import { LOAD_MODES } from '../utils/loadModel';
 export const RECOVERED_PLAN_EVIDENCE = Object.freeze({
   source: 'Histórico sincronizado do usuário e ficha confirmada na solicitação',
   recoveredAt: '2026-10-02',
-  uncertainties: [
-    'Panturrilha Sentada: o histórico confirma o exercício e 3 séries na sessão mais recente, mas não preserva a meta de repetições. Confirme a faixa desejada após recuperar.',
-  ],
+  note: 'Metas recuperadas são valores iniciais editáveis.',
 });
 
 export const RECOVERED_WORKOUT_PLAN = Object.freeze({
@@ -44,13 +42,7 @@ export const RECOVERED_WORKOUT_PLAN = Object.freeze({
       { name: 'Cadeira Extensora', sets: '2x10-15', alternatives: [], loadMode: LOAD_MODES.machine },
       { name: 'Cadeira Abdutora', sets: '2x12-20', alternatives: [], loadMode: LOAD_MODES.machine },
       { name: 'Cadeira Adutora', sets: '2x12-20', alternatives: [], loadMode: LOAD_MODES.machine },
-      {
-        name: 'Panturrilha Sentada',
-        sets: '3x?',
-        alternatives: [],
-        loadMode: LOAD_MODES.machine,
-        recoveryNote: 'Meta de repetições não recuperada; confirme antes do próximo treino.',
-      },
+      { name: 'Panturrilha Sentada', sets: '3x12-15', alternatives: [], loadMode: LOAD_MODES.machine },
       { name: 'Prancha', sets: '3x30-60 s', alternatives: [], loadMode: LOAD_MODES.bodyweight },
       { name: 'Cardio Leve/Moderado', sets: '1x15-20 min', alternatives: [], loadMode: LOAD_MODES.duration },
     ],

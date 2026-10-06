@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { initialWorkoutData } from '../data/workoutData';
 import { createRecoveredWorkoutPlan } from '../data/recoveredWorkoutPlan';
+import { isPersonalPlanRecoveryUser } from '../config/appConfig';
 import { calculateStats, calculateStreak } from '../utils/rpgSystem';
 import { getUnlockedBadges } from '../utils/gameLogic';
 import { getLocalDateKey, isSameLocalDay, normalizeLocalDateKey } from '../utils/dateUtils';
@@ -63,7 +64,7 @@ import {
 } from '../utils/storage';
 import { calculateSessionXp } from '../utils/xpModel';
 import { classifyVolumeProgress, findPreviousComparableVolume } from '../utils/overloadModel';
-import { addExerciseAlternative, hasCompletedExerciseSets } from '../utils/substitutionModel';
+import { addAlternativeToWorkout, hasRecordedExerciseData } from '../utils/substitutionModel';
 import {
   claimHapticAttempt,
   getHapticDelivery,
@@ -109,6 +110,7 @@ const writeHistoryWithSchemaFallback = async (operation, entry, userId) => {
 };
 
 export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
+  const canRecoverPersonalPlan = isPersonalPlanRecoveryUser(userId);
   const {
     session,
     isHydrated: isSessionHydrated,
@@ -1166,6 +1168,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
   }, [activeDay, closeRestTimer, reopenSession, sessionActive, visibleHistory]);
 
   const recoverWorkoutPlan = useCallback(() => {
+    if (!canRecoverPersonalPlan) return false;
     appendUserPlanBackup(userId, workoutData, { source: 'before-recovery' });
     const recovered = createRecoveredWorkoutPlan();
     setWorkoutDataState(recovered);
@@ -1182,7 +1185,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       return markPlanDirty(base, 'recovered-abc-plan');
     });
     setSyncStatus(planSchemaReady && navigator.onLine ? 'syncing' : 'migration-required');
-  }, [planSchemaReady, userId, workoutData]);
+    return true;
+  }, [canRecoverPersonalPlan, planSchemaReady, userId, workoutData]);
 
   const resolveWorkoutPlanConflict = useCallback((choice) => {
     const resolution = resolvePlanConflict(planSync, choice);
@@ -1229,20 +1233,34 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       return next;
     }),
     onSwap: (id, newName, options = {}) => {
-      if (hasCompletedExerciseSets(progressRef.current[id])) return false;
+      if (hasRecordedExerciseData(progressRef.current[id])) return false;
+      const workoutName = session.workoutName || activeDay;
+      if (options.scope === 'alternative' && Number.isInteger(options.exerciseIndex)) {
+        const alternativeOptions = {
+          exerciseIndex: options.exerciseIndex,
+          plannedName: options.plannedName,
+          alternative: newName,
+        };
+        updateSessionSnapshot((current) => ({
+          workoutSnapshot: addAlternativeToWorkout(
+            current.workoutSnapshot || workoutData[workoutName],
+            alternativeOptions,
+          ),
+        }));
+        setWorkoutData((currentPlan) => {
+          const currentWorkout = currentPlan[workoutName];
+          if (!currentWorkout) return currentPlan;
+          const updatedWorkout = addAlternativeToWorkout(currentWorkout, alternativeOptions);
+          return updatedWorkout === currentWorkout
+            ? currentPlan
+            : { ...currentPlan, [workoutName]: updatedWorkout };
+        });
+      }
       setProgress((current) => {
         const next = { ...current, [id]: { ...current[id], swappedName: newName } };
         progressRef.current = next;
         return next;
       });
-      if (options.scope === 'alternative' && Number.isInteger(options.exerciseIndex)) {
-        setWorkoutData((currentPlan) => {
-          const workoutName = session.workoutName || activeDay;
-          const exercises = [...(currentPlan[workoutName]?.exercises || [])];
-          exercises[options.exerciseIndex] = addExerciseAlternative(exercises[options.exerciseIndex], newName);
-          return { ...currentPlan, [workoutName]: { ...currentPlan[workoutName], exercises } };
-        });
-      }
       return true;
     },
     setWeight: setWeightInput,
@@ -1365,8 +1383,10 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     toggleSetComplete,
     toggleWorkoutTimer,
     updateSetData,
+    updateSessionSnapshot,
     userId,
     session.workoutName,
+    workoutData,
   ]);
 
   return {
@@ -1389,6 +1409,7 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
       syncStatus,
       planSync,
       planSchemaReady,
+      canRecoverPersonalPlan,
       hasPendingChanges,
       isHydrated,
       userId,

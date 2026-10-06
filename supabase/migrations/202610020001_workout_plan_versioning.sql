@@ -1,6 +1,8 @@
 -- Versionamento otimista do plano. Execute no SQL Editor do Supabase antes de
 -- habilitar a nova sincronização; o cliente não faz fallback para upsert inseguro.
 
+begin;
+
 alter table public.workout_plans
   add column if not exists version_id uuid default gen_random_uuid(),
   add column if not exists revision bigint default 1,
@@ -144,3 +146,5 @@ grant execute on function public.save_workout_plan(jsonb, uuid, text, text) to a
 
 comment on function public.save_workout_plan(jsonb, uuid, text, text) is
   'Saves a plan only when expected_version_id matches, archiving the previous version atomically.';
+
+commit;
