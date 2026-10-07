@@ -12,7 +12,7 @@ export const RECOVERED_WORKOUT_PLAN = Object.freeze({
     focus: 'PEITO, OMBROS E TRÍCEPS',
     exercises: [
       { name: 'Supino Reto', sets: '3x10-12', alternatives: [], loadMode: LOAD_MODES.total },
-      { name: 'Supino Inclinado com Barra', sets: '3x12-15', alternatives: ['Supino Inclinado com Halteres'], loadMode: LOAD_MODES.total },
+      { name: 'Supino Inclinado com Barra', sets: '3x12-15', alternatives: ['Supino Inclinado com Halteres', 'Supino Inclinado (máquina)'], loadMode: LOAD_MODES.total },
       { name: 'Crossover na Polia Alta', sets: '3x10-12', alternatives: ['Peck Deck'], loadMode: LOAD_MODES.machine },
       { name: 'Tríceps Pulley com Corda', sets: '3x12-15', alternatives: [], loadMode: LOAD_MODES.machine },
       { name: 'Tríceps Testa Unilateral', sets: '3x12-15', alternatives: ['Tríceps Francês'], loadMode: LOAD_MODES.perHand },

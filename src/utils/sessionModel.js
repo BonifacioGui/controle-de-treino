@@ -4,6 +4,7 @@ import {
   getSetLoadMode,
   LOAD_MODES,
 } from './loadModel';
+import { getEffectiveExercise } from './substitutionModel';
 
 export const MAX_SETS_PER_EXERCISE = 30;
 
@@ -123,8 +124,9 @@ export const buildSessionExercises = (workout, progress, dateKey, workoutName) =
   (workout?.exercises || []).map((exercise, index) => {
     const id = `${dateKey}-${workoutName}-${index}`;
     const exerciseProgress = progress?.[id] || {};
-    const loadMode = getSetLoadMode({}, exercise);
-    const performedName = exerciseProgress.swappedName || exercise.name;
+    const effectiveExercise = getEffectiveExercise(exercise, exerciseProgress);
+    const loadMode = getSetLoadMode({}, effectiveExercise);
+    const performedName = effectiveExercise.name;
     const expectedSets = getExpectedSetCount(exercise, exerciseProgress.actualSets);
     return {
       name: performedName,
@@ -132,13 +134,15 @@ export const buildSessionExercises = (workout, progress, dateKey, workoutName) =
       performedName,
       sets: getActiveSessionSets(exercise, exerciseProgress).map((set) => ({
         ...set,
-        loadMode: set.loadMode || loadMode,
-        barWeight: set.barWeight ?? exercise.barWeight ?? null,
+        loadMode: exerciseProgress.swappedName ? loadMode : set.loadMode || loadMode,
+        barWeight: exerciseProgress.swappedName
+          ? effectiveExercise.barWeight ?? null
+          : set.barWeight ?? exercise.barWeight ?? null,
       })),
       skipped: exerciseProgress.skipped === true,
       actualSets: expectedSets,
       loadMode,
-      barWeight: exercise.barWeight ?? null,
+      barWeight: effectiveExercise.barWeight ?? null,
     };
   })
 );

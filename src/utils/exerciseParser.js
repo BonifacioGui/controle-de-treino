@@ -32,8 +32,10 @@ export const getCanonicalName = (rawName) => {
     { check: () => has("remada") && (hasExact("unilateral") || has("serrote")), name: "Serrote" },
 
     // --- PEITO ---
+    { check: () => has("supino") && has("inclinado") && (has("maquina") || has("articulado")), name: "Supino Inclinado Máquina" },
     { check: () => has("supino") && has("inclinado") && has("halter"), name: "Supino Inclinado Halteres" },
     { check: () => has("supino") && has("inclinado"), name: "Supino Inclinado" },
+    { check: () => has("supino") && has("declinado") && (has("maquina") || has("articulado")), name: "Supino Declinado Máquina" },
     { check: () => has("supino") && has("declinado"), name: "Supino Declinado" },
     { check: () => has("supino") && (has("maquina") || has("articulado")), name: "Supino Máquina" },
     { check: () => has("supino") && has("reto") && has("halter"), name: "Supino Reto Halteres" },

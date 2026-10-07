@@ -20,4 +20,13 @@ describe('ficha A/B/C recuperada', () => {
     });
     expect(RECOVERED_PLAN_EVIDENCE.note).toContain('editáveis');
   });
+
+  it('preserva máquina e halteres como alternativas distintas do supino inclinado com barra', () => {
+    const plan = createRecoveredWorkoutPlan();
+    const supinoInclinado = plan.A.exercises.find((exercise) => exercise.name === 'Supino Inclinado com Barra');
+    expect(supinoInclinado.alternatives).toEqual([
+      'Supino Inclinado com Halteres',
+      'Supino Inclinado (máquina)',
+    ]);
+  });
 });

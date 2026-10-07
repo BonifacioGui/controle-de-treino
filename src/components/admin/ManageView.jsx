@@ -97,7 +97,7 @@ const ManageView = ({
       {sessionActive && (
         <div role="status" className="mx-1 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
           <p className="text-xs font-black uppercase tracking-wider text-primary">Treino em andamento</p>
-          <p className="mt-1 text-sm leading-relaxed text-muted">Alterações feitas aqui serão aplicadas aos próximos treinos. A sessão atual permanece como foi iniciada.</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">Nome, meta, modo de carga e estrutura valem para os próximos treinos. Alterações somente nas alternativas também são refletidas na sessão atual.</p>
         </div>
       )}
 

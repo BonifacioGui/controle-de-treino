@@ -32,7 +32,12 @@ import {
 } from '../../utils/loadModel';
 import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
-import { hasRecordedExerciseData } from '../../utils/substitutionModel';
+import {
+  getAlternativeName,
+  getEffectiveExercise,
+  hasRecordedExerciseData,
+  resolveSubstitutionMetadata,
+} from '../../utils/substitutionModel';
 import ExerciseGuide from './ExerciseGuide';
 import ExercisePerformanceSummary from './ExercisePerformanceSummary';
 import ExerciseSearchModal from './ExerciseSearchModal';
@@ -73,9 +78,10 @@ const ExerciseCard = ({
   onSwap,
 }) => {
   const exerciseProgress = progress[id] || {};
-  const displayName = exerciseProgress.swappedName || ex.name;
-  const mode = getExerciseMode(ex);
-  const loadMode = getSetLoadMode({}, ex);
+  const effectiveExercise = getEffectiveExercise(ex, exerciseProgress);
+  const displayName = effectiveExercise.name;
+  const mode = getExerciseMode(effectiveExercise);
+  const loadMode = getSetLoadMode({}, effectiveExercise);
   const loadModeOption = getLoadModeOption(loadMode);
   const expectedSets = getExpectedSetCount(ex, exerciseProgress.actualSets);
   const activeSets = getActiveSessionSets(ex, exerciseProgress);
@@ -92,17 +98,16 @@ const ExerciseCard = ({
   const [showGuide, setShowGuide] = useState(false);
   const expanded = manualExpanded ?? (isCurrent && !isDone);
 
-  const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
+  const performance = getExercisePerformance(history, displayName, effectiveExercise);
   const { lastExercise, prRecord } = performance;
   const loadPr = prRecord?.canonicalLoad || 0;
   const currentMaxLoad = getMaxCompletedLoad([{
-    ...ex,
+    ...effectiveExercise,
     name: displayName,
-    loadMode,
     sets: activeSets,
   }], displayName, loadMode);
   const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
-  const volume = calculateCompletedVolume(activeSets, { ...ex, loadMode });
+  const volume = calculateCompletedVolume(activeSets, effectiveExercise);
   const hasRecordedSets = hasRecordedExerciseData(exerciseProgress);
 
   const usePreviousValues = () => {
@@ -128,7 +133,14 @@ const ExerciseCard = ({
       setSwapWarning('Há dados registrados neste exercício. A troca foi bloqueada para não atribuir séries a outro movimento.');
       return;
     }
-    const applied = onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    const substitution = resolveSubstitutionMetadata(ex, swapChoice);
+    const applied = onSwap(id, swapChoice, {
+      scope,
+      exerciseIndex: index,
+      plannedName: ex.name,
+      swappedLoadMode: substitution.loadMode,
+      swappedBarWeight: substitution.barWeight,
+    });
     if (applied === false) {
       setSwapWarning('A troca não foi aplicada porque este exercício já possui dados registrados.');
       return;
@@ -290,7 +302,7 @@ const ExerciseCard = ({
             <div className="space-y-3 border-t border-border pt-3">
               <p className="rounded-xl bg-input px-3 py-2 text-xs text-muted">
                 <span className="font-bold text-main">Carga:</span> {loadModeOption.label}.
-                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
+                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(effectiveExercise.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
                 {loadMode === LOAD_MODES.assisted && ' Não entra em PR ou dano de Boss.'}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -321,7 +333,7 @@ const ExerciseCard = ({
               <button type="button" onClick={() => setShowSwap(false)} aria-label="Fechar seletor" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
             </div>
             <div className="space-y-2">
-              {[...new Set([ex.name, ...(ex.alternatives || []).filter(Boolean)])].map((option) => {
+              {[...new Set([ex.name, ...(ex.alternatives || []).map(getAlternativeName).filter(Boolean)])].map((option) => {
                 const selected = swapChoice === option;
                 return (
                   <button

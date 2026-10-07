@@ -64,7 +64,12 @@ import {
 } from '../utils/storage';
 import { calculateSessionXp } from '../utils/xpModel';
 import { classifyVolumeProgress, findPreviousComparableVolume } from '../utils/overloadModel';
-import { addAlternativeToWorkout, hasRecordedExerciseData } from '../utils/substitutionModel';
+import {
+  addAlternativeToWorkout,
+  hasRecordedExerciseData,
+  resolveSubstitutionMetadata,
+  updateWorkoutExerciseAlternatives,
+} from '../utils/substitutionModel';
 import {
   claimHapticAttempt,
   getHapticDelivery,
@@ -1235,6 +1240,14 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     onSwap: (id, newName, options = {}) => {
       if (hasRecordedExerciseData(progressRef.current[id])) return false;
       const workoutName = session.workoutName || activeDay;
+      const snapshotWorkout = session.workoutSnapshot || workoutData[workoutName];
+      const plannedExercise = snapshotWorkout?.exercises?.[options.exerciseIndex]
+        || { name: options.plannedName };
+      const substitution = resolveSubstitutionMetadata(plannedExercise, {
+        name: newName,
+        loadMode: options.swappedLoadMode,
+        barWeight: options.swappedBarWeight,
+      });
       if (options.scope === 'alternative' && Number.isInteger(options.exerciseIndex)) {
         const alternativeOptions = {
           exerciseIndex: options.exerciseIndex,
@@ -1257,7 +1270,14 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
         });
       }
       setProgress((current) => {
-        const next = { ...current, [id]: { ...current[id], swappedName: newName } };
+        const updatedExercise = {
+          ...current[id],
+          swappedName: substitution.name,
+          swappedLoadMode: substitution.loadMode,
+        };
+        if (substitution.barWeight === null) delete updatedExercise.swappedBarWeight;
+        else updatedExercise.swappedBarWeight = substitution.barWeight;
+        const next = { ...current, [id]: updatedExercise };
         progressRef.current = next;
         return next;
       });
@@ -1347,11 +1367,26 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
         ...current,
         [day]: { ...current[day], exercises: current[day].exercises.filter((_, itemIndex) => itemIndex !== index) },
       })),
-      edit: (day, index, field, value) => setWorkoutData((current) => {
-        const exercises = [...current[day].exercises];
-        exercises[index] = { ...exercises[index], [field]: value };
-        return { ...current, [day]: { ...current[day], exercises } };
-      }),
+      edit: (day, index, field, value) => {
+        const plannedName = workoutData[day]?.exercises?.[index]?.name;
+        setWorkoutData((current) => {
+          const exercises = [...current[day].exercises];
+          exercises[index] = { ...exercises[index], [field]: value };
+          return { ...current, [day]: { ...current[day], exercises } };
+        });
+        if (field === 'alternatives'
+          && sessionActive
+          && day === session.workoutName
+          && plannedName) {
+          updateSessionSnapshot((current) => ({
+            workoutSnapshot: updateWorkoutExerciseAlternatives(current.workoutSnapshot, {
+              exerciseIndex: index,
+              plannedName,
+              alternatives: value,
+            }),
+          }));
+        }
+      },
       addDay: (day) => setWorkoutData((current) => (current[day] ? current : {
         ...current,
         [day]: { title: `Treino ${day}`, focus: 'Geral', exercises: [] },
@@ -1386,6 +1421,8 @@ export const useWorkout = (userId, { hapticFeedback = true } = {}) => {
     updateSessionSnapshot,
     userId,
     session.workoutName,
+    session.workoutSnapshot,
+    sessionActive,
     workoutData,
   ]);
 

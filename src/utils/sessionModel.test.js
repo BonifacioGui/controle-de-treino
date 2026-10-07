@@ -58,6 +58,44 @@ describe('conclusão de treino', () => {
     expect(sessionWorkout.exercises[0].name).toBe('Remada Máquina');
   });
 
+  it('persiste a semântica efetiva de máquina na substituição', () => {
+    const sessionWorkout = {
+      exercises: [{ name: 'Supino Inclinado com Barra', sets: '3x10', loadMode: 'total' }],
+    };
+    const progress = {
+      '2026-08-20-A-0': {
+        swappedName: 'Supino Inclinado (máquina)',
+        swappedLoadMode: 'machine',
+        sets: [{ weight: 60, reps: 10, completed: true }],
+      },
+    };
+    const serialized = buildSessionExercises(sessionWorkout, progress, '2026-08-20', 'A')[0];
+    expect(serialized).toMatchObject({
+      name: 'Supino Inclinado (máquina)',
+      plannedName: 'Supino Inclinado com Barra',
+      loadMode: 'machine',
+      barWeight: null,
+      sets: [{ weight: 60, reps: 10, completed: true, loadMode: 'machine', barWeight: null }],
+    });
+  });
+
+  it('mantém compatibilidade com sessão antiga contendo somente swappedName', () => {
+    const sessionWorkout = {
+      exercises: [{ name: 'Supino Inclinado com Barra', sets: '3x10', loadMode: 'total' }],
+    };
+    const progress = {
+      '2026-08-20-A-0': {
+        swappedName: 'Supino Inclinado Máquina',
+        sets: [{ weight: 55, reps: 12, completed: true }],
+      },
+    };
+    expect(buildSessionExercises(sessionWorkout, progress, '2026-08-20', 'A')[0]).toMatchObject({
+      name: 'Supino Inclinado Máquina',
+      loadMode: 'machine',
+      sets: [{ loadMode: 'machine' }],
+    });
+  });
+
   it('permite limpar a quantidade antes de digitar outra e limita valores capazes de travar a interface', () => {
     expect(normalizeSessionSetCountInput('')).toBe('');
     expect(normalizeSessionSetCountInput('5')).toBe('5');

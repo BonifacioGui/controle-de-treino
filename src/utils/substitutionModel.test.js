@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   addAlternativeToWorkout,
   addExerciseAlternative,
+  getEffectiveExercise,
   hasCompletedExerciseSets,
   hasRecordedExerciseData,
+  resolveSubstitutionMetadata,
+  updateWorkoutExerciseAlternatives,
 } from './substitutionModel';
 
 describe('substituição segura de exercício', () => {
@@ -17,6 +20,15 @@ describe('substituição segura de exercício', () => {
   it('não duplica aliases canônicos na lista de alternativas', () => {
     const exercise = { name: 'Supino Reto', alternatives: ['Remada Baixa'] };
     expect(addExerciseAlternative(exercise, 'Remada Baixa (Polia)')).toBe(exercise);
+  });
+
+  it('permite salvar Supino Inclinado Máquina como alternativa da versão com barra', () => {
+    expect(addExerciseAlternative({
+      name: 'Supino Inclinado com Barra',
+      alternatives: ['Supino Inclinado com Halteres'],
+    }, 'Supino Inclinado (máquina)')).toMatchObject({
+      alternatives: ['Supino Inclinado com Halteres', 'Supino Inclinado (máquina)'],
+    });
   });
 
   it('detecta séries concluídas antes de permitir troca de identidade', () => {
@@ -63,5 +75,79 @@ describe('substituição segura de exercício', () => {
       plannedName: 'Remada Baixa',
       alternative: 'Remada Articulada',
     })).toBe(workout);
+  });
+
+  it('reflete alternativas do editor no snapshot ativo sem alterar outros campos ou séries', () => {
+    const planWorkout = {
+      title: 'Treino A',
+      exercises: [{ name: 'Supino Inclinado com Barra', sets: '3x10', loadMode: 'total', alternatives: [] }],
+    };
+    const sessionWorkout = {
+      title: 'Treino A iniciado',
+      exercises: [{ name: 'Supino Inclinado com Barra', sets: '3x8', loadMode: 'total', note: 'snapshot', alternatives: [] }],
+    };
+    const progress = { sets: [{ weight: '50', reps: '8', completed: true }] };
+    const options = {
+      exerciseIndex: 0,
+      plannedName: 'Supino Inclinado com Barra',
+      alternatives: ['Supino Inclinado (máquina)'],
+    };
+    const nextPlan = updateWorkoutExerciseAlternatives(planWorkout, options);
+    const nextSession = updateWorkoutExerciseAlternatives(sessionWorkout, options);
+
+    expect(nextPlan.exercises[0].alternatives).toEqual(['Supino Inclinado (máquina)']);
+    expect(nextSession.exercises[0]).toEqual({
+      ...sessionWorkout.exercises[0],
+      alternatives: ['Supino Inclinado (máquina)'],
+    });
+    expect(progress.sets).toEqual([{ weight: '50', reps: '8', completed: true }]);
+  });
+
+  it('não sincroniza alternativas com exercício ambíguo ou incompatível', () => {
+    const snapshot = {
+      exercises: [
+        { name: 'Supino Reto', alternatives: [] },
+        { name: 'Remada Baixa', alternatives: [] },
+        { name: 'Remada Baixa na Polia', alternatives: [] },
+      ],
+    };
+    expect(updateWorkoutExerciseAlternatives(snapshot, {
+      exerciseIndex: 0,
+      plannedName: 'Remada Baixa',
+      alternatives: ['Remada Máquina'],
+    })).toBe(snapshot);
+  });
+
+  it('usar agora e salvar na ficha atualiza plano e snapshot com a mesma alternativa', () => {
+    const planWorkout = { exercises: [{ name: 'Supino Inclinado com Barra', alternatives: [] }] };
+    const sessionWorkout = { exercises: [{ name: 'Supino Inclinado com Barra', alternatives: [] }] };
+    const options = {
+      exerciseIndex: 0,
+      plannedName: 'Supino Inclinado com Barra',
+      alternative: 'Supino Inclinado (máquina)',
+    };
+    expect(addAlternativeToWorkout(planWorkout, options).exercises[0].alternatives).toEqual([
+      'Supino Inclinado (máquina)',
+    ]);
+    expect(addAlternativeToWorkout(sessionWorkout, options).exercises[0].alternatives).toEqual([
+      'Supino Inclinado (máquina)',
+    ]);
+  });
+
+  it('mantém arrays antigos de alternativas em string e infere a carga da selecionada', () => {
+    const exercise = {
+      name: 'Supino Inclinado com Barra',
+      loadMode: 'total',
+      alternatives: ['Supino Inclinado (máquina)'],
+    };
+    expect(resolveSubstitutionMetadata(exercise, 'Supino Inclinado (máquina)')).toEqual({
+      name: 'Supino Inclinado (máquina)',
+      loadMode: 'machine',
+      barWeight: null,
+    });
+    expect(getEffectiveExercise(exercise, {
+      swappedName: 'Supino Inclinado (máquina)',
+      swappedLoadMode: 'machine',
+    })).toMatchObject({ name: 'Supino Inclinado (máquina)', loadMode: 'machine' });
   });
 });

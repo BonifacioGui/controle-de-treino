@@ -23,4 +23,19 @@ describe('identidade conservadora de exercícios', () => {
     expect(isSameExercise('Supino Reto', 'Supino Inclinado')).toBe(false);
     expect(isSameExercise('Panturrilha Sentada', 'Panturrilha em Pé')).toBe(false);
   });
+
+  it('separa supino inclinado livre de versões em máquina', () => {
+    expect(getCanonicalName('Supino Inclinado com Barra')).toBe('Supino Inclinado');
+    expect(getCanonicalName('Supino Inclinado (máquina)')).toBe('Supino Inclinado Máquina');
+    expect(getCanonicalName('Supino Inclinado Articulado')).toBe('Supino Inclinado Máquina');
+    expect(isSameExercise(
+      'Supino Inclinado com Barra',
+      'Supino Inclinado (máquina)',
+    )).toBe(false);
+    expect(isSameExercise('Supino Inclinado', 'Supino Inclinado com Barra')).toBe(true);
+  });
+
+  it('não colapsa supino declinado em máquina na versão livre', () => {
+    expect(isSameExercise('Supino Declinado', 'Supino Declinado Máquina')).toBe(false);
+  });
 });

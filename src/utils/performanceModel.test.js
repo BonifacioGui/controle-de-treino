@@ -53,6 +53,21 @@ describe('resumo de performance do exercício', () => {
     expect(performance.exercises).toHaveLength(1);
   });
 
+  it('não confunde histórico do supino inclinado em máquina com a versão de barra', () => {
+    const history = [
+      { dateKey: '2026-09-22', exercises: [{ name: 'Supino Inclinado Máquina', loadMode: 'machine', sets: [{ weight: 80, reps: 10, completed: true }] }] },
+      { dateKey: '2026-09-21', exercises: [{ name: 'Supino Inclinado com Barra', loadMode: 'total', sets: [{ weight: 60, reps: 8, completed: true }] }] },
+    ];
+    const performance = getExercisePerformance(
+      history,
+      'Supino Inclinado com Barra',
+      { loadMode: 'total' },
+    );
+    expect(performance.lastSummary).toBe('60 kg total × 8');
+    expect(performance.pr.primary).toBe('60 kg total');
+    expect(performance.exercises).toHaveLength(1);
+  });
+
   it('em empate de carga escolhe a série com mais repetições', () => {
     const record = getBestCompletedSet({
       name: 'Supino',
