@@ -16,6 +16,10 @@ describe('ExercisePerformanceSummary', () => {
     expect(html).toContain('45 kg total × 10');
     expect(html).toContain('PR 50 kg total');
     expect(html).toContain('text-gold');
+    expect(html).toContain('flex-wrap');
+    expect(html).toContain('gap-x-3');
+    expect(html).toContain('gap-y-1');
+    expect(html).not.toContain('mt-1.5');
   });
 
   it('marca a referência como PR sem repetir o mesmo valor', () => {
@@ -27,6 +31,7 @@ describe('ExercisePerformanceSummary', () => {
 
     expect(html).toContain('50 kg total × 8');
     expect(html).toContain('aria-label="Esta referência também é o recorde histórico"');
+    expect(html).toContain('gap-x-3');
     expect(html.match(/50 kg total/g)).toHaveLength(1);
   });
 

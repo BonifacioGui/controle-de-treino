@@ -71,6 +71,8 @@ const ExerciseCard = ({
   progress,
   history,
   isCurrent,
+  expanded,
+  onToggle,
   updateSetData,
   updateSessionSets,
   toggleSetComplete,
@@ -87,7 +89,6 @@ const ExerciseCard = ({
   const activeSets = getActiveSessionSets(ex, exerciseProgress);
   const completedSets = activeSets.filter((set) => set.completed).length;
   const isDone = isExerciseCompleted(ex, exerciseProgress);
-  const [manualExpanded, setManualExpanded] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
   const [showSwapSearch, setShowSwapSearch] = useState(false);
@@ -96,7 +97,6 @@ const ExerciseCard = ({
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [validationSet, setValidationSet] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
-  const expanded = manualExpanded ?? (isCurrent && !isDone);
 
   const performance = getExercisePerformance(history, displayName, effectiveExercise);
   const { lastExercise, prRecord } = performance;
@@ -186,7 +186,7 @@ const ExerciseCard = ({
     <article className={`exercise-card rounded-2xl border bg-card transition ${isDone ? 'exercise-card--complete border-success/50' : isCurrent ? 'exercise-card--current border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.12)]' : 'border-border'}`}>
       <button
         type="button"
-        onClick={() => setManualExpanded(!expanded)}
+        onClick={onToggle}
         aria-expanded={expanded}
         className="flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >

@@ -113,9 +113,12 @@ const ShareCardBackground = ({ photo }) => (
   <div className="absolute inset-0 overflow-hidden bg-[#05070d]">
     {photo ? (
       <>
-        <img src={photo} alt="" className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/95" />
-        <div className="absolute inset-x-0 bottom-0 h-[70%] bg-gradient-to-t from-[#03050a] via-[#03050a]/80 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden">
+          <img src={photo} alt="" className="h-full w-full object-cover object-[center_30%]" />
+          <div className="absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[38%] bg-gradient-to-t from-[#05070d] to-transparent" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 top-[48%] bg-[#05070d]" />
       </>
     ) : (
       <>
@@ -192,7 +195,7 @@ const ShareCard = ({
         <ShareCardBackground photo={selfieUrl} />
         <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
           <ShareCardHeader sessionDate={displayDate} />
-          <main className={`flex flex-1 flex-col justify-center gap-14 pb-12 ${selfieUrl ? 'pt-[360px]' : 'pt-16'}`}>
+          <main className={`flex flex-1 flex-col pb-12 ${selfieUrl ? 'justify-end gap-10 pt-[700px]' : 'justify-center gap-14 pt-16'}`}>
             <section>
               <p className="mb-6 font-cyber text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
               <h1 className="max-w-[900px] text-[82px] font-bold leading-[0.94] tracking-[-0.035em] text-white">{workoutTitle || 'Treino'}</h1>

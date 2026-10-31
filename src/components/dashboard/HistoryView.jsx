@@ -128,11 +128,26 @@ const SessionCard = ({ session, onDelete, onCardAction, onReopen }) => {
             <span className="flex items-center gap-1"><Clock size={13} /> {formatDuration(session.duration)}</span>
             <span className={`flex items-center gap-1 ${synced ? 'text-success' : 'text-warning'}`}>{synced ? <Cloud size={13} /> : <CloudOff size={13} />}{synced ? 'Sincronizado' : 'Salvo neste dispositivo'}</span>
           </div>
-          {session.bossEncounter && (
-            <p className={`mt-2 flex items-center gap-1.5 text-xs font-bold ${session.bossEncounter.defeated ? 'text-success' : 'text-secondary'}`}>
-              <Swords size={14} /> {session.bossEncounter.bossName} {session.bossEncounter.defeated ? 'derrotado' : 'enfrentado'} • {Math.round(session.bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(session.bossEncounter.maxHp).toLocaleString('pt-BR')}
-            </p>
-          )}
+          {session.bossEncounter && (() => {
+            const criticalBonus = Number(session.bossEncounter.criticalBonus) || 0;
+            const powerBonus = Number(session.bossEncounter.powerBonus) || 0;
+            const bonus = criticalBonus + powerBonus;
+            const baseDamage = Number(session.bossEncounter.baseDamage)
+              || Math.max(0, (Number(session.bossEncounter.damage) || 0) - bonus);
+            return (
+              <div className="mt-2 text-xs font-bold">
+                <p className={`flex flex-wrap items-center gap-1.5 ${session.bossEncounter.defeated ? 'text-success' : 'text-secondary'}`}>
+                  <Swords size={14} /> {session.bossEncounter.bossName} {session.bossEncounter.defeated ? 'derrotado' : 'enfrentado'}
+                  <span>• Dano: {Math.round(session.bossEncounter.damage).toLocaleString('pt-BR')} / {Math.round(session.bossEncounter.maxHp).toLocaleString('pt-BR')} HP</span>
+                </p>
+                {bonus > 0 && (
+                  <p className="mt-1 pl-5 text-[11px] font-medium text-muted">
+                    {Math.round(baseDamage).toLocaleString('pt-BR')} base + {Math.round(bonus).toLocaleString('pt-BR')} bônus
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </button>
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? 'Recolher sessão' : 'Abrir sessão'} className="touch-target flex items-center justify-center rounded-xl text-muted"><ChevronDown className={expanded ? 'rotate-180' : ''} /></button>
       </div>

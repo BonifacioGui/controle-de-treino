@@ -79,21 +79,20 @@ const ExercisePerformanceSummary = ({
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-main">
-        <span className="font-semibold">{lastSummary}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-main">
+        <span className="min-w-0 font-semibold">{lastSummary}</span>
         {lastBestIsPr && (
           <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-gold" aria-label="Esta referência também é o recorde histórico">
             <Trophy aria-hidden="true" size={13} /> PR
           </span>
         )}
+        {pr && !lastBestIsPr && (
+          <span className="inline-flex min-w-0 items-start gap-x-1 font-semibold text-gold">
+            <Trophy aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
+            <span className="min-w-0">PR {pr.primary}{pr.secondary ? <span className="ml-1 font-normal">• {pr.secondary}</span> : null}</span>
+          </span>
+        )}
       </div>
-
-      {pr && !lastBestIsPr && (
-        <div className="mt-1.5 inline-flex items-start gap-x-1 font-semibold text-gold">
-          <Trophy aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
-          <span>PR {pr.primary}{pr.secondary ? <span className="ml-1 font-normal">• {pr.secondary}</span> : null}</span>
-        </div>
-      )}
 
       {isHelpOpen && typeof document !== 'undefined' && createPortal(
         <div

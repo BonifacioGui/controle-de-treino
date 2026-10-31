@@ -3,6 +3,8 @@ import {
   calculateBossMaxHp,
   calculateWorkoutBossDamage,
   createBossEncounter,
+  getBossEvolutionStage,
+  selectBoss,
   updateBossEncounter,
 } from './bossModel';
 
@@ -17,6 +19,74 @@ describe('BossEncounter canônico', () => {
       workoutName: 'A', dateKey: `2026-08-${20 - index}`, totalVolume, partial: false,
     }));
     expect(calculateBossMaxHp(history, 'A')).toBe(6405);
+  });
+
+  it('considera sessão parcial com dano base válido na referência do próximo Boss', () => {
+    const history = [{
+      workoutName: 'C',
+      partial: true,
+      totalVolume: 10447,
+      bossEncounter: { baseDamage: 10447, maxHp: 5000 },
+    }];
+    expect(calculateBossMaxHp(history, 'C')).toBe(10969);
+  });
+
+  it('não deixa uma performance parcial pequena reduzir o HP existente', () => {
+    const history = [{
+      workoutName: 'C',
+      partial: true,
+      bossEncounter: { baseDamage: 1000, maxHp: 12000 },
+    }];
+    expect(calculateBossMaxHp(history, 'C')).toBe(12000);
+  });
+
+  it('usa somente as três performances válidas mais recentes do mesmo treino', () => {
+    const history = [9000, 6000, 3000, 50000].map((baseDamage) => ({
+      workoutName: 'A', bossEncounter: { baseDamage, maxHp: 5000 },
+    }));
+    history.push({ workoutName: 'B', bossEncounter: { baseDamage: 90000, maxHp: 90000 } });
+    expect(calculateBossMaxHp(history, 'A')).toBe(6300);
+  });
+
+  it('mantém fallback de 5.000 sem performance e ignora sessão sem volume', () => {
+    expect(calculateBossMaxHp([], 'A')).toBe(5000);
+    expect(calculateBossMaxHp([{ workoutName: 'A', partial: true, totalVolume: 0 }], 'A')).toBe(5000);
+  });
+
+  it('usa totalVolume como fallback para histórico antigo sem encontro do Boss', () => {
+    expect(calculateBossMaxHp([{ workoutName: 'A', partial: true, totalVolume: 8000 }], 'A')).toBe(8400);
+  });
+
+  it('mantém a família do Boss estável em datas diferentes para o mesmo treino', () => {
+    const first = selectBoss({ dateKey: '2026-08-01', workoutName: 'A', workoutTitle: 'Peito' });
+    const second = selectBoss({ dateKey: '2026-10-31', workoutName: 'A', workoutTitle: 'Peito atualizado' });
+    expect(second.id).toBe(first.id);
+  });
+
+  it('permite que treinos diferentes pertençam a famílias diferentes', () => {
+    const families = new Set(['A', 'B', 'C', 'D'].map((workoutName) => (
+      selectBoss({ workoutName, workoutTitle: `Treino ${workoutName}` }).id
+    )));
+    expect(families.size).toBeGreaterThan(1);
+  });
+
+  it.each([
+    [0, 1, 'Forma I'],
+    [3, 2, 'Forma II'],
+    [6, 3, 'Forma III'],
+    [10, 4, 'Forma IV'],
+    [15, 5, 'Forma V'],
+  ])('evolui para o estágio correto após %i derrotas', (defeats, stage, label) => {
+    expect(getBossEvolutionStage(defeats)).toEqual(expect.objectContaining({ stage, label }));
+  });
+
+  it('deriva a forma do encontro pelas derrotas anteriores do mesmo treino', () => {
+    const history = Array.from({ length: 6 }, () => ({
+      workoutName: 'A', bossEncounter: { defeated: true, baseDamage: 6000, maxHp: 6000 },
+    }));
+    history.push({ workoutName: 'B', bossEncounter: { defeated: true, baseDamage: 9000, maxHp: 9000 } });
+    expect(createBossEncounter({ sessionId: 'next', workoutName: 'A', workout, history }))
+      .toMatchObject({ evolutionStage: 3, evolutionLabel: 'Forma III' });
   });
 
   it('gera Critical Hit de 20% quando uma série supera a maior carga histórica', () => {

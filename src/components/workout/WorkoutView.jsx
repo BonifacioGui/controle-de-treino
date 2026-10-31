@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -25,6 +25,7 @@ import {
   isExerciseCompleted,
   SESSION_STATUS,
 } from '../../utils/sessionModel';
+import { getNextExpandedExerciseId, toggleExpandedExerciseId } from '../../utils/workoutAccordionModel';
 
 const WorkoutView = ({
   activeDay,
@@ -54,8 +55,10 @@ const WorkoutView = ({
   const [pendingExercise, setPendingExercise] = useState('');
   const [addExerciseToPlan, setAddExerciseToPlan] = useState(false);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const [expandedExerciseId, setExpandedExerciseId] = useState(null);
   const addExerciseOperationRef = useRef(null);
   const addExerciseHandledRef = useRef(false);
+  const previousCurrentExerciseIdRef = useRef(null);
   const currentWorkout = activeWorkout || workoutData[activeDay];
   const sessionActive = [SESSION_STATUS.active, SESSION_STATUS.paused, SESSION_STATUS.finishing]
     .includes(workoutTimer.status);
@@ -80,6 +83,21 @@ const WorkoutView = ({
     const id = `${selectedDate}-${activeDay}-${index}`;
     return !isExerciseCompleted(exercise, progress[id] || {});
   }) ?? -1;
+  const currentExerciseId = currentExerciseIndex >= 0
+    ? `${selectedDate}-${activeDay}-${currentExerciseIndex}`
+    : null;
+
+  useEffect(() => {
+    if (!sessionActive) return;
+    const previousCurrentId = previousCurrentExerciseIdRef.current;
+    // Mantém uma escolha manual aberta; caso contrário, acompanha o exercício atual.
+    setExpandedExerciseId((current) => getNextExpandedExerciseId({
+      expandedId: current,
+      previousCurrentId,
+      nextCurrentId: currentExerciseId,
+    }));
+    previousCurrentExerciseIdRef.current = currentExerciseId;
+  }, [currentExerciseId, sessionActive]);
   const completionPercent = completion.totalSets > 0
     ? Math.round((completion.completedSets / completion.totalSets) * 100)
     : 0;
@@ -214,6 +232,8 @@ const WorkoutView = ({
                     history={history}
                     sessionActive={sessionActive}
                     isCurrent={currentExerciseIndex === index}
+                    expanded={expandedExerciseId === id}
+                    onToggle={() => setExpandedExerciseId((current) => toggleExpandedExerciseId(current, id))}
                     updateSetData={actions.updateSetData}
                     updateSessionSets={actions.updateSessionSets}
                     onSwap={actions.onSwap}
