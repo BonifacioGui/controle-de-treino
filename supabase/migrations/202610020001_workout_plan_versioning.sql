@@ -1,5 +1,7 @@
 -- Versionamento otimista do plano. Execute no SQL Editor do Supabase antes de
 -- habilitar a nova sincronização; o cliente não faz fallback para upsert inseguro.
+-- Compatibilidade SOLO: workout_plans.user_id já é text no schema atual; a tabela
+-- de versões e a RPC preservam esse tipo, sem FK uuid para auth.users.
 
 begin;
 
@@ -24,7 +26,7 @@ alter table public.workout_plans
 create table if not exists public.workout_plan_versions (
   id uuid primary key default gen_random_uuid(),
   plan_id uuid not null,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id text not null,
   plan_data jsonb not null,
   version_id uuid not null,
   revision bigint not null,
@@ -40,7 +42,7 @@ alter table public.workout_plan_versions enable row level security;
 drop policy if exists "Users can read own workout plan versions" on public.workout_plan_versions;
 create policy "Users can read own workout plan versions"
 on public.workout_plan_versions for select
-using (auth.uid() = user_id);
+using (auth.uid()::text = user_id);
 
 drop policy if exists "Users can insert own workout plan versions" on public.workout_plan_versions;
 revoke insert, update, delete on table public.workout_plan_versions from anon, authenticated;
@@ -73,7 +75,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_user_id uuid := auth.uid();
+  v_user_id text := auth.uid()::text;
   v_current public.workout_plans%rowtype;
   v_next_version uuid := gen_random_uuid();
 begin
