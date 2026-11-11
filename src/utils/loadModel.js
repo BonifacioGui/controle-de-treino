@@ -40,6 +40,21 @@ export const normalizeLoadMode = (value, fallback = LOAD_MODES.total) => {
   return fallback;
 };
 
+const normalizeEquipmentText = (exercise = {}) => `${exercise.name || ''} ${exercise.note || ''}`
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase();
+
+export const inferEquipmentLoadMode = (exercise = {}) => {
+  const source = normalizeEquipmentText(exercise);
+  if (/\b(halter|halteres|dumbbell|dumbbells)\b/.test(source)) return LOAD_MODES.perHand;
+  if (/\bpor lado\b|\banilhas? por lado\b/.test(source)) return LOAD_MODES.perSide;
+  if (/\bassistid[oa]\b|\bgravitr[oó]n\b/.test(source)) return LOAD_MODES.assisted;
+  if (/\b(maquina|articulad[oa]|polia|cabo|pulley|crossover|voador)\b/.test(source)) return LOAD_MODES.machine;
+  if (/\b(cadeira|mesa flexora|leg press|hack)\b/.test(source)) return LOAD_MODES.machine;
+  return null;
+};
+
 export const inferLegacyLoadMode = (exercise = {}) => {
   if (exercise.loadMode) return normalizeLoadMode(exercise.loadMode);
   if (exercise.mode) return normalizeLoadMode(exercise.mode);
@@ -47,6 +62,8 @@ export const inferLegacyLoadMode = (exercise = {}) => {
   if (/\b(km|quil[oô]metro|dist[aâ]ncia|metros?)\b/.test(source)) return LOAD_MODES.distance;
   if (/\b(min|seg|segundo|tempo|isom[eé]tric)\b/.test(source)) return LOAD_MODES.duration;
   if (/peso corporal|sem carga|abdominal|prancha|flex[aã]o|barra fixa/.test(source)) return LOAD_MODES.bodyweight;
+  const equipmentMode = inferEquipmentLoadMode(exercise);
+  if (equipmentMode) return equipmentMode;
   if (!String(exercise.sets || '').includes('x')) return LOAD_MODES.repsOnly;
   return LOAD_MODES.total;
 };

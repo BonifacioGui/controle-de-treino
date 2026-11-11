@@ -3,10 +3,12 @@ import { createPortal } from 'react-dom';
 import { Plus, Trash2, Settings, Save, Search, X, Dumbbell, CheckSquare, Square, AlertTriangle, Cpu } from 'lucide-react';
 import { inferLegacyLoadMode, LOAD_MODE_OPTIONS, LOAD_MODES } from '../../utils/loadModel';
 import { ALL_EXERCISES, EXERCISE_CATALOG } from '../../data/exerciseCatalog';
+import PlanRecoveryPreview from './PlanRecoveryPreview';
 
 const ManageView = ({ 
   activeDay, setActiveDay, addDay, removeDay, workoutData, addExercise, 
   removeExercise, editExerciseBase, setView, addFromCatalog, sessionActive = false,
+  recoverWorkoutPlan,
 }) => {
   
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -71,6 +73,7 @@ const ManageView = ({
 
   return (
     <main className="space-y-6 animate-in slide-in-from-right duration-500 font-sans pb-24 relative">
+      {recoverWorkoutPlan && <PlanRecoveryPreview onRecover={recoverWorkoutPlan} />}
       
       {/* SELETOR DE PROTOCOLOS */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
@@ -94,7 +97,7 @@ const ManageView = ({
       {sessionActive && (
         <div role="status" className="mx-1 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
           <p className="text-xs font-black uppercase tracking-wider text-primary">Treino em andamento</p>
-          <p className="mt-1 text-sm leading-relaxed text-muted">Alterações feitas aqui serão aplicadas aos próximos treinos. A sessão atual permanece como foi iniciada.</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">Nome, meta, modo de carga e estrutura valem para os próximos treinos. Alterações somente nas alternativas também são refletidas na sessão atual.</p>
         </div>
       )}
 
@@ -102,7 +105,7 @@ const ManageView = ({
       <div className="flex justify-between items-center pb-1 px-1">
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-secondary" />
-          <h2 className="font-cyber text-lg font-black uppercase tracking-tighter neon-text-cyan text-primary">
+          <h2 className="text-lg font-bold neon-text-cyan text-primary">
             {workoutData[activeDay] ? <>Editando: <span className="text-secondary">{activeDay}</span></> : 'Crie seu primeiro treino'}
           </h2>
         </div>

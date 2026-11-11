@@ -3,6 +3,9 @@ import {
   calculateSetCanonicalVolume,
   formatEnteredLoad,
   getCanonicalLoad,
+  getSetLoadMode,
+  inferEquipmentLoadMode,
+  inferLegacyLoadMode,
   LOAD_MODES,
 } from './loadModel';
 
@@ -27,5 +30,18 @@ describe('modelo canônico de carga', () => {
     expect(getCanonicalLoad({ weight: 50 }, { loadMode: LOAD_MODES.assisted })).toBeNull();
     expect(calculateSetCanonicalVolume({ weight: 50, reps: 10 }, { loadMode: LOAD_MODES.duration })).toBe(0);
   });
-});
 
+  it('infere equipamento somente quando o nome traz sinal seguro', () => {
+    expect(inferLegacyLoadMode({ name: 'Supino Inclinado (máquina)', sets: '3x10' })).toBe(LOAD_MODES.machine);
+    expect(inferLegacyLoadMode({ name: 'Supino Inclinado com Halteres', sets: '3x10' })).toBe(LOAD_MODES.perHand);
+    expect(inferEquipmentLoadMode({ name: 'Supino Inclinado com Barra' })).toBeNull();
+    expect(inferLegacyLoadMode({ name: 'Supino Inclinado com Barra', sets: '3x10' })).toBe(LOAD_MODES.total);
+  });
+
+  it('sempre prioriza um loadMode salvo explicitamente', () => {
+    expect(getSetLoadMode(
+      { weight: 40, loadMode: LOAD_MODES.total },
+      { name: 'Cadeira extensora', loadMode: LOAD_MODES.machine },
+    )).toBe(LOAD_MODES.total);
+  });
+});

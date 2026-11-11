@@ -1,8 +1,11 @@
 import { normalizeHistory, sortHistoryNewestFirst } from './historyModel';
+import { markPlanAsLegacy } from './planSync';
 
 export const STORAGE_KEYS = Object.freeze({
   workoutPlan: 'solo:workout-plan',
   planSync: 'solo:plan-sync',
+  planBackups: 'solo:plan-backups',
+  deviceId: 'solo:device-id',
   history: 'solo:history',
   bodyHistory: 'solo:body-history',
   progress: 'solo:progress',
@@ -20,7 +23,7 @@ export const STORAGE_KEYS = Object.freeze({
 });
 
 const USER_STORAGE_PREFIX = 'solo:user';
-const USER_MIGRATION_VERSION = '3';
+const USER_MIGRATION_VERSION = '4';
 
 const LEGACY_SOURCES = Object.freeze({
   workoutPlan: [STORAGE_KEYS.workoutPlan, 'workout_plan'],
@@ -38,6 +41,7 @@ const LEGACY_SOURCES = Object.freeze({
 
 const JSON_STORAGE_NAMES = new Set([
   'workoutPlan',
+  'planBackups',
   'history',
   'bodyHistory',
   'progress',
@@ -208,7 +212,12 @@ export const migrateLegacyStorage = (userId, storage = localStorage) => {
   }
 
   if (migratedWorkoutPlan && storage.getItem(getUserStorageKey(userId, STORAGE_KEYS.planSync)) === null) {
-    writeUserStoredJSON(userId, STORAGE_KEYS.planSync, { dirty: true, revision: 1 }, storage);
+    writeUserStoredJSON(
+      userId,
+      STORAGE_KEYS.planSync,
+      markPlanAsLegacy({ revision: 1 }),
+      storage,
+    );
   }
 
   if (!hasInvalidLegacyData) storage.setItem(migrationKey, USER_MIGRATION_VERSION);
@@ -216,10 +225,11 @@ export const migrateLegacyStorage = (userId, storage = localStorage) => {
 };
 
 export const getSoloBackup = (userId, storage = localStorage, exportedAt = new Date().toISOString()) => ({
-  version: 3,
+  version: 4,
   exportedAt,
   data: {
     workoutPlan: readUserStoredJSON(userId, STORAGE_KEYS.workoutPlan, {}, storage),
+    planBackups: readUserStoredJSON(userId, STORAGE_KEYS.planBackups, [], storage),
     history: readUserStoredJSON(userId, STORAGE_KEYS.history, [], storage),
     bodyHistory: readUserStoredJSON(userId, STORAGE_KEYS.bodyHistory, [], storage),
     progress: readUserStoredJSON(userId, STORAGE_KEYS.progress, {}, storage),
@@ -232,3 +242,36 @@ export const getSoloBackup = (userId, storage = localStorage, exportedAt = new D
     settings: readStoredJSON(STORAGE_KEYS.settings, {}, storage),
   },
 });
+
+export const appendUserPlanBackup = (
+  userId,
+  plan,
+  metadata = {},
+  storage = localStorage,
+) => {
+  if (!userId || !plan || typeof plan !== 'object' || Object.keys(plan).length === 0) return [];
+  const existing = readUserStoredJSON(userId, STORAGE_KEYS.planBackups, [], storage);
+  const fingerprint = JSON.stringify(plan);
+  const duplicate = existing.some((entry) => JSON.stringify(entry.plan) === fingerprint);
+  if (duplicate) return existing;
+
+  const next = [
+    ...existing,
+    {
+      id: globalThis.crypto?.randomUUID?.() || `plan-${Date.now()}`,
+      capturedAt: new Date().toISOString(),
+      ...metadata,
+      plan,
+    },
+  ].slice(-10);
+  writeUserStoredJSON(userId, STORAGE_KEYS.planBackups, next, storage);
+  return next;
+};
+
+export const getOrCreateDeviceId = (storage = localStorage) => {
+  const current = storage.getItem(STORAGE_KEYS.deviceId);
+  if (current) return current;
+  const created = globalThis.crypto?.randomUUID?.() || `device-${Date.now()}`;
+  storage.setItem(STORAGE_KEYS.deviceId, created);
+  return created;
+};

@@ -29,11 +29,13 @@ export const getCanonicalName = (rawName) => {
     { check: () => has("remada") && has("curvada"), name: "Remada Curvada" },
     { check: () => has("remada") && (has("cavalo") || hasExact("t")), name: "Remada Cavalinho" },
     { check: () => has("remada") && (has("maquina") || has("articulada")), name: "Remada Máquina" },
-    { check: () => hasExact("unilateral") || has("serrote"), name: "Serrote" },
+    { check: () => has("remada") && (hasExact("unilateral") || has("serrote")), name: "Serrote" },
 
     // --- PEITO ---
+    { check: () => has("supino") && has("inclinado") && (has("maquina") || has("articulado")), name: "Supino Inclinado Máquina" },
     { check: () => has("supino") && has("inclinado") && has("halter"), name: "Supino Inclinado Halteres" },
     { check: () => has("supino") && has("inclinado"), name: "Supino Inclinado" },
+    { check: () => has("supino") && has("declinado") && (has("maquina") || has("articulado")), name: "Supino Declinado Máquina" },
     { check: () => has("supino") && has("declinado"), name: "Supino Declinado" },
     { check: () => has("supino") && (has("maquina") || has("articulado")), name: "Supino Máquina" },
     { check: () => has("supino") && has("reto") && has("halter"), name: "Supino Reto Halteres" },
@@ -117,9 +119,15 @@ export const getCanonicalName = (rawName) => {
   // ==========================================
   // 🚀 FALLBACK INTELIGENTE (Tratamento de Exceções)
   // ==========================================
-  // Se for algo muito diferente que não está nas regras, limpamos 
-  // anotações extras e capitalizamos as palavras para a UI não quebrar.
-  let cleanFallback = rawName.split('(')[0].split('-')[0].trim();
+  // Para exercícios fora do catálogo, preservamos todos os termos relevantes.
+  // Remover o conteúdo após hífen/parênteses unia movimentos distintos
+  // (por exemplo, Pullover no cabo e Pullover com halter).
+  const cleanFallback = lower
+    .replace(/[()[\]{}]/g, ' ')
+    .replace(/[-_/]+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   
   return cleanFallback
     .split(/\s+/)

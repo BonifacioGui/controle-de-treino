@@ -27,7 +27,9 @@ export default {
         warning: 'var(--warning)',
       },
       fontFamily: {
-        cyber: ['Orbitron', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        cyber: ['Orbitron', 'system-ui', 'sans-serif'],
+        mono: ['Share Tech Mono', 'monospace'],
       },
       animation: {
         'scanline': 'scanline 8s linear infinite',

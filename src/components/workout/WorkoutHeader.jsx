@@ -52,8 +52,8 @@ const WorkoutHeader = ({
           className="touch-target flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-2 text-left transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Data do treino</p>
-            <p className="truncate text-sm font-black text-main sm:text-base">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted">Data do treino</p>
+            <p className="truncate text-sm font-semibold text-main sm:text-base">
               {formatWorkoutDate(selectedDate)}
             </p>
           </div>
@@ -70,7 +70,7 @@ const WorkoutHeader = ({
               </span>
               <div>
                 <p className="text-xs font-bold text-muted">Duração</p>
-                <p className="font-mono text-2xl font-black text-main">{formatTime(workoutTimer.elapsed)}</p>
+                <p className="font-mono text-2xl font-bold text-main">{formatTime(workoutTimer.elapsed)}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -109,11 +109,11 @@ const WorkoutHeader = ({
         <div role="dialog" aria-modal="true" aria-labelledby="abandon-title" className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-3xl border border-danger/60 bg-card p-6 shadow-2xl">
             <AlertTriangle className="mb-4 text-danger" size={34} />
-            <h2 id="abandon-title" className="text-xl font-black text-main">Encerrar este treino?</h2>
+            <h2 id="abandon-title" className="text-xl font-bold text-main">Encerrar este treino?</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">As séries e o tempo desta sessão serão descartados deste dispositivo. O histórico já salvo não será alterado.</p>
             <div className="mt-6 space-y-3">
-              <button type="button" onClick={() => setIsAbandonModalOpen(false)} className="touch-target w-full rounded-xl border border-primary font-black text-primary">Continuar treino</button>
-              <button type="button" onClick={confirmAbandon} className="touch-target w-full rounded-xl bg-danger font-black text-on-danger">Encerrar e descartar</button>
+              <button type="button" onClick={() => setIsAbandonModalOpen(false)} className="touch-target w-full rounded-xl border border-primary font-semibold text-primary">Continuar treino</button>
+              <button type="button" onClick={confirmAbandon} className="touch-target w-full rounded-xl bg-danger font-semibold text-on-danger">Encerrar e descartar</button>
             </div>
           </div>
         </div>,

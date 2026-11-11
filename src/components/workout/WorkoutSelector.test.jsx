@@ -44,7 +44,9 @@ describe('WorkoutSelector', () => {
     );
 
     expect(html).toContain('data-workout-state="locked"');
+    expect(html).toContain('disabled=""');
     expect(html).toContain('Treino B, bloqueado enquanto outro treino está em andamento');
+    expect(html).toContain('lucide-lock');
     expect(html).toContain('Bloqueado');
     expect(html).not.toContain('Feito');
     expect(html).toContain('Selecionado');

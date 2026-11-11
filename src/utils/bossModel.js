@@ -2,13 +2,31 @@ import { calculateSetCanonicalVolume, getCanonicalLoad, getSetLoadMode, isCanoni
 import { parsePositiveInteger } from './numberUtils';
 import { getCompletedLoadBenchmarks } from './progressionUtils';
 
+const createBossForms = (assetKey) => Object.freeze(Array.from({ length: 5 }, (_, index) => Object.freeze({
+  stage: index + 1,
+  assetKey,
+})));
+
 export const BOSS_CATALOG = Object.freeze([
-  { id: 'scavenger-unit', name: 'SCAVENGER UNIT', tier: 1, rarity: 'common', assetKey: 'scavenger', aura: '#8b9bb4' },
-  { id: 'neon-revenant', name: 'NEON REVENANT', tier: 2, rarity: 'uncommon', assetKey: 'revenant', aura: '#00f3ff' },
-  { id: 'void-colossus', name: 'VOID COLOSSUS', tier: 3, rarity: 'rare', assetKey: 'colossus', aura: '#6e7bff' },
-  { id: 'iron-titan', name: 'IRON TITAN', tier: 4, rarity: 'epic', assetKey: 'iron-titan', aura: '#d946ef' },
-  { id: 'redline-warden', name: 'REDLINE WARDEN', tier: 5, rarity: 'legendary', assetKey: 'warden', aura: '#ff3d81' },
+  { id: 'scavenger-unit', name: 'SCAVENGER UNIT', tier: 1, rarity: 'common', assetKey: 'scavenger', aura: '#8b9bb4', forms: createBossForms('scavenger') },
+  { id: 'neon-revenant', name: 'NEON REVENANT', tier: 2, rarity: 'uncommon', assetKey: 'revenant', aura: '#00f3ff', forms: createBossForms('revenant') },
+  { id: 'void-colossus', name: 'VOID COLOSSUS', tier: 3, rarity: 'rare', assetKey: 'colossus', aura: '#6e7bff', forms: createBossForms('colossus') },
+  { id: 'iron-titan', name: 'IRON TITAN', tier: 4, rarity: 'epic', assetKey: 'iron-titan', aura: '#d946ef', forms: createBossForms('iron-titan') },
+  { id: 'redline-warden', name: 'REDLINE WARDEN', tier: 5, rarity: 'legendary', assetKey: 'warden', aura: '#ff3d81', forms: createBossForms('warden') },
 ]);
+
+export const BOSS_FORM_THRESHOLDS = Object.freeze([
+  Object.freeze({ stage: 1, minDefeats: 0, label: 'Forma I' }),
+  Object.freeze({ stage: 2, minDefeats: 3, label: 'Forma II' }),
+  Object.freeze({ stage: 3, minDefeats: 6, label: 'Forma III' }),
+  Object.freeze({ stage: 4, minDefeats: 10, label: 'Forma IV' }),
+  Object.freeze({ stage: 5, minDefeats: 15, label: 'Forma V' }),
+]);
+
+export const getBossEvolutionStage = (defeats = 0) => BOSS_FORM_THRESHOLDS.reduce(
+  (current, form) => (Number(defeats) >= form.minDefeats ? form : current),
+  BOSS_FORM_THRESHOLDS[0],
+);
 
 const hashSeed = (value) => {
   let hash = 2166136261;
@@ -19,8 +37,9 @@ const hashSeed = (value) => {
   return hash >>> 0;
 };
 
-export const selectBoss = ({ dateKey, workoutName, workoutTitle = '' }) => {
-  const index = hashSeed(`${dateKey}:${workoutName}:${workoutTitle}`) % BOSS_CATALOG.length;
+export const selectBoss = ({ workoutName, workoutTitle = '' }) => {
+  const familyKey = String(workoutName || workoutTitle || 'workout');
+  const index = hashSeed(familyKey) % BOSS_CATALOG.length;
   return BOSS_CATALOG[index];
 };
 
@@ -29,20 +48,33 @@ export const isBossEligibleWorkout = (workout = {}) => (workout.exercises || [])
 );
 
 export const calculateBossMaxHp = (history = [], workoutName) => {
-  const recentVolumes = history
-    .filter((entry) => entry.workoutName === workoutName && entry.partial !== true)
-    .map((entry) => Number(entry.totalVolume) || 0)
+  const workoutHistory = history
+    .filter((entry) => entry.workoutName === workoutName)
+    .sort((left, right) => String(right.dateKey || '').localeCompare(String(left.dateKey || '')));
+  const recentVolumes = workoutHistory
+    .map((entry) => Number(entry.bossEncounter?.baseDamage) || Number(entry.totalVolume) || 0)
     .filter((volume) => volume > 0)
     .slice(0, 3);
-  if (recentVolumes.length === 0) return 5000;
-  const average = recentVolumes.reduce((sum, volume) => sum + volume, 0) / recentVolumes.length;
-  return Math.max(2000, Math.round(average * 1.05));
+  const previousBossMaxHp = workoutHistory.reduce(
+    (maxHp, entry) => Math.max(maxHp, Number(entry.bossEncounter?.maxHp) || 0),
+    0,
+  );
+  const average = recentVolumes.length > 0
+    ? recentVolumes.reduce((sum, volume) => sum + volume, 0) / recentVolumes.length
+    : 0;
+  const candidateHp = Math.round(average * 1.05);
+  return Math.max(5000, candidateHp, previousBossMaxHp);
 };
 
-export const createBossEncounter = ({ sessionId, dateKey, workoutName, workout, history = [] }) => {
+export const createBossEncounter = ({ sessionId, workoutName, workout, history = [] }) => {
   if (!sessionId || !isBossEligibleWorkout(workout)) return null;
-  const boss = selectBoss({ dateKey, workoutName, workoutTitle: workout?.title });
+  const boss = selectBoss({ workoutName, workoutTitle: workout?.title });
   const maxHp = calculateBossMaxHp(history, workoutName);
+  const previousDefeats = history.filter((entry) => (
+    entry.workoutName === workoutName && entry.bossEncounter?.defeated === true
+  )).length;
+  const evolution = getBossEvolutionStage(previousDefeats);
+  const form = boss.forms?.find((candidate) => candidate.stage === evolution.stage);
   return {
     encounterId: `${sessionId}:boss`,
     sessionId,
@@ -50,8 +82,10 @@ export const createBossEncounter = ({ sessionId, dateKey, workoutName, workout, 
     bossName: boss.name,
     bossTier: boss.tier,
     bossRarity: boss.rarity,
-    bossAssetKey: boss.assetKey,
+    bossAssetKey: form?.assetKey || boss.assetKey,
     bossAura: boss.aura,
+    evolutionStage: evolution.stage,
+    evolutionLabel: evolution.label,
     maxHp,
     damage: 0,
     baseDamage: 0,

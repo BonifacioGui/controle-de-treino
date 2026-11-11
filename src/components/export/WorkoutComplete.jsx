@@ -193,8 +193,8 @@ const WorkoutComplete = ({
           <div className="flex min-w-0 items-start gap-3">
             <CheckCircle2 className="mt-0.5 shrink-0 text-success drop-shadow-[0_0_10px_rgba(var(--success),0.4)]" size={31} />
             <div className="min-w-0">
-              <p className="truncate font-cyber text-[11px] font-black uppercase tracking-[0.17em] text-primary">{workoutTitle}</p>
-              <h2 id="workout-summary-title" className="mt-0.5 text-xl font-black text-main">{partial ? 'Treino parcial salvo' : 'Seu Share Card está pronto'}</h2>
+              <p className="truncate text-xs font-semibold text-primary">{workoutTitle}</p>
+              <h2 id="workout-summary-title" className="mt-0.5 text-xl font-bold text-main">{partial ? 'Treino parcial salvo' : 'Seu Share Card está pronto'}</h2>
               <p className="mt-0.5 text-xs text-muted">{partial ? 'Seu progresso foi registrado.' : 'Treino concluído. Personalize se quiser antes de compartilhar.'}</p>
               {nextWorkout?.title && (
                 <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted">

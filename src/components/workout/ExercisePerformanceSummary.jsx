@@ -65,7 +65,7 @@ const ExercisePerformanceSummary = ({
   return (
     <div className={`text-muted ${className}`}>
       <div className="inline-flex items-center gap-1">
-        <span className="text-[0.9em] font-black uppercase tracking-[0.12em]">Referência</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.08em]">Referência</span>
         <button
           ref={buttonRef}
           type="button"
@@ -79,21 +79,20 @@ const ExercisePerformanceSummary = ({
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-main">
-        <span className="font-semibold">{lastSummary}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-main">
+        <span className="min-w-0 font-semibold">{lastSummary}</span>
         {lastBestIsPr && (
-          <span className="inline-flex shrink-0 items-center gap-1 font-black text-gold" aria-label="Esta referência também é o recorde histórico">
+          <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-gold" aria-label="Esta referência também é o recorde histórico">
             <Trophy aria-hidden="true" size={13} /> PR
           </span>
         )}
+        {pr && !lastBestIsPr && (
+          <span className="inline-flex min-w-0 items-start gap-x-1 font-semibold text-gold">
+            <Trophy aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
+            <span className="min-w-0">PR {pr.primary}{pr.secondary ? <span className="ml-1 font-normal">• {pr.secondary}</span> : null}</span>
+          </span>
+        )}
       </div>
-
-      {pr && !lastBestIsPr && (
-        <div className="mt-1.5 inline-flex items-start gap-x-1 font-semibold text-gold">
-          <Trophy aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
-          <span>PR {pr.primary}{pr.secondary ? <span className="ml-1 font-normal">• {pr.secondary}</span> : null}</span>
-        </div>
-      )}
 
       {isHelpOpen && typeof document !== 'undefined' && createPortal(
         <div
@@ -103,7 +102,7 @@ const ExercisePerformanceSummary = ({
           className="fixed z-[1200] w-[min(18rem,calc(100vw-1.5rem))] rounded-xl border border-primary/35 bg-card p-3 text-left text-xs leading-relaxed text-muted shadow-2xl"
           style={popoverPosition}
         >
-          <p className="font-black text-main">Referência</p>
+          <p className="font-semibold text-main">Referência</p>
           <p className="mt-1">Melhor série registrada no último treino deste exercício. Use como base para ajustar sua carga ou repetições hoje.</p>
         </div>,
         document.body,

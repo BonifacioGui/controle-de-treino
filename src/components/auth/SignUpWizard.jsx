@@ -113,8 +113,8 @@ const SignUpWizard = ({ onSwitch }) => {
           <ArrowLeft size={22} />
         </button>
 
-        <h2 className="font-sans font-black text-xl sm:text-2xl tracking-[0.2em] bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text text-transparent leading-none uppercase drop-shadow-[0_0_5px_rgba(0,243,255,0.3)]">
-          CRIAR CONTA
+        <h2 className="bg-gradient-to-r from-primary via-[#4050ff] to-secondary bg-clip-text font-sans text-xl font-bold leading-none text-transparent drop-shadow-[0_0_5px_rgba(0,243,255,0.3)] sm:text-2xl">
+          Criar conta
         </h2>
         
         <div className="flex gap-2 w-full mt-6">

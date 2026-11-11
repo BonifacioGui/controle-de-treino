@@ -133,7 +133,7 @@ const StatsView = ({ bodyHistory, history, setView, workoutData, setIsModalOpen,
         <button onClick={() => setView('workout')} className="p-2 bg-card rounded-lg border border-primary/50 text-primary transition-all active:scale-95">
           <ChevronLeft size={20}/>
         </button>
-        <h2 className="font-cyber text-lg font-black uppercase text-primary tracking-tighter">CENTRAL DE DADOS</h2>
+        <h2 className="text-lg font-bold text-primary">Central de dados</h2>
       </header>
 
       {/* DASHBOARD DE CONSISTÊNCIA TÁTICO */}

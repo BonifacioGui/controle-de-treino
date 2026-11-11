@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  changeCalendarMonth,
+  changeCalendarYear,
+  createCalendarViewDate,
+  formatCalendarDate,
+  isFutureCalendarDate,
+} from '../../utils/calendarModel';
 
 const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
-  const [viewDate, setViewDate] = useState(() => {
-    if (!selectedDate) return new Date();
-    const [y, m, d] = selectedDate.split('-').map(Number);
-    return new Date(y, m - 1, d || 1);
-  });
+  const [viewDate, setViewDate] = useState(() => createCalendarViewDate(selectedDate));
 
   useEffect(() => {
     if (selectedDate && selectedDate.length === 10) {
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      if (viewDate.getMonth() !== month - 1 || viewDate.getFullYear() !== year) {
-        // A data externa pode mudar enquanto o calendário está aberto.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setViewDate(new Date(year, month - 1, day));
-      }
+      // Sincroniza apenas quando a prop externa muda; navegar internamente não dispara este efeito.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewDate(createCalendarViewDate(selectedDate));
     }
-  }, [selectedDate, viewDate]);
+  }, [selectedDate]);
   
   const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
@@ -26,15 +26,18 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
   
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+  const today = new Date();
+  const viewingCurrentMonth = viewDate.getFullYear() === today.getFullYear()
+    && viewDate.getMonth() === today.getMonth();
 
   const handlePrevMonth = (e) => {
     e.stopPropagation();
-    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
   };
 
   const handleNextMonth = (e) => {
     e.stopPropagation();
-    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
   };
 
   return (
@@ -53,7 +56,7 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
             ANO
             <select 
               value={viewDate.getFullYear()} 
-              onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
+              onChange={(e) => setViewDate((current) => changeCalendarYear(current, e.target.value))}
               className="bg-transparent border-none outline-none appearance-none cursor-pointer text-primary text-center hover:bg-primary/20 rounded px-1 transition-colors"
             >
               {years.map(y => <option key={y} value={y} className="bg-card text-main">{y}</option>)}
@@ -62,14 +65,14 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
           
           <select 
             value={viewDate.getMonth()}
-            onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
-            className="bg-transparent border-none text-main font-cyber font-black uppercase text-xs tracking-widest outline-none appearance-none cursor-pointer text-center hover:bg-input rounded px-1 mt-0.5 transition-colors"
+            onChange={(e) => setViewDate((current) => changeCalendarMonth(current, e.target.value))}
+            className="mt-0.5 cursor-pointer appearance-none rounded border-none bg-transparent px-1 text-center text-sm font-semibold text-main outline-none transition-colors hover:bg-input"
           >
             {months.map((m, i) => <option key={i} value={i} className="bg-card text-main">{m}</option>)}
           </select>
         </div>
 
-        <button onClick={handleNextMonth} aria-label="Próximo mês" className="p-2 text-primary hover:bg-input rounded-full transition-all">
+        <button type="button" onClick={handleNextMonth} disabled={viewingCurrentMonth} aria-label="Próximo mês" className="p-2 text-primary hover:bg-input rounded-full transition-all disabled:cursor-not-allowed disabled:opacity-30">
           <ChevronRight size={20} />
         </button>
       </div>
@@ -86,10 +89,10 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
         ))}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
-          const dateStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dateStr = formatCalendarDate(viewDate, day);
           const isSelected = selectedDate === dateStr;
-          
-          const today = new Date();
+          const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+          const isFuture = isFutureCalendarDate(date, today);
           const isToday = 
             day === today.getDate() && 
             viewDate.getMonth() === today.getMonth() && 
@@ -97,13 +100,15 @@ const CyberCalendar = ({ selectedDate, onSelect, onClose }) => {
 
           return (
             <button
+              type="button"
               key={day}
+              disabled={isFuture}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(dateStr);
                 onClose();
               }}
-              className={`relative h-8 w-8 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center justify-center
+              className={`relative h-8 w-8 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-25
                 ${isSelected 
                   ? 'bg-primary text-on-primary shadow-md scale-110 rotate-3 z-10'
                   : 'text-muted hover:bg-input hover:text-primary hover:border border-primary/30'}`}

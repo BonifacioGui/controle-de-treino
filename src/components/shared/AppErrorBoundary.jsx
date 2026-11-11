@@ -30,7 +30,7 @@ class AppErrorBoundary extends React.Component {
           className="w-full max-w-md rounded-3xl border border-danger/40 bg-card p-6 text-center shadow-2xl"
         >
           <AlertTriangle aria-hidden="true" className="mx-auto text-danger" size={44} />
-          <h1 id="app-recovery-title" className="mt-4 font-cyber text-xl font-black tracking-wide text-main">
+          <h1 id="app-recovery-title" className="mt-4 text-xl font-bold text-main">
             {chunkLoadFailed ? 'Nova versão detectada' : 'Não foi possível abrir esta tela'}
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted">

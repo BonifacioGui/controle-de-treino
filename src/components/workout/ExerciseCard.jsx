@@ -32,7 +32,12 @@ import {
 } from '../../utils/loadModel';
 import { getMaxCompletedLoad } from '../../utils/progressionUtils';
 import { getExercisePerformance } from '../../utils/performanceModel';
-import { hasCompletedExerciseSets } from '../../utils/substitutionModel';
+import {
+  getAlternativeName,
+  getEffectiveExercise,
+  hasRecordedExerciseData,
+  resolveSubstitutionMetadata,
+} from '../../utils/substitutionModel';
 import ExerciseGuide from './ExerciseGuide';
 import ExercisePerformanceSummary from './ExercisePerformanceSummary';
 import ExerciseSearchModal from './ExerciseSearchModal';
@@ -51,7 +56,7 @@ const Field = ({ label, value, onChange, inputMode = 'decimal', placeholder }) =
         placeholder={placeholder}
         value={value || ''}
         onChange={onChange}
-        className={`exercise-input h-12 w-full rounded-xl border bg-input px-2 text-center text-base font-black text-main outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 ${
+        className={`exercise-input h-12 w-full rounded-xl border bg-input px-2 text-center font-mono text-base font-bold text-main outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 ${
           invalid ? 'border-danger' : 'border-border focus:border-primary'
         }`}
       />
@@ -66,6 +71,8 @@ const ExerciseCard = ({
   progress,
   history,
   isCurrent,
+  expanded,
+  onToggle,
   updateSetData,
   updateSessionSets,
   toggleSetComplete,
@@ -73,15 +80,15 @@ const ExerciseCard = ({
   onSwap,
 }) => {
   const exerciseProgress = progress[id] || {};
-  const displayName = exerciseProgress.swappedName || ex.name;
-  const mode = getExerciseMode(ex);
-  const loadMode = getSetLoadMode({}, ex);
+  const effectiveExercise = getEffectiveExercise(ex, exerciseProgress);
+  const displayName = effectiveExercise.name;
+  const mode = getExerciseMode(effectiveExercise);
+  const loadMode = getSetLoadMode({}, effectiveExercise);
   const loadModeOption = getLoadModeOption(loadMode);
   const expectedSets = getExpectedSetCount(ex, exerciseProgress.actualSets);
   const activeSets = getActiveSessionSets(ex, exerciseProgress);
   const completedSets = activeSets.filter((set) => set.completed).length;
   const isDone = isExerciseCompleted(ex, exerciseProgress);
-  const [manualExpanded, setManualExpanded] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
   const [showSwapSearch, setShowSwapSearch] = useState(false);
@@ -90,20 +97,18 @@ const ExerciseCard = ({
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [validationSet, setValidationSet] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
-  const expanded = manualExpanded ?? (isCurrent && !isDone);
 
-  const performance = getExercisePerformance(history, displayName, { ...ex, loadMode });
+  const performance = getExercisePerformance(history, displayName, effectiveExercise);
   const { lastExercise, prRecord } = performance;
   const loadPr = prRecord?.canonicalLoad || 0;
   const currentMaxLoad = getMaxCompletedLoad([{
-    ...ex,
+    ...effectiveExercise,
     name: displayName,
-    loadMode,
     sets: activeSets,
   }], displayName, loadMode);
   const currentLoadPr = isCanonicalLoadMode(loadMode) && loadPr > 0 && currentMaxLoad > loadPr;
-  const volume = calculateCompletedVolume(activeSets, { ...ex, loadMode });
-  const hasCompletedSets = hasCompletedExerciseSets(exerciseProgress);
+  const volume = calculateCompletedVolume(activeSets, effectiveExercise);
+  const hasRecordedSets = hasRecordedExerciseData(exerciseProgress);
 
   const usePreviousValues = () => {
     const previousSets = (lastExercise?.sets || []).filter((set) => set.completed === true);
@@ -124,11 +129,22 @@ const ExerciseCard = ({
       setShowSwap(false);
       return;
     }
-    if (hasCompletedSets) {
-      setSwapWarning('Conclua este exercício com o nome atual. A troca é bloqueada após a primeira série para não misturar históricos diferentes.');
+    if (hasRecordedSets) {
+      setSwapWarning('Há dados registrados neste exercício. A troca foi bloqueada para não atribuir séries a outro movimento.');
       return;
     }
-    onSwap(id, swapChoice, { scope, exerciseIndex: index, plannedName: ex.name });
+    const substitution = resolveSubstitutionMetadata(ex, swapChoice);
+    const applied = onSwap(id, swapChoice, {
+      scope,
+      exerciseIndex: index,
+      plannedName: ex.name,
+      swappedLoadMode: substitution.loadMode,
+      swappedBarWeight: substitution.barWeight,
+    });
+    if (applied === false) {
+      setSwapWarning('A troca não foi aplicada porque este exercício já possui dados registrados.');
+      return;
+    }
     setSwapWarning('');
     setShowSwap(false);
   };
@@ -170,17 +186,17 @@ const ExerciseCard = ({
     <article className={`exercise-card rounded-2xl border bg-card transition ${isDone ? 'exercise-card--complete border-success/50' : isCurrent ? 'exercise-card--current border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.12)]' : 'border-border'}`}>
       <button
         type="button"
-        onClick={() => setManualExpanded(!expanded)}
+        onClick={onToggle}
         aria-expanded={expanded}
         className="flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="exercise-index inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-border px-1 text-xs font-black">{String(index + 1).padStart(2, '0')}</span>
+            <span className="exercise-index inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-border px-1 font-mono text-xs font-semibold">{String(index + 1).padStart(2, '0')}</span>
             {isDone && <Check size={18} className="shrink-0 text-success" aria-hidden="true" />}
-            <h3 className="truncate text-base font-black text-main">{displayName}</h3>
+            <h3 className="truncate text-base font-bold text-main">{displayName}</h3>
             {currentLoadPr && (
-              <span className="exercise-pr-badge inline-flex items-center gap-1 rounded-md border border-gold/50 bg-gold/10 px-2 py-1 text-xs font-black text-gold">
+              <span className="exercise-pr-badge inline-flex items-center gap-1 rounded-md border border-gold/50 bg-gold/10 px-2 py-1 text-xs font-semibold text-gold">
                 <Trophy size={12} /> PR de carga
               </span>
             )}
@@ -209,7 +225,7 @@ const ExerciseCard = ({
                 <CircleHelp size={14} /> Como fazer
               </button>
               {lastExercise && (
-                <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-primary hover:bg-primary/10">
+                <button type="button" onClick={usePreviousValues} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-primary hover:bg-primary/10">
                   <Copy size={15} /> Usar anteriores
                 </button>
               )}
@@ -219,7 +235,7 @@ const ExerciseCard = ({
           {ex.note && <p className="rounded-xl bg-input px-3 py-2 text-sm leading-relaxed text-muted">{ex.note}</p>}
 
           <div className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2 text-xs font-bold text-muted">
+            <label className="flex items-center gap-2 text-xs font-medium text-muted">
               Séries
               <input
                 type="text"
@@ -228,7 +244,7 @@ const ExerciseCard = ({
                 maxLength={2}
                 aria-label={`Quantidade de séries, de 1 a ${MAX_SETS_PER_EXERCISE}`}
                 title={`Entre 1 e ${MAX_SETS_PER_EXERCISE} séries`}
-                className="h-11 w-14 rounded-xl border border-border bg-input text-center text-base font-black text-main focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-11 w-14 rounded-xl border border-border bg-input text-center font-mono text-base font-bold text-main focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 value={exerciseProgress.actualSets ?? expectedSets}
                 onChange={(event) => updateSessionSets(id, normalizeSessionSetCountInput(event.target.value))}
                 onBlur={(event) => {
@@ -238,7 +254,7 @@ const ExerciseCard = ({
                 }}
               />
             </label>
-            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold text-muted hover:text-primary">
+            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="touch-target inline-flex items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted hover:text-primary">
               <Settings2 size={16} /> {showAdvanced ? 'Ocultar detalhes' : 'RPE e opções'}
             </button>
           </div>
@@ -252,7 +268,7 @@ const ExerciseCard = ({
               return (
                 <div key={setIndex} className={`exercise-set-row rounded-xl border p-2 ${set.completed ? 'is-complete border-success/40 bg-success/5' : 'border-border bg-input/30'}`}>
                   <div className="flex items-center gap-2">
-                    <span className="w-6 shrink-0 text-center text-sm font-black text-muted">{setIndex + 1}</span>
+                    <span className="w-6 shrink-0 text-center font-mono text-sm font-semibold text-muted">{setIndex + 1}</span>
                     <div className="flex min-w-0 flex-1 gap-2">{renderFields(set, setIndex)}</div>
                     <button
                       type="button"
@@ -286,7 +302,7 @@ const ExerciseCard = ({
             <div className="space-y-3 border-t border-border pt-3">
               <p className="rounded-xl bg-input px-3 py-2 text-xs text-muted">
                 <span className="font-bold text-main">Carga:</span> {loadModeOption.label}.
-                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(ex.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
+                {loadMode === LOAD_MODES.perSide && ` Barra: ${Number(effectiveExercise.barWeight ?? 20).toLocaleString('pt-BR')} kg.`}
                 {loadMode === LOAD_MODES.assisted && ' Não entra em PR ou dano de Boss.'}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -313,11 +329,11 @@ const ExerciseCard = ({
         <div role="dialog" aria-modal="true" aria-labelledby={`swap-title-${index}`} className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/80 p-3 sm:items-center">
           <div className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-warning/50 bg-card p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 id={`swap-title-${index}`} className="text-base font-black text-main">Substituir exercício</h3>
+              <h3 id={`swap-title-${index}`} className="text-base font-bold text-main">Substituir exercício</h3>
               <button type="button" onClick={() => setShowSwap(false)} aria-label="Fechar seletor" className="touch-target flex items-center justify-center rounded-xl text-muted hover:text-main"><X /></button>
             </div>
             <div className="space-y-2">
-              {[...new Set([ex.name, ...(ex.alternatives || []).filter(Boolean)])].map((option) => {
+              {[...new Set([ex.name, ...(ex.alternatives || []).map(getAlternativeName).filter(Boolean)])].map((option) => {
                 const selected = swapChoice === option;
                 return (
                   <button
@@ -334,13 +350,13 @@ const ExerciseCard = ({
                 );
               })}
               {(ex.alternatives || []).filter(Boolean).length === 0 && <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">Nenhuma alternativa foi definida para este exercício.</p>}
-              <button type="button" onClick={() => setShowSwapSearch(true)} className="touch-target w-full rounded-xl border border-primary/50 bg-primary/5 px-3 text-sm font-black text-primary">Buscar outro exercício</button>
+              <button type="button" onClick={() => setShowSwapSearch(true)} className="touch-target w-full rounded-xl border border-primary/50 bg-primary/5 px-3 text-sm font-semibold text-primary">Buscar outro exercício</button>
             </div>
             {swapWarning && <p role="alert" className="mt-4 flex gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm text-main"><AlertTriangle className="shrink-0 text-warning" size={18} /> {swapWarning}</p>}
             <p className="mt-5 text-sm text-muted">Onde deseja aplicar esta troca?</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={() => applySwap('session')} className="touch-target rounded-xl border border-primary px-3 text-sm font-black text-primary">Somente nesta sessão</button>
-              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-black text-on-warning">Adicionar como alternativa</button>
+              <button type="button" onClick={() => applySwap('session')} className="touch-target rounded-xl border border-primary px-3 text-sm font-semibold text-primary">Somente nesta sessão</button>
+              <button type="button" onClick={() => applySwap('alternative')} className="touch-target rounded-xl bg-warning px-3 text-sm font-semibold text-on-warning">Usar agora e salvar na ficha</button>
             </div>
           </div>
         </div>,
