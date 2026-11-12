@@ -120,7 +120,8 @@ begin
       v_current.version_id, v_current.revision, v_current.updated_at,
       v_current.updated_by_device, coalesce(nullif(p_source, ''), 'update')
     )
-    on conflict (plan_id, version_id) do nothing;
+    on conflict on constraint workout_plan_versions_plan_id_version_id_key
+    do nothing;
 
     update public.workout_plans wp
     set plan_data = p_plan_data,
