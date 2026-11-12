@@ -39,6 +39,7 @@ const ShareCardControls = ({
   prs = 0,
   bossEncounter = null,
   embedded = false,
+  photoMode = false,
 }) => {
   const descriptionId = useId();
   const limitId = useId();
@@ -59,7 +60,11 @@ const ShareCardControls = ({
       <fieldset aria-describedby={`${descriptionId} ${limitId}`}>
         <legend className="px-1 text-xs font-black uppercase tracking-[0.14em] text-main">Métricas</legend>
         <div className="mb-3 flex items-start justify-between gap-3">
-          <p id={descriptionId} className="text-xs leading-relaxed text-muted">Escolha até 3 dados secundários. O volume é sempre o resultado principal.</p>
+          <p id={descriptionId} className="text-xs leading-relaxed text-muted">
+            {photoMode
+              ? 'Escolha até 3 dados para o resumo compacto. A foto continuará em destaque.'
+              : 'Escolha até 3 dados secundários. O volume é sempre o resultado principal.'}
+          </p>
           <span className="shrink-0 text-[11px] font-bold text-muted">{selectedCount}/{SHARE_CARD_MAX_METRICS}</span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -84,7 +89,7 @@ const ShareCardControls = ({
 
       <fieldset>
         <legend className="px-1 text-xs font-black uppercase tracking-[0.14em] text-main">Destaque</legend>
-        <p className="mb-3 text-xs leading-relaxed text-muted">Mostre no máximo um momento especial da sessão.</p>
+        <p className="mb-3 text-xs leading-relaxed text-muted">{photoMode ? 'Adicione um destaque discreto ao resumo da foto.' : 'Mostre no máximo um momento especial da sessão.'}</p>
         <div className="flex flex-wrap gap-2">
           {highlightOptions.map((key) => (
             <label key={key} className="cursor-pointer">

@@ -565,6 +565,9 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
                 </label>
                 {cardDraft.selfieUrl && <button type="button" onClick={() => updateCardDraft({ selfieUrl: null })} className="touch-target rounded-xl border border-border px-3 text-sm font-bold text-muted">Remover selfie</button>}
               </div>
+              <p className="text-center text-xs leading-relaxed text-muted">
+                {cardDraft.selfieUrl ? 'Modo foto ativo: a imagem é protagonista e os dados aparecem em um resumo compacto.' : 'Modo dados ativo: o resultado do treino é o destaque principal.'}
+              </p>
 
               <div className="overflow-hidden rounded-xl border border-border">
                 <button type="button" onClick={() => setCardDraft((current) => current ? { ...current, customizerOpen: !current.customizerOpen } : current)} aria-expanded={cardDraft.customizerOpen} className="touch-target flex w-full items-center gap-2 px-4 text-left text-sm font-black text-main">
@@ -583,6 +586,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
                     newBadges={cardDraft.shareContext.newBadges}
                     prs={draftStats.prs}
                     bossEncounter={cardDraft.session.bossEncounter || null}
+                    photoMode={Boolean(cardDraft.selfieUrl)}
                     embedded
                     {...cardDraft.availability}
                   />

@@ -229,6 +229,9 @@ const WorkoutComplete = ({
               <label aria-label={selfieUrl ? 'Trocar foto; modo foto ativo' : 'Adicionar foto'} className={`touch-target inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 text-xs font-black ${selfieUrl ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted'}`}><Camera size={17} /> {selfieUrl ? 'FOTO ATIVA' : 'Usar foto'}<input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
               {selfieUrl && <button type="button" onClick={clearSelfie} aria-label="Remover foto" className="touch-target flex items-center justify-center rounded-xl border border-border px-3 text-muted"><X size={17} /></button>}
             </div>
+            <p className="text-center text-xs leading-relaxed text-muted">
+              {selfieUrl ? 'Modo foto ativo: sua imagem ocupa o card e os dados aparecem em um resumo compacto.' : 'Modo dados ativo: o resultado do treino é o destaque principal.'}
+            </p>
 
             <div className="overflow-hidden rounded-xl border border-border">
               <button type="button" onClick={() => setCustomizerOpen((value) => !value)} aria-expanded={customizerOpen} className="touch-target flex w-full items-center gap-2 px-4 text-left text-sm font-black text-main">
@@ -247,6 +250,7 @@ const WorkoutComplete = ({
                   newBadges={newBadges}
                   prs={sessionPrs}
                   bossEncounter={bossEncounter}
+                  photoMode={Boolean(selfieUrl)}
                   embedded
                   {...shareAvailability}
                 />

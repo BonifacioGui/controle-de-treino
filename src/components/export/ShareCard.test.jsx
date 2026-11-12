@@ -12,17 +12,22 @@ const baseProps = {
 describe('ShareCard', () => {
   it('mantém o volume movimentado como resultado principal', () => {
     const html = renderToStaticMarkup(<ShareCard {...baseProps} />);
+    expect(html).toContain('data-share-card-mode="data-first"');
     expect(html).toContain('Volume movimentado');
     expect(html).toContain('10.447');
-    expect(html).toContain('justify-center gap-14 pt-16');
+    expect(html).toContain('justify-center gap-14');
+    expect(html).toContain('pt-16');
   });
 
-  it('reserva a metade superior para a foto e concentra dados abaixo', () => {
+  it('transforma a foto em plano principal com somente um resumo compacto', () => {
     const html = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl="data:image/jpeg;base64,photo" />);
-    expect(html).toContain('h-[55%]');
-    expect(html).toContain('object-[center_30%]');
-    expect(html).toContain('top-[48%]');
-    expect(html).toContain('justify-end gap-10 pt-[700px]');
-    expect(html).not.toContain('absolute inset-0 bg-gradient-to-b from-black/40');
+    expect(html).toContain('data-share-card-mode="photo-first"');
+    expect(html).toContain('absolute inset-0 h-full w-full object-cover');
+    expect(html).toContain('data-photo-summary="true"');
+    expect(html).toContain('Resumo do treino');
+    expect(html).toContain('bg-[#05070d]/70');
+    expect(html).not.toContain('Volume movimentado');
+    expect(html).not.toContain('text-[142px]');
+    expect(html).not.toContain('XP para o próximo nível');
   });
 });
