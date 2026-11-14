@@ -17,11 +17,13 @@ import {
   createShareCardMetricSelection,
   formatShareDuration,
   formatShareVolume,
+  getShareCardPhotoObjectPosition,
   getSelectedShareCardMetricKeys,
   getShareCardLevelProgress,
   parseDurationSeconds,
   parseMetricNumber,
   resolveShareCardHighlight,
+  SHARE_CARD_PHOTO_MAX_METRICS,
 } from './ShareCardUtils';
 
 const CARD_WIDTH = 1080;
@@ -41,7 +43,7 @@ const ShareCardHeader = ({ sessionDate }) => (
 );
 
 const ShareCardMetric = ({ label, value, accent = 'text-white', Icon }) => (
-  <div className="min-w-0 flex-1 border-l border-white/10 pl-7 first:border-l-0 first:pl-0">
+  <div data-share-metric="true" className="min-w-0 flex-1 border-l border-white/10 pl-7 first:border-l-0 first:pl-0">
     <div className="mb-3 flex items-center gap-3 text-white/55">
       {Icon && <Icon aria-hidden="true" size={25} className={accent} />}
       <p className="text-[20px] font-bold uppercase tracking-[0.13em]">{label}</p>
@@ -109,26 +111,113 @@ const ShareCardFooter = () => (
   </footer>
 );
 
-const ShareCardBackground = ({ photo }) => (
+const DataFirstBackground = () => (
   <div className="absolute inset-0 overflow-hidden bg-[#05070d]">
-    {photo ? (
-      <>
-        <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden">
-          <img src={photo} alt="" className="h-full w-full object-cover object-[center_30%]" />
-          <div className="absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-[38%] bg-gradient-to-t from-[#05070d] to-transparent" />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 top-[48%] bg-[#05070d]" />
-      </>
-    ) : (
-      <>
-        <div className="absolute -right-48 -top-36 h-[660px] w-[660px] rounded-full bg-cyan-500/10 blur-[120px]" />
-        <div className="absolute -bottom-40 -left-44 h-[720px] w-[720px] rounded-full bg-fuchsia-600/10 blur-[135px]" />
-        <div className="absolute inset-0 opacity-[0.09]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
-      </>
-    )}
+    <div className="absolute -right-48 -top-36 h-[660px] w-[660px] rounded-full bg-cyan-500/10 blur-[120px]" />
+    <div className="absolute -bottom-40 -left-44 h-[720px] w-[720px] rounded-full bg-fuchsia-600/10 blur-[135px]" />
+    <div className="absolute inset-0 opacity-[0.09]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
     <div className="absolute inset-[26px] border border-white/10" />
   </div>
+);
+
+const PhotoMetric = ({ label, value, accent = 'text-white' }) => (
+  <div data-photo-stat="true" className="min-w-0 flex-1 border-l border-white/15 pl-5 first:border-l-0 first:pl-0">
+    <p className="truncate text-[15px] font-bold uppercase tracking-[0.12em] text-white/55">{label}</p>
+    <p className={`mt-1.5 truncate text-[28px] font-black leading-none ${accent}`}>{value}</p>
+  </div>
+);
+
+const PhotoFirstShareCard = ({
+  photo,
+  workoutTitle,
+  displayDate,
+  volume,
+  metrics,
+  highlight,
+  progress,
+  photoPosition,
+}) => {
+  const compactMetrics = metrics.slice(0, SHARE_CARD_PHOTO_MAX_METRICS);
+  return (
+    <>
+      <img
+        src={photo}
+        alt=""
+        data-photo-position={photoPosition}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition: getShareCardPhotoObjectPosition(photoPosition) }}
+      />
+      <div className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-black/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-[34%] bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+
+      <div className="relative z-10 flex h-full flex-col px-[64px] py-[62px]">
+        <header className="flex items-start justify-between gap-8">
+          <img src={logoSolo} alt="SOLO" className="h-[58px] w-auto max-w-[280px] object-contain object-left drop-shadow-[0_3px_14px_rgba(0,0,0,0.65)]" />
+          <div className="rounded-full border border-white/25 bg-black/25 px-5 py-3 text-right shadow-lg backdrop-blur-md">
+            <p className="text-[17px] font-black uppercase tracking-[0.16em] text-white">Treino concluído</p>
+            {displayDate && <p className="mt-1 text-[15px] font-bold uppercase tracking-[0.1em] text-white/65">{displayDate}</p>}
+          </div>
+        </header>
+
+        <section data-photo-summary="true" className="mt-auto max-h-[430px] rounded-[32px] border border-white/20 bg-[#05070d]/68 p-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+          <p className="font-cyber text-[16px] font-black uppercase tracking-[0.22em] text-cyan-300">Resumo do treino</p>
+          <h1 className="mt-3 max-w-[850px] truncate text-[48px] font-bold leading-none tracking-[-0.025em] text-white">{workoutTitle || 'Treino'}</h1>
+
+          <div className="mt-5 flex gap-5 border-y border-white/12 py-4">
+            <PhotoMetric label={volume ? 'Volume' : 'Resultado'} value={volume ? `${volume} KG` : 'Concluído'} accent="text-cyan-300" />
+            {compactMetrics.map(({ key, label, value, accent }) => (
+              <PhotoMetric key={key} label={label} value={value} accent={accent} />
+            ))}
+          </div>
+
+          {highlight ? (
+            <div className="mt-4 min-w-0">
+              <p className="text-[13px] font-black uppercase tracking-[0.14em] text-yellow-300">{highlight.eyebrow}</p>
+              <p className="mt-0.5 truncate text-[20px] font-black uppercase text-white">{highlight.title}</p>
+            </div>
+          ) : progress ? (
+            <p className="mt-4 inline-flex rounded-full border border-fuchsia-300/25 px-3 py-1.5 text-[14px] font-black text-fuchsia-200">Nível {progress.level}</p>
+          ) : null}
+        </section>
+
+        <footer className="mt-5 flex items-center justify-between px-2 text-[14px] font-bold uppercase tracking-[0.16em] text-white/65">
+          <span>SOLO</span>
+          <span>Disciplina vira evolução</span>
+        </footer>
+      </div>
+    </>
+  );
+};
+
+const DataFirstShareCard = ({
+  workoutTitle,
+  displayDate,
+  volume,
+  metrics,
+  highlight,
+  progress,
+}) => (
+  <>
+    <DataFirstBackground />
+    <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
+      <ShareCardHeader sessionDate={displayDate} />
+      <main className="flex flex-1 flex-col justify-center gap-14 pb-12 pt-16">
+        <section>
+          <p className="mb-6 font-cyber text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
+          <h1 className="max-w-[900px] text-[82px] font-bold leading-[0.94] tracking-[-0.035em] text-white">{workoutTitle || 'Treino'}</h1>
+        </section>
+        <MainResult volume={volume} />
+        {metrics.length > 0 && (
+          <section className="flex gap-5 border-y border-white/10 py-8">
+            {metrics.map(({ key, ...metric }) => <ShareCardMetric key={key} {...metric} />)}
+          </section>
+        )}
+        <ShareCardProgress progress={progress} />
+        <ShareCardHighlight highlight={highlight} />
+      </main>
+      <ShareCardFooter />
+    </div>
+  </>
 );
 
 const METRIC_CONFIG = {
@@ -151,6 +240,7 @@ const ShareCard = ({
   metricSelection,
   highlightSelection = 'auto',
   sessionDate = null,
+  photoPosition = 'center',
   levelUp = false,
   newBadges = [],
 }) => {
@@ -174,7 +264,11 @@ const ShareCard = ({
     sets: numericSets === null ? null : Math.max(0, Math.round(numericSets)),
     density: density === null ? null : `${density} kg/min`,
   };
-  const metrics = getSelectedShareCardMetricKeys(selection)
+  const photoMode = Boolean(selfieUrl);
+  const metrics = getSelectedShareCardMetricKeys(
+    selection,
+    photoMode ? SHARE_CARD_PHOTO_MAX_METRICS : undefined,
+  )
     .map((key) => ({ key, ...METRIC_CONFIG[key], value: values[key] }))
     .filter((metric) => metric.value !== null);
   const highlight = resolveShareCardHighlight({
@@ -188,29 +282,21 @@ const ShareCard = ({
   const displayDate = sessionDate
     ? formatLocalDate(sessionDate, { month: 'short' }).replace('.', '').toUpperCase()
     : null;
+  const volume = formatShareVolume(stats.volume);
 
   return (
     <div aria-hidden="true" className="fixed left-[-9999px] top-0 pointer-events-none">
-      <div ref={cardRef} style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} className="relative overflow-hidden bg-[#05070d] font-sans">
-        <ShareCardBackground photo={selfieUrl} />
-        <div className="relative z-10 flex h-full flex-col px-[84px] py-[78px]">
-          <ShareCardHeader sessionDate={displayDate} />
-          <main className={`flex flex-1 flex-col pb-12 ${selfieUrl ? 'justify-end gap-10 pt-[700px]' : 'justify-center gap-14 pt-16'}`}>
-            <section>
-              <p className="mb-6 font-cyber text-[23px] font-black uppercase tracking-[0.25em] text-fuchsia-300">Operação concluída</p>
-              <h1 className="max-w-[900px] text-[82px] font-bold leading-[0.94] tracking-[-0.035em] text-white">{workoutTitle || 'Treino'}</h1>
-            </section>
-            <MainResult volume={formatShareVolume(stats.volume)} />
-            {metrics.length > 0 && (
-              <section className="flex gap-5 border-y border-white/10 py-8">
-                {metrics.map(({ key, ...metric }) => <ShareCardMetric key={key} {...metric} />)}
-              </section>
-            )}
-            <ShareCardProgress progress={progress} />
-            <ShareCardHighlight highlight={highlight} />
-          </main>
-          <ShareCardFooter />
-        </div>
+      <div
+        ref={cardRef}
+        data-share-card-mode={photoMode ? 'photo-first' : 'data-first'}
+        style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
+        className="relative overflow-hidden bg-[#05070d] font-sans"
+      >
+        {photoMode ? (
+          <PhotoFirstShareCard photo={selfieUrl} photoPosition={photoPosition} workoutTitle={workoutTitle} displayDate={displayDate} volume={volume} metrics={metrics} highlight={highlight} progress={progress} />
+        ) : (
+          <DataFirstShareCard workoutTitle={workoutTitle} displayDate={displayDate} volume={volume} metrics={metrics} highlight={highlight} progress={progress} />
+        )}
       </div>
     </div>
   );

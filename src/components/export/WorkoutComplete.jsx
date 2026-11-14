@@ -66,6 +66,7 @@ const WorkoutComplete = ({
   nextWorkout = null,
 }) => {
   const [selfieUrl, setSelfieUrl] = useState(null);
+  const [photoPosition, setPhotoPosition] = useState('center');
   const [isGenerating, setIsGenerating] = useState(true);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -123,7 +124,7 @@ const WorkoutComplete = ({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [highlightSelection, metricSelection, selfieUrl]);
+  }, [highlightSelection, metricSelection, photoPosition, selfieUrl]);
 
   useEffect(() => () => {
     if (previousImageUrl.current) URL.revokeObjectURL(previousImageUrl.current);
@@ -137,6 +138,11 @@ const WorkoutComplete = ({
   const updateHighlightSelection = (nextSelection) => {
     setIsGenerating(true);
     setHighlightSelection(nextSelection);
+  };
+
+  const updatePhotoPosition = (nextPosition) => {
+    setIsGenerating(true);
+    setPhotoPosition(nextPosition);
   };
 
   const handleSelfieCapture = (event) => {
@@ -185,7 +191,7 @@ const WorkoutComplete = ({
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="workout-summary-title" className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-2 backdrop-blur-md sm:p-4">
       <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1080px', height: '1920px' }}>
-        <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs, sets: completedSets }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} streak={numericStreak} xp={earnedXp} selfieUrl={selfieUrl} totalXp={totalXp} metricSelection={metricSelection} highlightSelection={highlightSelection} sessionDate={sessionDate} levelUp={levelUp} newBadges={newBadges} />
+        <ShareCard cardRef={cardRef} stats={{ volume: sessionVolume, duration: sessionDuration, prs: sessionPrs, sets: completedSets }} workoutTitle={workoutTitle} bossEncounter={bossEncounter} streak={numericStreak} xp={earnedXp} selfieUrl={selfieUrl} photoPosition={photoPosition} totalXp={totalXp} metricSelection={metricSelection} highlightSelection={highlightSelection} sessionDate={sessionDate} levelUp={levelUp} newBadges={newBadges} />
       </div>
 
       <div className="workout-complete-panel max-h-[97dvh] w-full max-w-xl overflow-y-auto rounded-3xl border border-primary/35 bg-card shadow-2xl">
@@ -229,6 +235,9 @@ const WorkoutComplete = ({
               <label aria-label={selfieUrl ? 'Trocar foto; modo foto ativo' : 'Adicionar foto'} className={`touch-target inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 text-xs font-black ${selfieUrl ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted'}`}><Camera size={17} /> {selfieUrl ? 'FOTO ATIVA' : 'Usar foto'}<input type="file" accept="image/*" capture="user" className="sr-only" onChange={handleSelfieCapture} /></label>
               {selfieUrl && <button type="button" onClick={clearSelfie} aria-label="Remover foto" className="touch-target flex items-center justify-center rounded-xl border border-border px-3 text-muted"><X size={17} /></button>}
             </div>
+            <p className="text-center text-xs leading-relaxed text-muted">
+              {selfieUrl ? 'Modo foto ativo: sua imagem ocupa o card e os dados aparecem em um resumo compacto.' : 'Modo dados ativo: o resultado do treino é o destaque principal.'}
+            </p>
 
             <div className="overflow-hidden rounded-xl border border-border">
               <button type="button" onClick={() => setCustomizerOpen((value) => !value)} aria-expanded={customizerOpen} className="touch-target flex w-full items-center gap-2 px-4 text-left text-sm font-black text-main">
@@ -247,6 +256,9 @@ const WorkoutComplete = ({
                   newBadges={newBadges}
                   prs={sessionPrs}
                   bossEncounter={bossEncounter}
+                  photoMode={Boolean(selfieUrl)}
+                  photoPosition={photoPosition}
+                  onPhotoPositionChange={updatePhotoPosition}
                   embedded
                   {...shareAvailability}
                 />
