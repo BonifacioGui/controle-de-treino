@@ -1,8 +1,18 @@
 import { getRpgLevelProgress } from '../../utils/rpgProgressionModel';
 
 export const SHARE_CARD_MAX_METRICS = 3;
+export const SHARE_CARD_PHOTO_MAX_METRICS = 2;
 export const SHARE_CARD_METRIC_KEYS = Object.freeze(['duration', 'xp', 'streak', 'sets', 'density']);
 export const SHARE_CARD_HIGHLIGHT_KEYS = Object.freeze(['auto', 'level', 'badge', 'pr', 'boss', 'none']);
+export const SHARE_CARD_PHOTO_POSITIONS = Object.freeze({
+  top: 'center 20%',
+  center: 'center 50%',
+  bottom: 'center 75%',
+});
+
+export function getShareCardPhotoObjectPosition(position = 'center') {
+  return SHARE_CARD_PHOTO_POSITIONS[position] || SHARE_CARD_PHOTO_POSITIONS.center;
+}
 
 export function parseMetricNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -155,39 +165,42 @@ export function createShareCardMetricSelection({
   hasStreak = true,
   hasSets = false,
   hasDensity = false,
+  maxMetrics = SHARE_CARD_MAX_METRICS,
 } = {}) {
   const availability = { duration: hasDuration, xp: hasXp, streak: hasStreak, sets: hasSets, density: hasDensity };
   const hasExplicitSelection = Object.keys(selection || {}).some((key) => SHARE_CARD_METRIC_KEYS.includes(key));
   const defaultSelection = { duration: true, xp: true, streak: true };
+  const metricLimit = Math.max(0, Math.min(SHARE_CARD_MAX_METRICS, Number(maxMetrics) || 0));
   let selectedCount = 0;
 
   return SHARE_CARD_METRIC_KEYS.reduce((result, key) => {
     const requested = hasExplicitSelection ? selection[key] === true : defaultSelection[key] === true;
-    const selected = Boolean(availability[key] && requested && selectedCount < SHARE_CARD_MAX_METRICS);
+    const selected = Boolean(availability[key] && requested && selectedCount < metricLimit);
     if (selected) selectedCount += 1;
     result[key] = selected;
     return result;
   }, {});
 }
 
-export function getSelectedShareCardMetricKeys(selection = {}) {
-  return SHARE_CARD_METRIC_KEYS.filter((key) => selection[key] === true).slice(0, SHARE_CARD_MAX_METRICS);
+export function getSelectedShareCardMetricKeys(selection = {}, maxMetrics = SHARE_CARD_MAX_METRICS) {
+  const metricLimit = Math.max(0, Math.min(SHARE_CARD_MAX_METRICS, Number(maxMetrics) || 0));
+  return SHARE_CARD_METRIC_KEYS.filter((key) => selection[key] === true).slice(0, metricLimit);
 }
 
-export function toggleShareCardMetric(selection, metric, availability = {}) {
-  const normalized = createShareCardMetricSelection({ selection, ...availability });
+export function toggleShareCardMetric(selection, metric, availability = {}, maxMetrics = SHARE_CARD_MAX_METRICS) {
+  const normalized = createShareCardMetricSelection({ selection, ...availability, maxMetrics });
   if (!SHARE_CARD_METRIC_KEYS.includes(metric)) return { selection: normalized, limitReached: false };
   if (normalized[metric]) {
     return {
-      selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: false }, ...availability }),
+      selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: false }, ...availability, maxMetrics }),
       limitReached: false,
     };
   }
-  if (getSelectedShareCardMetricKeys(normalized).length >= SHARE_CARD_MAX_METRICS) {
+  if (getSelectedShareCardMetricKeys(normalized, maxMetrics).length >= maxMetrics) {
     return { selection: normalized, limitReached: true };
   }
   return {
-    selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: true }, ...availability }),
+    selection: createShareCardMetricSelection({ selection: { ...normalized, [metric]: true }, ...availability, maxMetrics }),
     limitReached: false,
   };
 }

@@ -4,10 +4,12 @@ import {
   createShareCardMetricSelection,
   formatShareDuration,
   getAvailableShareCardHighlights,
+  getShareCardPhotoObjectPosition,
   getSelectedShareCardMetricKeys,
   getShareCardLevelProgress,
   parseDurationSeconds,
   resolveShareCardHighlight,
+  SHARE_CARD_PHOTO_MAX_METRICS,
   toggleShareCardMetric,
 } from './ShareCardUtils';
 import { getRpgLevelProgress } from '../../utils/rpgProgressionModel';
@@ -59,6 +61,30 @@ describe('personalização do Share Card oficial', () => {
     const withSets = toggleShareCardMetric(withoutStreak, 'sets', { hasSets: true, hasDensity: true });
     expect(withSets.limitReached).toBe(false);
     expect(withSets.selection).toMatchObject({ streak: false, sets: true });
+  });
+
+  it('limita o modo foto a duas métricas secundárias', () => {
+    const selection = createShareCardMetricSelection({
+      selection: { duration: true, xp: true, streak: true },
+      maxMetrics: SHARE_CARD_PHOTO_MAX_METRICS,
+    });
+    expect(getSelectedShareCardMetricKeys(selection, SHARE_CARD_PHOTO_MAX_METRICS)).toEqual(['duration', 'xp']);
+
+    const blocked = toggleShareCardMetric(
+      selection,
+      'streak',
+      { hasDuration: true, hasXp: true, hasStreak: true },
+      SHARE_CARD_PHOTO_MAX_METRICS,
+    );
+    expect(blocked.limitReached).toBe(true);
+    expect(getSelectedShareCardMetricKeys(blocked.selection, SHARE_CARD_PHOTO_MAX_METRICS)).toHaveLength(2);
+  });
+
+  it('mapeia enquadramentos simples para posições verticais seguras', () => {
+    expect(getShareCardPhotoObjectPosition('top')).toBe('center 20%');
+    expect(getShareCardPhotoObjectPosition('center')).toBe('center 50%');
+    expect(getShareCardPhotoObjectPosition('bottom')).toBe('center 75%');
+    expect(getShareCardPhotoObjectPosition('invalid')).toBe('center 50%');
   });
 
   it('usa exatamente a progressão oficial do RPG', () => {

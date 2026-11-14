@@ -451,6 +451,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
       availability,
       preferredAction,
       selfieUrl: null,
+      photoPosition: 'center',
       customizerOpen: false,
       metricSelection: createShareCardMetricSelection(availability),
       highlightSelection: 'auto',
@@ -587,6 +588,8 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
                     prs={draftStats.prs}
                     bossEncounter={cardDraft.session.bossEncounter || null}
                     photoMode={Boolean(cardDraft.selfieUrl)}
+                    photoPosition={cardDraft.photoPosition}
+                    onPhotoPositionChange={(photoPosition) => updateCardDraft({ photoPosition })}
                     embedded
                     {...cardDraft.availability}
                   />
@@ -613,7 +616,7 @@ const HistoryView = ({ history, deleteEntry, updateEntry, reopenEntry, setView }
 
       {cardDraft && (
         <Suspense fallback={null}>
-          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.shareContext.streak} xp={cardDraft.shareContext.xp} totalXp={cardDraft.shareContext.totalXp} selfieUrl={cardDraft.selfieUrl} metricSelection={cardDraft.metricSelection} highlightSelection={cardDraft.highlightSelection} sessionDate={cardDraft.session.dateKey} levelUp={cardDraft.shareContext.levelUp} newBadges={cardDraft.shareContext.newBadges} />
+          <ShareCard cardRef={setShareCardNode} stats={draftStats} workoutTitle={cardDraft.session.workoutTitle || cardDraft.session.workoutName} bossEncounter={cardDraft.session.bossEncounter || null} streak={cardDraft.shareContext.streak} xp={cardDraft.shareContext.xp} totalXp={cardDraft.shareContext.totalXp} selfieUrl={cardDraft.selfieUrl} photoPosition={cardDraft.photoPosition} metricSelection={cardDraft.metricSelection} highlightSelection={cardDraft.highlightSelection} sessionDate={cardDraft.session.dateKey} levelUp={cardDraft.shareContext.levelUp} newBadges={cardDraft.shareContext.newBadges} />
         </Suspense>
       )}
 

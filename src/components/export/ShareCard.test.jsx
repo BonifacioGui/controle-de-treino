@@ -11,23 +11,60 @@ const baseProps = {
 
 describe('ShareCard', () => {
   it('mantém o volume movimentado como resultado principal', () => {
-    const html = renderToStaticMarkup(<ShareCard {...baseProps} />);
+    const html = renderToStaticMarkup(
+      <ShareCard
+        {...baseProps}
+        xp={312}
+        streak={4}
+        metricSelection={{ duration: true, xp: true, streak: true, sets: true }}
+      />,
+    );
     expect(html).toContain('data-share-card-mode="data-first"');
     expect(html).toContain('Volume movimentado');
     expect(html).toContain('10.447');
+    expect(html.match(/data-share-metric="true"/g)).toHaveLength(3);
     expect(html).toContain('justify-center gap-14');
     expect(html).toContain('pt-16');
   });
 
-  it('transforma a foto em plano principal com somente um resumo compacto', () => {
-    const html = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl="data:image/jpeg;base64,photo" />);
+  it('limita o sticker da foto a três informações numéricas no total', () => {
+    const html = renderToStaticMarkup(
+      <ShareCard
+        {...baseProps}
+        selfieUrl="data:image/jpeg;base64,photo"
+        xp={312}
+        streak={4}
+        metricSelection={{ duration: true, xp: true, streak: true, sets: true }}
+      />,
+    );
     expect(html).toContain('data-share-card-mode="photo-first"');
     expect(html).toContain('absolute inset-0 h-full w-full object-cover');
     expect(html).toContain('data-photo-summary="true"');
+    expect(html.match(/data-photo-stat="true"/g)).toHaveLength(3);
     expect(html).toContain('Resumo do treino');
-    expect(html).toContain('bg-[#05070d]/70');
+    expect(html).toContain('max-h-[430px]');
     expect(html).not.toContain('Volume movimentado');
     expect(html).not.toContain('text-[142px]');
     expect(html).not.toContain('XP para o próximo nível');
+  });
+
+  it('aplica o enquadramento escolhido à mesma imagem do card', () => {
+    const top = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl="photo" photoPosition="top" />);
+    const bottom = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl="photo" photoPosition="bottom" />);
+
+    expect(top).toContain('data-photo-position="top"');
+    expect(top).toContain('object-position:center 20%');
+    expect(bottom).toContain('data-photo-position="bottom"');
+    expect(bottom).toContain('object-position:center 75%');
+    expect(top).not.toBe(bottom);
+  });
+
+  it('retorna ao modo data-first quando a foto é removida', () => {
+    const withPhoto = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl="photo" />);
+    const withoutPhoto = renderToStaticMarkup(<ShareCard {...baseProps} selfieUrl={null} />);
+
+    expect(withPhoto).toContain('data-share-card-mode="photo-first"');
+    expect(withoutPhoto).toContain('data-share-card-mode="data-first"');
+    expect(withoutPhoto).not.toContain('data-photo-summary="true"');
   });
 });
