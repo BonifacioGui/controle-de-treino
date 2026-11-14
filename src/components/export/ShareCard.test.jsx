@@ -16,6 +16,7 @@ describe('ShareCard', () => {
         {...baseProps}
         xp={312}
         streak={4}
+        totalXp={1200}
         metricSelection={{ duration: true, xp: true, streak: true, sets: true }}
       />,
     );
@@ -23,6 +24,8 @@ describe('ShareCard', () => {
     expect(html).toContain('Volume movimentado');
     expect(html).toContain('10.447');
     expect(html.match(/data-share-metric="true"/g)).toHaveLength(3);
+    expect(html).toContain('XP para o próximo nível');
+    expect(html).toContain('Novo recorde');
     expect(html).toContain('justify-center gap-14');
     expect(html).toContain('pt-16');
   });
@@ -57,6 +60,29 @@ describe('ShareCard', () => {
     expect(bottom).toContain('data-photo-position="bottom"');
     expect(bottom).toContain('object-position:center 75%');
     expect(top).not.toBe(bottom);
+  });
+
+  it('prioriza o highlight e omite o nível no photo-first', () => {
+    const html = renderToStaticMarkup(
+      <ShareCard {...baseProps} selfieUrl="photo" totalXp={1200} />,
+    );
+
+    expect(html).toContain('Novo recorde');
+    expect(html).not.toContain('Nível ');
+  });
+
+  it('mostra o nível discretamente quando o photo-first não possui highlight', () => {
+    const html = renderToStaticMarkup(
+      <ShareCard
+        {...baseProps}
+        stats={{ ...baseProps.stats, prs: 0 }}
+        selfieUrl="photo"
+        totalXp={1200}
+      />,
+    );
+
+    expect(html).not.toContain('Novo recorde');
+    expect(html).toContain('Nível ');
   });
 
   it('retorna ao modo data-first quando a foto é removida', () => {

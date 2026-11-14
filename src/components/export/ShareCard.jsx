@@ -160,10 +160,7 @@ const PhotoFirstShareCard = ({
         </header>
 
         <section data-photo-summary="true" className="mt-auto max-h-[430px] rounded-[32px] border border-white/20 bg-[#05070d]/68 p-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-5">
-            <p className="font-cyber text-[16px] font-black uppercase tracking-[0.22em] text-cyan-300">Resumo do treino</p>
-            {progress && <p className="shrink-0 rounded-full border border-fuchsia-300/25 px-3 py-1.5 text-[14px] font-black text-fuchsia-200">Nível {progress.level}</p>}
-          </div>
+          <p className="font-cyber text-[16px] font-black uppercase tracking-[0.22em] text-cyan-300">Resumo do treino</p>
           <h1 className="mt-3 max-w-[850px] truncate text-[48px] font-bold leading-none tracking-[-0.025em] text-white">{workoutTitle || 'Treino'}</h1>
 
           <div className="mt-5 flex gap-5 border-y border-white/12 py-4">
@@ -173,12 +170,14 @@ const PhotoFirstShareCard = ({
             ))}
           </div>
 
-          {highlight && (
+          {highlight ? (
             <div className="mt-4 min-w-0">
               <p className="text-[13px] font-black uppercase tracking-[0.14em] text-yellow-300">{highlight.eyebrow}</p>
               <p className="mt-0.5 truncate text-[20px] font-black uppercase text-white">{highlight.title}</p>
             </div>
-          )}
+          ) : progress ? (
+            <p className="mt-4 inline-flex rounded-full border border-fuchsia-300/25 px-3 py-1.5 text-[14px] font-black text-fuchsia-200">Nível {progress.level}</p>
+          ) : null}
         </section>
 
         <footer className="mt-5 flex items-center justify-between px-2 text-[14px] font-bold uppercase tracking-[0.16em] text-white/65">
